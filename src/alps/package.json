@@ -1,0 +1,14 @@
+{
+  "name": "alps",
+  "version": "0.0.0",
+  "description": "ALPS parsing routines",
+  "main": "alps.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ALPS"
+  ],
+  "author": "Ronnie Mitra",
+  "license": "ISC",
+}
