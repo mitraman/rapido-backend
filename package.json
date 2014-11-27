@@ -15,7 +15,8 @@
     "passport-http-bearer": "1.x",
     "mongoskin": "1.4.4",
     "bcrypt-nodejs": "0.0.3",
-    "crypto": "0.0.3"
+    "rsvp": "3.x",
+    "xml2js": "0.4.4"
   },
   "devDependencies": {
   },

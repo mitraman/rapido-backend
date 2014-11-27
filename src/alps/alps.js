@@ -2,7 +2,7 @@
  * @fileoverview Utilities for parsing ALPS documents
  * 
  */
-var RSVP = require('RSVP');
+var RSVP = require('rsvp');
 var xml2js = require('xml2js');
 var http = require('http');
  
