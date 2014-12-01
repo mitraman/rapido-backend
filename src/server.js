@@ -42,9 +42,66 @@ var alpsParser = require('./alps/alps.js');
 require('./handlers/resources.js')(app, conn);
 require('./handlers/states.js')(app, conn);
 require('./handlers/map.js')(app, conn);
+require('./handlers/projects.js')(app, conn, authorizeUser);
   
 app.get('/', function(req, res){
     res.send('Hello World');
+});
+
+app.post('/subscribe', function( req, res ) { 
+    var email = req.body.email;
+    var firstName = req.body.firstName;
+    var lastName = req.body.lastName;
+
+    console.log('subscribe');
+    console.log(email);
+    console.log(firstName);
+    console.log(lastName);
+    
+    var data = {
+                "apikey": "139c0c169651b04cb531a8c9ace048e4-us9",
+                "id": "d96e7fec0f",
+                "email": {
+                    "email": email 
+                },
+                "double_optin": false,
+                "send_welcome": true,
+                "merge_vars": {
+                    "FNAME": firstName,
+                    "LNAME": lastName
+                }
+    };
+    
+    var options = {
+            host: 'https://us9.api.mailchimp.com', 
+            path: '/2.0/lists/subscribe',
+            method: 'POST',
+            data: data
+    }
+        
+    console.log('making call...');
+    var req = http.request(options, function(response) {
+        var str = '';
+
+        //another chunk of data has been recieved, so append it to `str`
+        response.on('data', function (chunk) {
+            console.log(chunk);
+            str += chunk;
+        });
+
+        //the whole response has been recieved, so we just print it out here
+        response.on('end', function () {
+            console.log(str);
+            res.send(200);
+        });
+    });
+    
+    req.on('error', function(e) {
+        console.log('problem with request: ' + e.message);
+        res.send(400, 'error.');
+    });
+        
+    req.end();
 });
 
 // Registration
@@ -180,7 +237,7 @@ function authorizeUser(req, res, next) {
     }
     
     // Make sure this user has access to the project
-    conn.collection('projects').find({_id: conn.ObjectID.createFromHexString(projectId), owner: user}).toArray(function (err, projects) {
+    conn.collection('projects').find({_id: mongo.helper.toObjectID(projectId), owner: user}).toArray(function (err, projects) {
         console.log('inside query');
         console.log(projects);
         console.log(projects.length);
@@ -364,162 +421,9 @@ app.get('/ALPS/external', function(req, res) {
     }        
 });
 
-// PROJECTS
 
-// Retrieve a list of authorized projects for this user
-//app.get('/projects', passport.authenticate('bearer', {session: false}), function(req, res) {
-app.get('/projects', function(req, res) {
-//conn.collection('projects').find({owner: req.user}).toArray(function( err, projects ) {
-conn.collection('projects').find().toArray(function( err, projects ) {
-		if( err ) {
-			res.status(500);
-			res.send('{"message" : "Unable to get projects"}');
-			console.log(err);
-		}else {
-			res.send(projects);
-		}
-		
-	});
-});
-app.get('/projects/:projectId', passport.authenticate('bearer', {session: false}), authorizeUser, function(req, res) {
-//	app.get('/projects', function(req, res) {
-	
-	console.log('req.user:');
-	console.log(req.user);
-    console.log(req.params.projectId);
-        
-	
-    if( req.params.projectId == null ) {
-        res.send(400, '{"message": "invalid project id"}');
-	
-    } else {
-        conn.collection('projects').find({owner: req.user, _id: conn.ObjectID.createFromHexString(req.params.projectId) }).toArray(function( err, projects ) {
-		if( err ) {
-			res.status(500);
-			res.send('{"message" : "Unable to get project."}');
-			console.log(err);
-		}else {
-			res.send(projects);
-		}		
-	});
-        
-    }
-	
-});
-
-// Create a new project
-app.post('/projects', passport.authenticate('bearer', {session: false}), function(req, res) {
-	var name = req.body.name;
-	var description = req.body.description;
-	var hostname = req.body.hostname;
-    var contentType = req.body.contentType;
-	var projectType = req.body.projectType;
-	
-	//TODO: Add owner and creation stamp details
-	
-	var project = {
-			name : name,
-			description : description,
-			hostname : hostname,
-			projectType: projectType,
-            contentType: contentType,
-			owner : req.user,
-			created : new Date()
-	}
-
-    project.simpleVocabulary = [];
-			
-	conn.collection('projects').insert(project, function (err, post) {
-		if( err === null ) {
-			//TODO: Check if this is a hypermedia project
-			// If this is a hypermedia project, create the first home resource automatically				
-
-            if( post[0].projectType === 'hypermedia' ) {
-			var home = {
-				name: 'home',
-				description: 'The default start state.',
-                transitions: [],
-                responses: {primary: ''},
-                uri: '$(home)',
-				project: post[0]._id.toString()
-			}
-			conn.collection('states').insert(home, function (err, post) {
-			});
-            }
-			res.send(200, post);
-		}else {
-			console.log(err);
-			res.send(500);
-		}
-	});
-});
-
-
-app.put('/projects/:projectId', function(req,res) {
-    var projectId = req.params.projectId;
-
-    // Do partial replace by default.
-    // TODO: support other attributes
-    var vocabulary = req.body.simpleVocabulary;
-    var name = req.body.name;
-    var description = req.body.description;
-    var projectType = req.body.projectType;
-    var contentType = req.body.contentType;
-
-    console.log(name);
-    console.log(req.body);
-
-    var updatedContent = {};
-    if( vocabulary ) { updatedContent.simpleVocabulary = vocabulary; }
-    if( name ) { updatedContent.name = name; }
-    if( description ) { updatedContent.description = description; }
-    if( projectType ) { updatedContent.projectType = projectType; }
-    if( contentType ) { updatedContent.contentType = contentType; }
-    console.log(updatedContent);
-
-	conn.collection('projects').update(
-		{_id: mongo.helper.toObjectID(projectId)}, 
-		{'$set': updatedContent },
-		function(err, post) {
-			if( !err ) {
-				res.send(200);
-			} else {
-				res.send(500, err);
-			}
-	});
-});
-
-// Update the simple vocabulary of a project
-app.put('/projects/:projectId/vocabulary', function(req, res) {	
-	var projectId = req.params.projectId;
-	// get vocab list from JSON body
-	var vocabulary = req.body.vocabulary;
-	
-	conn.collection('projects').update(
-		{_id: conn.ObjectID.createFromHexString(projectId)}, 
-		{'$set': {'simpleVocabulary': vocabulary}},
-		function(err, post) {
-			if( !err ) {
-				res.send(200);
-			} else {
-				res.send(500, err);
-			}
-	});
-    	
-});
-
-// Delete a project
-app.delete('/projects/:projectId', passport.authenticate('bearer', {session: false}), authorizeUser, function(req, res) {
-	var projectId = req.params.projectId;
-	
-	//TODO: implement this.
-	// Remove the resources/states/nodes/tasks whatever we are calling them now
-	
-	
-});
-
-
-app.post('/project/:projectId/engine/start',  passport.authenticate('bearer', {session: false}), authorizeUser, function(req, res) {
+//app.post('/project/:projectId/engine/start',  passport.authenticate('bearer', {session: false}), authorizeUser, function(req, res) {
+app.post('/project/:projectId/engine/start',  function(req, res) {
 	var projectId = req.params.projectId;    
     // update the hostname
     
@@ -554,11 +458,17 @@ function registerMockListeners() {
 		}
 		
 		// Register listeners for the resources.  These are anonymous access listeners ideal for CRUD style APIs	
+        console.log('registerining resource listeenrs');
 		conn.collection('resources').find().toArray(function (err, resources) {
 			for( resourceIndex in resources ) {				
 				var resource = resources[resourceIndex];
 				if( resource.url && resource.methods && resource.methods.length > 0) {
+                    console.log(resource.project);
+                    console.log(projectMap);
+                    var project = projectMap[resource.project];
+                    console.log(project);
 					var key = project.hostname + "." + resource.url;
+                    console.log(key);
 					mockListeners[key] = {
 								title : resource.name,
 								responses : resource.responses,			
@@ -571,6 +481,14 @@ function registerMockListeners() {
 			console.log(mockListeners);
 		});
 				
+        // Convert the states into a state map
+        /*
+		conn.collection('states').find().toArray(function (err, resources) {
+            for( stateIndex in states ) {
+                var state = states[stateIndex];
+            }
+        }
+        */
 		
 		/**
 		conn.collection('tasks').find().toArray(function (err, tasks) {

@@ -33,38 +33,53 @@ module.exports = function(app, conn){
 			project: req.params.projectId
 		}
 
+        console.log(req.params.projectId);
+        console.log(mongo.helper.toObjectID(req.params.projectId));
+
         if( !state.transitions ) { state.transitions = []; }
-        if( !state.responses ) { state.responses = []; }
         state.url = '$(' + state.name + ')';
-	
-		conn.collection('states').insert(state, function (err, insertResult) {
-			if( err ) {
-				res.send(500, err);
-			} else {				
-				// Update the state parent's children property
-				console.log(insertResult[0]);
-				if( insertResult[0].parent ) {
-					var parentId = conn.ObjectID.createFromHexString(insertResult[0].parent);
-					var stateId = insertResult[0]._id.toString();
-					conn.collection('states').update(
-						{_id: parentId },
-						{'$push': { children: stateId} },
-						function (err, result) {
-						if( err ) {
-							// We aren't using commits so just fail if this happens.  Not great, but no time to deal with this for now.
-							console.log('warn...');
-							console.warn('Unable to update parent state');
-							res.send(insertResult);
-						} else {			
-							res.send(insertResult);
-						}
-					});
-				} else {
-					res.send(insertResult);
-				}
-				
-			}
-		});
+
+        if( !state.responses || state.responses.primary.length === 0 ) {
+            // Create a default response body depending on the contentType
+            // Get the project
+            console.log('creating default response');
+            conn.collection('projects').find({_id: mongo.helper.toObjectID(req.params.projectId)}).toArray(function( err, projects ) {
+                if( err ) {
+                    res.send(500, err);
+                } else {
+                    if( projects.length === 0 ) { 
+                        res.send(500, 'unable to find parent project');
+                    } else {
+                        var contentType = projects[0].contentType;
+
+                        if( !state.responses ) {
+                            state.responses = {};
+                        }
+
+                        if( contentType === 'application/vnd.collection+json' ) {
+                            state.responses.primary = '{"collection": {}, "version": "1.0"}';
+                        }else {
+                            state.responses.primary = '{}';
+                        }
+
+                        createState(state);
+                    }
+                }
+            });    
+        } else {
+            createState(state);
+        }
+
+        function createState(state) {
+            conn.collection('states').insert(state, function (err, insertResult) {
+                if( err ) {
+                    res.send(500, err);
+                } else {				
+                    // Update the state parent's children property
+                    res.send(insertResult);
+                }
+            });
+        }
 				
 		//registerMockListeners();
 	});
@@ -116,65 +131,5 @@ module.exports = function(app, conn){
 		});
 	});
 	
-	//TODO: I ran out of time trying to get atomic response manipulation working.  I'll just deal with it at the states level instead.
-	
-	
-	/**
-	// Create a new response for a particular state
-	app.post('/projects/:projectId/states/:stateId/responses', function(req,res) {
-		var projectId = req.params.projectId;
-		var stateId = req.params.stateId;
-
-		var _response = req.body.response;
-
-		var response = {
-			name: "",
-			status: "200",
-			headers: {},
-			conditions : _response.conditions,
-			body: _response.body,
-			state: stateId,
-			project: projectId
-		}
-		
-		console.log(response);
-		
-		
-		conn.collection('responses').insert(response, function (err, result) {
-			if( err ) {
-				res.send(500, err);
-			}else {
-				res.send(result);
-			}
-		})
-	});
-	**/
-	
-	/*
-	// Upsert a response 
-	app.put('/projects/:projectId/states/:stateId/responses/:name', function(req,res) {
-		var projectId = req.params.projectId;
-		var stateId = req.params.stateId;
-		var responseName = req.params.name;
-		
-		//db.states.update({_id: ObjectId("54426195293ae6d92f000002")}, {$set: { "responses.second": {'name': 'second'} } } )
-		
-		//TODO: This is a security problem.  We should blacklist this field.
-		var responseSelector = "responses." + responseName;
-		
-		conn.collection('states').updateById(conn.ObjectID.createFromHexString(stateId), 
-												{$set: { 'responses.' + responseName: {'name': responseName} } },
-												function (err, result) {
-													if(err) res.send(500,err);
-													else res.send(result);
-												});
-	});
-			
-		
-	// Delete an existing response
-	app.delete('/projects/:projectId/states/:stateId/responses/:name', function(req,res) {
-	});
-		
-		*/
 }
 

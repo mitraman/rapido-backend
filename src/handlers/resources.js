@@ -1,5 +1,7 @@
 // CRUD Resource API
 // TODO: Add authentication and register mock listeners on changes
+var mongo = require('mongoskin');
+var passport = require('passport');
 
 module.exports = function(app, conn){
 
@@ -20,9 +22,11 @@ module.exports = function(app, conn){
 	
 	// Create a new resource
 	app.post('/projects/:projectId/resources', function(req,res) {
-				
+
 		// Store a newly created task object		
 		var _resource = req.body.resource;
+
+        console.log(_resource);
 		
 		var resource = {
 			name: _resource.name,
@@ -32,8 +36,11 @@ module.exports = function(app, conn){
 			children: _resource.children,
 			parent: _resource.parent,
 			methods: _resource.methods,
+            class: _resource.class,
 			project: req.params.projectId
 		}
+
+        console.log(resource);
 		
 						
 		conn.collection('resources').insert(resource, function (err, insertResult) {
@@ -43,7 +50,7 @@ module.exports = function(app, conn){
 				// Update the resource parent's children property
 				console.log(insertResult[0]);
 				if( insertResult[0].parent ) {
-					var parentId = conn.ObjectID.createFromHexString(insertResult[0].parent);
+					var parentId = mongo.helper.toObjectID(insertResult[0].parent);
 					var resourceId = insertResult[0]._id.toString();
 					conn.collection('resources').update(
 						{_id: parentId },
@@ -82,10 +89,11 @@ module.exports = function(app, conn){
 			children: _resource.children,
 			parent: _resource.parent,
 			methods: _resource.methods,
+            class: _resource.class,
 			project: req.params.projectId
 		}
 		
-		conn.collection('resources').updateById(conn.ObjectID.createFromHexString(id), resource, function (err, result) {
+		conn.collection('resources').updateById(mongo.helper.toObjectID(id), resource, function (err, result) {
 			if( err ) {
 				res.status(500);
 				res.send('{"message" : "Unable to store data in database."}');
@@ -99,7 +107,7 @@ module.exports = function(app, conn){
 	app.delete('/projects/:projectId/resources/:resourceId', function(req,res) {
 		var id = req.params.resourceId;
 		
-		conn.collection('resources').removeById(conn.ObjectID.createFromHexString(id), function (err, result) {
+		conn.collection('resources').removeById(mongo.helper.toObjectID(id), function (err, result) {
 			if( err ) {
 				res.status(500);
 				res.send('{"message" : "Unable to store data in database."}');

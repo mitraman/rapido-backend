@@ -1,3 +1,6 @@
+var mongo = require('mongoskin');
+var passport = require('passport');
+
 module.exports = function(app, conn){
 	
 	app.get('/projects/:projectId/maps', function(req,res) {
@@ -16,7 +19,6 @@ module.exports = function(app, conn){
 	
 	app.post('/projects/:projectId/maps', function(req,res) {
 				
-		// Store a newly created task object		
 		var _map = req.body.map;
 		
 		var map = {
@@ -36,7 +38,6 @@ module.exports = function(app, conn){
 	});
 	
 	app.put('/projects/:projectId/maps/:mapId', function(req,res) {
-		// Store a newly created task object		
 		var _map = req.body.map;
 		var id = req.params.mapId;
 						
@@ -47,7 +48,7 @@ module.exports = function(app, conn){
 			project: req.params.projectId
 		}
 		
-		conn.collection('maps').updateById(conn.ObjectID.createFromHexString(id), map, function (err, result) {
+		conn.collection('maps').updateById(mongo.helper.toObjectID(id), map, function (err, result) {
 			if( err ) {
 				res.status(500);
 				res.send('{"message" : "Unable to store data in database."}');
