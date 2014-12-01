@@ -14,6 +14,7 @@ var bcrypt = require('bcrypt-nodejs');
 var crypto = require('crypto');
 
 var http = require('http');
+var request = require('request');
 
 app.use(express.logger());
 
@@ -71,37 +72,22 @@ app.post('/subscribe', function( req, res ) {
                     "LNAME": lastName
                 }
     };
-    
-    var options = {
-            host: 'https://us9.api.mailchimp.com', 
-            path: '/2.0/lists/subscribe',
-            method: 'POST',
-            data: data
-    }
-        
-    console.log('making call...');
-    var req = http.request(options, function(response) {
-        var str = '';
 
-        //another chunk of data has been recieved, so append it to `str`
-        response.on('data', function (chunk) {
-            console.log(chunk);
-            str += chunk;
-        });
-
-        //the whole response has been recieved, so we just print it out here
-        response.on('end', function () {
-            console.log(str);
-            res.send(200);
-        });
+    request.post({
+        uri:'https://us9.api.mailchimp.com/2.0/lists/subscribe', 
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+        }, function(error, response, body) { 
+            if( !error && response.statusCode === 200 ) {
+                res.send(200);
+            } else {
+                console.log(error);
+                console.log(response);
+                console.log(body);
+                res.send(500);
+            }
     });
     
-    req.on('error', function(e) {
-        console.log('problem with request: ' + e.message);
-        res.send(400, 'error.');
-    });
-        
-    req.end();
 });
 
 // Registration

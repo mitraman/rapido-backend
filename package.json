@@ -16,7 +16,8 @@
     "mongoskin": "1.4.4",
     "bcrypt-nodejs": "0.0.3",
     "rsvp": "3.x",
-    "xml2js": "0.4.4"
+    "xml2js": "0.4.4",
+    "request": "2.x"
   },
   "devDependencies": {
   },
