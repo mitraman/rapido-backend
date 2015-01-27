@@ -452,6 +452,7 @@ function registerMockListeners() {
                     console.log(resource.project);
                     console.log(projectMap);
                     var project = projectMap[resource.project];
+                    if( !project ) { console.log('could not find ' + resource.project); break; }
                     console.log(project);
 					var key = project.hostname + "." + resource.url;
                     console.log(key);
