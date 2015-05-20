@@ -1,5 +1,6 @@
 var mongo = require('mongoskin');
 var passport = require('passport');
+var alps = require('../alps/alps.js');
 
 module.exports = function(app, conn, authorizeUser){
 
@@ -28,6 +29,8 @@ app.get('/projects/:projectId', passport.authenticate('bearer', {session: false}
 			res.send('{"message" : "Unable to get project."}');
 			console.log(err);
 		}else {
+            // As a convenience, include all ALPS vocabularies that are associated with this project
+            console.log(projects);
 			res.send(projects);
 		}		
 	});
@@ -44,8 +47,6 @@ app.post('/projects', passport.authenticate('bearer', {session: false}), functio
     var contentType = req.body.contentType;
 	var projectType = req.body.projectType;
 	
-	//TODO: Add owner and creation stamp details
-	
 	var project = {
 			name : name,
 			description : description,
@@ -58,6 +59,7 @@ app.post('/projects', passport.authenticate('bearer', {session: false}), functio
 	}
 
     project.simpleVocabulary = [];
+    project.alps = [];
 
     console.log(project);
 			
@@ -128,6 +130,39 @@ app.put('/projects/:projectId', function(req,res) {
 				res.send(500, err);
 			}
 	});
+});
+
+// Add an ALPS document to the project
+app.post('/projects/:projectId/alps', function(req,res) {
+	var projectId = req.params.projectId;
+	// get ALPS document from JSON body
+	var alpsDoc = req.body.alps;
+    var name = alpsDoc.name;
+    var doc = alpsDoc.doc;
+
+    alps('xml', doc, function(error, parsedAlps) {
+        if( error ) {
+                res.send(400, 'unable to parse alps document');
+        }
+        var alpsVocab = {
+                name: name,
+                words: Object.keys(parsedAlps),
+                body: doc
+        }
+
+        conn.collection('projects').updateById(mongo.helper.toObjectID(projectId), 
+            {'$push': {alps: alpsVocab}},
+		    function(err, post) {
+                if( err ) {
+                    console.log(err);
+                    res.send(400);
+                }else {
+                    console.log(post);
+                    res.send(200);
+                }
+            }
+        );
+    });
 });
 
 // Update the simple vocabulary of a project
