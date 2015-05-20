@@ -44,6 +44,7 @@ require('./handlers/resources.js')(app, conn);
 require('./handlers/states.js')(app, conn);
 require('./handlers/map.js')(app, conn);
 require('./handlers/projects.js')(app, conn, authorizeUser);
+require('./handlers/sketches.js')(app, conn, authorizeUser);
   
 app.get('/', function(req, res){
     res.send('Hello World');
