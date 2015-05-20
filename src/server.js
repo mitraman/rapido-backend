@@ -32,7 +32,7 @@ app.use(cors());
 app.use('/assets', express.static('public'));
 
 var connUrlString = process.env.MONGO_USERNAME + ":" + process.env.MONGO_PASSWORD + "@" + process.env.MONGO_URL;
-console.log(connUrlString);
+//console.log(connUrlString);
 //var conn = mongo.db(connUrlString, {auto_reconnect: true});
 var conn = mongo.db('mongodb://localhost:27017/apidesign');
 
@@ -44,6 +44,7 @@ require('./handlers/resources.js')(app, conn);
 require('./handlers/states.js')(app, conn);
 require('./handlers/map.js')(app, conn);
 require('./handlers/projects.js')(app, conn, authorizeUser);
+require('./handlers/alps.js')(app, conn, authorizeUser);
   
 app.get('/', function(req, res){
     res.send('Hello World');
@@ -54,10 +55,10 @@ app.post('/subscribe', function( req, res ) {
     var firstName = req.body.firstName;
     var lastName = req.body.lastName;
 
-    console.log('subscribe');
-    console.log(email);
-    console.log(firstName);
-    console.log(lastName);
+    //console.log('subscribe');
+    //console.log(email);
+    //console.log(firstName);
+    //console.log(lastName);
     
     var data = {
                 "apikey": "139c0c169651b04cb531a8c9ace048e4-us9",
@@ -81,9 +82,9 @@ app.post('/subscribe', function( req, res ) {
             if( !error && response.statusCode === 200 ) {
                 res.send(200);
             } else {
-                console.log(error);
-                console.log(response);
-                console.log(body);
+                //console.log(error);
+                //console.log(response);
+                //console.log(body);
                 res.send(500);
             }
     });
@@ -97,12 +98,12 @@ app.post('/register', function( req, res ) {
 	var username = req.body.username;
 	var password = req.body.password;
 	
-	//console.log('cleartext: %s',password);
+	////console.log('cleartext: %s',password);
 	
 	bcrypt.hash(password, null, null, function(err, hash) {
-		//console.log('hashed: %s',hash);
+		////console.log('hashed: %s',hash);
 		var user = { username: username, password: hash };
-		//console.log(user);
+		////console.log(user);
 		conn.collection('users').insert(user, function (err, result) {
 			if( err ) {
 				//console.error(err);
@@ -124,9 +125,9 @@ app.post('/register', function( req, res ) {
 var tokens = {};
 
 function findByToken(token, callback) {
-	console.log(token);	
+	////console.log(token);	
 	var userId = tokens[token];
-	console.log(userId);
+	////console.log(userId);
 	callback(null, userId);
 }
 
@@ -136,7 +137,7 @@ function generateToken(userId, callback) {
 	var hash = shasum.update(userId+random).digest('base64');
 	// store the token 
 	tokens[hash] = userId;
-	console.log(hash);
+	////console.log(hash);
 	callback(hash);
 }
 
@@ -157,19 +158,19 @@ passport.use(new BasicStrategy({
 	},
 	function(username, password, done) {
 		
-		console.log('username: %s',username);
-		console.log('password: %s',password);
+		////console.log('username: %s',username);
+		////console.log('password: %s',password);
 		
 		conn.collection('users').findOne({username: username}, function (err, user) {
 			if( user === null || user === undefined ) {
 				return done(null, false, { message: 'invalid username/password combination'} );
 			}
-			console.log(user);
+			////console.log(user);
 			bcrypt.compare(password, user.password, function(err, res) {
 				if( res ) {
-					console.log('AUTH PASSED.');
+					////console.log('AUTH PASSED.');
 					var bearerToken = generateToken(user._id, function(token) {
-						console.log('token: %s', token);
+						////console.log('token: %s', token);
 						var credential = {
                                 id: user._id,
 								username: username,
@@ -178,9 +179,9 @@ passport.use(new BasicStrategy({
 						return done( null, credential);
 					});					
 				}else {
-                    console.log(res);
-                    console.log(err);
-					console.log('AUTH FAILED.');
+                    //console.log(res);
+                    //console.log(err);
+					//console.log('AUTH FAILED.');
 					return done(null, false, { message: 'invalid username/password combination'} );
 				}
 			});
@@ -191,14 +192,21 @@ passport.use(new BasicStrategy({
 
 app.post('/login',
 		  passport.authenticate('basic', {session: false}),  function(req, res) {			  
-              console.log('/login');
+              //console.log('/login');
 			  res.status(200);
 			  res.send(req.user);
 		  }
 );
 
 app.post('/logout', passport.authenticate('bearer', {session: false}), function(req, res) {
-		// TODO: implement logic to logout the active user and delete the token
+		// Get the token from the request
+		var bearerString = req.headers.authorization;
+		var token = bearerString.substring('Bearer '.length, bearerString.length);
+		// Delete this token from the session collection
+		delete tokens[token];
+
+		res.status(200);
+		res.send();
 	}
 );
 
@@ -212,25 +220,25 @@ function authorizeUser(req, res, next) {
     var projectId = req.params.projectId;    
     var user = req.user;
     
-    console.log('authorizeUser');
-    console.log(projectId);
-    console.log(user);
+    //console.log('authorizeUser');
+    //console.log(projectId);
+    //console.log(user);
     
     // No project Id was found, so reject the request
     if( !projectId ) {
-        console.log('rejecting...');
+        //console.log('rejecting...');
         res.send(403, 'no project id found');
     }
     
     // Make sure this user has access to the project
     conn.collection('projects').find({_id: mongo.helper.toObjectID(projectId), owner: user}).toArray(function (err, projects) {
-        console.log('inside query');
-        console.log(projects);
-        console.log(projects.length);
+        //console.log('inside query');
+        //console.log(projects);
+        //console.log(projects.length);
         
 			if( err == null && projects.length > 0 ) {                    
                 // Everything is good, so continue processing
-                console.log('az passed.');
+                //console.log('az passed.');
                 next();
             } else {
                 res.send(403, 'user does not have access to this project.');
@@ -283,7 +291,7 @@ app.get('/ALPS/vocabulary', function(req, res) {
 // create a new ALPS profile	
 app.post('/ALPS/profiles', function(req, res) {
 	var profile = req.body.profile;
-	console.log(profile);
+	//console.log(profile);
 	var name = profile.name;
 	var doc = profile.doc;
     var format = profile.format;
@@ -335,15 +343,15 @@ app.put('/ALPS/:profileId', function(req, res) {
         format: format
     }
     
-    console.log(req.body);
-    console.log(req.body.name);
-    console.log(profile);
+    //console.log(req.body);
+    //console.log(req.body.name);
+    //console.log(profile);
     
     conn.collection('alps').updateById(conn.ObjectID.createFromHexString(profileId), profile, function (err, post) {
 		if( err ) {
 			res.status(500);
 			res.send('{"message" : "Unable to store data in database."}');
-			console.log(err);
+			//console.log(err);
 		}else {
 						
 			res.send(200, post);
@@ -355,7 +363,7 @@ app.put('/ALPS/:profileId', function(req, res) {
 app.get('/ALPS/external', function(req, res) {
     
     var href = req.query.href;
-    console.log(href);
+    //console.log(href);
         
     if(href.substr(0, 7)==='http://') {                
         var suffix = href.substr('http://'.length, href.length);
@@ -368,9 +376,9 @@ app.get('/ALPS/external', function(req, res) {
             host = suffix.substr(0, pathLocation);
             path = suffix.substr(pathLocation, suffix.length);                               
         }
-        console.log('values:');
-        console.log(host);
-        console.log(path);        
+        //console.log('values:');
+        //console.log(host);
+        //console.log(path);        
         
         var options = {
             host: host, 
@@ -378,28 +386,28 @@ app.get('/ALPS/external', function(req, res) {
             method: 'GET'
         }
         
-        console.log('making call...');
+        //console.log('making call...');
         var req = http.request(options, function(response) {
             var str = '';
 
             //another chunk of data has been recieved, so append it to `str`
             response.on('data', function (chunk) {
-                console.log(chunk);
+                //console.log(chunk);
                 str += chunk;
             });
 
             //the whole response has been recieved, so we just print it out here
             response.on('end', function () {
                 //TODO: Validate that this is a valid ALPS document.
-                console.log(str);
+                //console.log(str);
                 res.send(200, str);
             });
         });
         
-        console.log('blah');
+        //console.log('blah');
         
         req.on('error', function(e) {
-            console.log('problem with request: ' + e.message);
+            //console.log('problem with request: ' + e.message);
             res.send(400, 'error.');
         });
         
@@ -430,7 +438,7 @@ function registerMockListeners() {
 	//TODO: this won't scale the way it is currently written.  It is loading all resources into memory, instead it should only 
 	// register active projects.
 	
-	console.log('loading listeners');
+	//console.log('loading listeners');
 	mockListeners = {};
 	
 	conn.collection('projects').find().toArray(function( err, projects ) {
@@ -440,22 +448,35 @@ function registerMockListeners() {
 		for( projectIndex in projects ) {
 			var project = projects[projectIndex];
 			projectMap[project._id] = project;
-			console.log(projectMap);
+			//console.log(projectMap);
 		}
+
+        conn.collection('states').find().toArray(function (err, states) {
+        console.log('registering hypermedia listeners...');
+            //console.log(states);
+            for( stateIndex in states ) {
+                var state = states[stateIndex];
+                console.log(state);
+            }
+        console.log('************');
+        });
 		
 		// Register listeners for the resources.  These are anonymous access listeners ideal for CRUD style APIs	
-        console.log('registerining resource listeenrs');
+        //console.log('registerining resource listeners');
 		conn.collection('resources').find().toArray(function (err, resources) {
 			for( resourceIndex in resources ) {				
 				var resource = resources[resourceIndex];
 				if( resource.url && resource.methods && resource.methods.length > 0) {
-                    console.log(resource.project);
-                    console.log(projectMap);
+                    //console.log(resource.project);
+                    //console.log(projectMap);
                     var project = projectMap[resource.project];
-                    if( !project ) { console.log('could not find ' + resource.project); break; }
-                    console.log(project);
+                    if( !project ) { 
+                            console.log('could not find ' + resource.project); 
+                            break; 
+                    }
+                    //console.log(project);
 					var key = project.hostname + "." + resource.url;
-                    console.log(key);
+                    //console.log(key);
 					mockListeners[key] = {
 								title : resource.name,
 								responses : resource.responses,			
@@ -464,8 +485,8 @@ function registerMockListeners() {
 						}
 				}				
 			}
-			console.log('resource mockListeners:');
-			console.log(mockListeners);
+			//console.log('resource mockListeners:');
+			//console.log(mockListeners);
 		});
 				
         // Convert the states into a state map
@@ -485,15 +506,15 @@ function registerMockListeners() {
 			
 			for( taskIndex in tasks) {						
 				var task = tasks[taskIndex];
-				console.log(task._id);
+				//console.log(task._id);
 				var projectId = task.project;
 				var project = projectMap[projectId];	
-				//console.log('project: ' + project);
+				////console.log('project: ' + project);
 				responseMap[task._id] = task.responseData;
 				
 				if( task.url != null && task.url != "" && project != undefined ) {
 					var key = project.hostname + "." + task.url;
-					//console.log(key);
+					////console.log(key);
 					mockListeners[key] = {
 							title : task.title,
 							response : task.responseData,			
@@ -504,8 +525,8 @@ function registerMockListeners() {
 			}
 			
 			
-			console.log('****RESPONSE MAP****');
-			console.log(responseMap);
+			//console.log('****RESPONSE MAP****');
+			//console.log(responseMap);
 			// Register listeners for transitions.  These are ideal for hypermedia style APIs
 			conn.collection('transitions').find().toArray(function (err, transitions) {
 				for( transitionsIndex in transitions ) {
@@ -516,10 +537,10 @@ function registerMockListeners() {
 					if( transition.url != "" && project != undefined ) {
 						//todo: what if the key is not unique?
 						var key = project.hostname + "." + transition.url;
-						console.log(transition);
-						console.log('target: %s', transition.target);
+						//console.log(transition);
+						//console.log('target: %s', transition.target);
 						var response = responseMap[transition.target];
-						console.log(response);
+						//console.log(response);
 						mockListeners[key] = {
 								title : transition.title,
 								response : response,			
@@ -541,19 +562,19 @@ function registerMockListeners() {
 // use our mock listeners to handle any remaining requests 
 app.all('*', function(req, res) {
 
-	console.log('in listener handler.');
+	//console.log('in listener handler.');
 	var subdomain = req.host.split(".")[0];
-	console.log(subdomain);
+	//console.log(subdomain);
 	
 	var listenerKey = subdomain + "." + req.path;
-	console.log(listenerKey);
+	//console.log(listenerKey);
 	
-    console.log(Object.keys(mockListeners));
+    //console.log(Object.keys(mockListeners));
     
 	if( mockListeners[listenerKey] != null) {				
 		var listener = mockListeners[listenerKey];
 		
-		console.log(listener);
+		//console.log(listener);
 		
 		if( listener.methods.indexOf(req.method) < 0 ) {		
 			// TODO: Allow the user to customize the error message and headers
@@ -570,7 +591,7 @@ app.all('*', function(req, res) {
 				
 				var response = listener.responses[i];				
 				
-				console.log(req.method);
+				//console.log(req.method);
 				if( response.name === req.method ) {
 					res.send(response.body);	
 				}
@@ -586,7 +607,7 @@ app.all('*', function(req, res) {
 });
 
 function formatCollection(collection, callback) {
-	//console.log(collection);
+	////console.log(collection);
 	// for now I'm not doing anything - in the future I may format this appropriately
 	var formattedResponse = collection;
 	var err = null;

@@ -5,6 +5,20 @@ var mongo = require('mongoskin');
 
 module.exports = function(app, conn){
 
+	// Retrieve a specific version of a state diagram
+	app.get('/projects/:projectId/states/:version', function(req, res) {
+		var projectId = req.params.projectId;
+		var version = req.params.version;
+
+		if( projectId == null ) {
+			res.send(400, '{"message": "invalid project ID"}');
+		}
+
+		conn.collection('states').find({project: projectId,version:version}).toArray(function (err, states) {
+			res.send(states);
+		});
+	})
+
 	// Retrieve list of states
     app.get('/projects/:projectId/states', function(req, res){
 		
@@ -57,7 +71,7 @@ module.exports = function(app, conn){
                         }
 
                         if( contentType === 'application/vnd.collection+json' ) {
-                            state.responses.primary = '{"collection": {}, "version": "1.0"}';
+                            state.responses.primary = '{\n"collection": {},\n "version": "1.0"}';
                         }else {
                             state.responses.primary = '{}';
                         }
