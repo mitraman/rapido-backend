@@ -1,71 +1,111 @@
 var mongo = require('mongoskin');
 var passport = require('passport');
 var alps = require('../alps/alps.js');
+var sketches = require('./sketches.js');
+var jsonRepresenter = require('../representers/json.js');
+
+var representer = jsonRepresenter();
 
 module.exports = function(app, conn, authorizeUser){
 
 // Retrieve a list of authorized projects for this user
 app.get('/projects', passport.authenticate('bearer', {session: false}), function(req, res) {
-    conn.collection('projects').find({owner: req.user}).toArray(function( err, projects ) {
-		if( err ) {
-			res.status(500);
-			res.send('{"message" : "Unable to get projects"}');
-			console.log(err);
-		}else {
-			res.send(projects);
-		}
-		
-	});
+    conn.findAll('projects', {owner: req.user}, function(err, projects) {
+       if( err ) {
+           res.send(500, representer.errorMessage(err));
+           return;
+       } 
+       res.send(200, projects);
+    });
 });
 
-app.get('/projects/:projectId', passport.authenticate('bearer', {session: false}), authorizeUser, function(req, res) {
-	
-    if( req.params.projectId == null ) {
-        res.send(400, '{"message": "invalid project id"}');
-    } else {
-        conn.collection('projects').find({owner: req.user, _id: mongo.helper.toObjectID(req.params.projectId) }).toArray(function( err, projects ) {
-		if( err ) {
-			res.status(500);
-			res.send('{"message" : "Unable to get project."}');
-			console.log(err);
-		}else {
-            // As a convenience, include all ALPS vocabularies that are associated with this project
-            console.log(projects);
-			res.send(projects);
-		}		
-	});
-        
-    }
-	
+app.get('/projects/:projectId', passport.authenticate('bearer', {session: false}), function(req, res) {
+
+    conn.findOne('projects', {owner: req.user, id: req.params.projectId }, function(err, project ) {
+        if( !project ) {
+            res.send(404, representer.errorMessage('project not found'));
+            return;
+        }
+        res.send(200, project);
+    });
 });
 
 // Create a new project
 app.post('/projects', passport.authenticate('bearer', {session: false}), function(req, res) {
-	var name = req.body.name;
-	var description = req.body.description;
-	var hostname = req.body.hostname;
-    var contentType = req.body.contentType;
-	var projectType = req.body.projectType;
-	
+
+    console.log(req.body);
+    console.log(req.body.project);
+    var project = req.body.project;
+	var name = project.name;
+	var description = project.description;
+	var hostname = project.hostname;
+    var contentType = project.contentType;
+	var projectType = project.projectType;
+
 	var project = {
 			name : name,
 			description : description,
 			hostname : hostname,
 			projectType: projectType,
             contentType: contentType,
-            templates: req.body.templates,
 			owner : req.user,
-			created : new Date()
+			created : new Date(),
+            simpleVocabulary: [],
+            alps: []
 	}
 
-    project.simpleVocabulary = [];
-    project.alps = [];
-
     console.log(project);
+
+    //Validate fields before creating project
+    if( !project.name ) {
+        res.send(400, representer.errorMessage('project must have a name')); return;
+    }
+    if( !project.projectType ) {
+        project.projectType = 'CRUD';
+    }
+    if( !project.contentType ) {
+        project.contentType = 'application/json';
+    }
+    if( !project.description ) {
+        project.description = '';
+    }
+    
+
+    //TODO: implement RSVP so that the conn becomes thenable
+
+    conn.insert('projects', project, function(err, projectId, newProject) {
+        if( err ) {
+            res.send(500, representer.errorMessage('unable to create new project'));
+            return;
+        }
+
+        var initialSketch = {
+            name: 'Initial Sketch',
+            description: '',
+            responses: [],
+            thumbnail: '',
+            project: projectId,
+            owner: req.user,
+            created: new Date()
+        }
+
+        // Automatically create an initial sketch and an initial response message state
+        conn.insert('sketches', initialSketch, function(err, sketchId, newsketch) {
+            if( err ) {
+                res.send(500, representer.errorMessage('unable to create new project'));
+                return;
+            }
+
+            res.send(201, newProject);
+        });
+
+
+
+    });
 			
+    /*
 	conn.collection('projects').insert(project, function (err, post) {
 		if( err === null ) {
-			//TODO: Check if this is a hypermedia project
 			// If this is a hypermedia project, create the first home resource automatically				
 
             if( post[0].projectType === 'hypermedia' ) {
@@ -87,12 +127,23 @@ app.post('/projects', passport.authenticate('bearer', {session: false}), functio
                 conn.collection('states').insert(home, function (err, post) {
                 });
             }
-			res.send(200, post);
+
+            // Create an initial sketch version automatically
+            sketches.createSketch('Initial Sketch', '', post[0]._id.toString(), function(err, sketch) {
+                if( err ) { 
+                    res.send(500, err);
+                }
+                res.send(200, post);
+            });
+
+
 		}else {
 			console.log(err);
 			res.send(500);
 		}
 	});
+    */
+    
 });
 
 

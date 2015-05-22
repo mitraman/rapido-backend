@@ -5,7 +5,9 @@
   "private": true,
   "author": "Ronnie Mitra",
   "homepage": "www.rapidodesigner.com",
-  "scripts": { "start": "forever server.js" },
+  "scripts": {
+    "start": "forever server.js"
+  },
   "dependencies": {
     "express": "3.x",
     "connect-flash": "0.1.1",
@@ -20,11 +22,14 @@
     "request": "2.x"
   },
   "devDependencies": {
+    "superagent": "~1.2.0"
   },
   "keywords": [],
   "repository": "",
-  "licenses": [{
-    "type": "MIT",
-    "url": "http://opensource.org/licenses/MIT"
-  }]
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://opensource.org/licenses/MIT"
+    }
+  ]
 }
