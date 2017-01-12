@@ -5,24 +5,25 @@
   "private": true,
   "author": "Ronnie Mitra",
   "homepage": "www.rapidodesigner.com",
+  "config": {
+    "port": "8080"
+  },
   "scripts": {
-    "start": "forever server.js"
+    "start": "node src/server.js",
+    "test": "node node_modules/.bin/jasmine-node spec"
   },
   "dependencies": {
-    "express": "3.x",
-    "connect-flash": "0.1.1",
-    "cors": "2.x",
-    "passport": "0.2.1",
-    "passport-http": "0.2.2",
-    "passport-http-bearer": "1.x",
-    "mongoskin": "1.4.4",
+    "restify": "^4.3.0",
+    "restify-plugins": "^1.4.0",
+    "passport": "~0.3.2",
+    "passport-http-bearer": "~1.0.1",
     "bcrypt-nodejs": "0.0.3",
-    "rsvp": "3.x",
-    "xml2js": "0.4.4",
-    "request": "2.x"
+    "pg-promise": "~5.5.1"
   },
   "devDependencies": {
-    "superagent": "~1.2.0"
+    "jasmine": "~2.5.3",
+    "jasmine-node": "^1.14.5",
+    "request": "~2.79.0"
   },
   "keywords": [],
   "repository": "",

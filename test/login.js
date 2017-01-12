@@ -1,9 +1,25 @@
-var assert = require("assert")
 var request = require("superagent")
 
-describe('Login', function() {
-    describe('invalid credentials', function() {
-        it('should reject invalid credentials', function(done) {
+describe('Authentication', function() {
+  var goodUser = {name: "good", password:"good"};
+
+  beforeEach(function() {
+
+  });
+
+  afterEach(function() {
+
+  });
+
+  describe('When registering a new user with a missing user name', function() {
+    it( 'should reject the registration attempt', function() {
+
+    }
+  });
+
+    describe('When logging in with invalid credentials', function() {
+  /*
+    it('should reject the auth. request with a generic error message', function(done) {
             request
             .post('http://baduser:badpass@localhost:8081/login')
             .end(function(err, res) {
@@ -11,17 +27,13 @@ describe('Login', function() {
                 done();
             });
         })
+*/
     })
-    describe('Kai', function() {
-        it('should provide a login token', function(done) {
-            request
-            .post('http://kai:go@localhost:8081/login')
-            .end(function(err, res) {
-                assert.equal(200, res.status);
-                assert(res.body.token);
-                done();
-            });
-        })
+
+
+    describe('when trying to use an expired token', function() {
+      it('should reject the access request and provide an explanation', function(done) {
+
+      })
     })
 })
-
