@@ -1,3 +1,6 @@
+"use strict";
+
+
 var user = require('../src/user-mgmt.js');
 var da = require('../src/db/DataAccessor.js');
 var Promise = require('promise');

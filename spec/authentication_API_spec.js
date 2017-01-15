@@ -1,5 +1,6 @@
+"use strict";
+
 var request = require("request");
-var setup = require('../src/setup');
 var pgp = require('pg-promise')();
 
 const server_port = process.env.npm_package_config_port;

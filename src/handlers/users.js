@@ -1,3 +1,5 @@
+"use strict";
+
 var passport = require('passport');
 var representer = require('../representers/json.js')();
 var passportManager = require('../security/passport-manager.js')();

@@ -1,3 +1,5 @@
+"use strict";
+
 var passport = require('passport')
 , BasicStrategy = require('passport-http').BasicStrategy
 , BearerStrategy = require('passport-http-bearer').Strategy;

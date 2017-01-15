@@ -1,3 +1,5 @@
+"use strict";
+
 const restify = require('restify');
 const plugins = require('restify-plugins');
 const da = require('./db/DataAccessor');

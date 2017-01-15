@@ -2,6 +2,8 @@
  * Setups and runs Jasmine tests located in the spec/ directory
  *
  **/
+ "use strict";
+
 
 var Jasmine = require('jasmine');
 var jasmine = new Jasmine();

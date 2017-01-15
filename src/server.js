@@ -1,3 +1,5 @@
+"use strict";
+
 const serverManager = require('./server-setup.js');
 
 const dbConfig = {

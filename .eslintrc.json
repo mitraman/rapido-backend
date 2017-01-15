@@ -1,3 +1,9 @@
 {
-    "extends": "airbnb"
+    "extends": "airbnb",
+    "env": {
+        "node": true
+    },
+    "parserOptions": {
+      "strict": ["error", "global"]
+    }
 }
