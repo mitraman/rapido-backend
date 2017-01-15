@@ -19,7 +19,9 @@ use `npm test` to start the Jasmine tests.  Tests require a running postgresql d
 ## API
 
 `POST /register` - register a new user
+
 `POST /login` - login with credentials
 
 `GET /projects` - retrieve sketch projects for this user
+
 `GET /projects/{id}` - retrieve a specific project
