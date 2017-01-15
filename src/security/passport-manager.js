@@ -3,14 +3,18 @@ var passport = require('passport')
 , BearerStrategy = require('passport-http-bearer').Strategy;
 var bcrypt = require('bcrypt-nodejs');
 var crypto = require('crypto');
+var da = require('../db/DataAccessor');
 
-module.exports = function(conn) {
+/***
+This is a temporary authenticator.  It needs to be replaced by a
+production-grade system
+***/
 
-// TODO: Use a better token mechanism - maybe L7?
+module.exports = function() {
+
 var tokens = {};
 
 function findByToken(token, callback) {
-	////console.log(token);	
 	var userId = tokens[token];
 	////console.log(userId);
 	callback(null, userId);
@@ -20,7 +24,7 @@ function generateToken(userId, callback) {
 	var shasum = crypto.createHash('sha1');
 	var random = Math.random().toString();
 	var hash = shasum.update(userId+random).digest('base64');
-	// store the token 
+	// store the token
 	tokens[hash] = userId;
 	////console.log(hash);
 	callback(hash);
@@ -42,37 +46,34 @@ passport.use(new BearerStrategy({
 passport.use(new BasicStrategy({
 	},
 	function(username, password, done) {
-		
+
 		////console.log('username: %s',username);
 		////console.log('password: %s',password);
-		
-		conn.findAll('users', {username: username}, function (err, users) {
-            if( users.length === 0 ) {
-				return done(null, false, { message: 'invalid username/password combination'} );
-			}
-            var user = users[0];
-			////console.log(user);
-			bcrypt.compare(password, user.password, function(err, res) {
+
+		console.warn('WARNING: This is not a production-grade authentication system!');
+
+		da.db.one("select * from users where uname=$1", username)
+    .then(function (data) {
+			bcrypt.compare(password, data.password, function(err, res) {
 				if( res ) {
 					////console.log('AUTH PASSED.');
-					var bearerToken = generateToken(user._id, function(token) {
+					var bearerToken = generateToken(data.id, function(token) {
 						////console.log('token: %s', token);
 						var credential = {
-                                id: user._id,
+								id: data.id,
 								username: username,
 								token: token
 						};
 						return done( null, credential);
-					});					
+					});
 				}else {
-                    //console.log(res);
-                    //console.log(err);
-					//console.log('AUTH FAILED.');
 					return done(null, false, { message: 'invalid username/password combination'} );
 				}
 			});
-			
-		});			    	 
+    })
+    .catch(function (error) {
+        return done(null, false, { message: 'invalid username/password combination'} );
+    });
 }));
 
 return {

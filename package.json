@@ -6,11 +6,16 @@
   "author": "Ronnie Mitra",
   "homepage": "www.rapidodesigner.com",
   "config": {
-    "port": "8080"
+    "db_name": "rapido",
+    "db_user": "postgres",
+    "db_host": "192.168.99.100",
+    "db_port": 32768,
+    "db_password": "password",
+    "port": "8090"
   },
   "scripts": {
     "start": "node src/server.js",
-    "test": "node node_modules/.bin/jasmine-node spec"
+    "test": "node spec/test-manager.js"
   },
   "dependencies": {
     "restify": "^4.3.0",
@@ -23,7 +28,9 @@
   "devDependencies": {
     "jasmine": "~2.5.3",
     "jasmine-node": "^1.14.5",
-    "request": "~2.79.0"
+    "request": "~2.79.0",
+    "promise": "~7.1.1",
+    "pgtools": "~0.2.3"
   },
   "keywords": [],
   "repository": "",

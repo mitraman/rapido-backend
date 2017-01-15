@@ -1,24 +1,13 @@
-var restify = require('restify');
-var plugins = require('restify-plugins');
-var setup = require('./setup');
+var serverManager = require('./server-setup.js')
 
+const db_config = {
+  host: process.env.npm_package_config_db_host,
+  port: process.env.npm_package_config_db_port,
+  database: process.env.npm_package_config_db_name,
+  user: process.env.npm_package_config_db_user,
+  password: process.env.npm_package_config_db_password
+}
 
-// Startup
-const db_port = 32770;
-const db_host = '192.168.99.100';
-const db_name = 'rapido';
-const db_user = 'postgres';
-const db_password = 'password';
+const server_port = process.env.npm_package_config_port;
 
-const server_port = 8090;
-
-let db = setup.initDB(db_host, db_port, db_name, db_user, db_password);
-let server = setup.initServer();
-
-// Initialize handlers
-require('./handlers/users.js')(server, db);
-
-// Start the server
-server.listen(server_port, function () {
-  console.log('%s listening at %s', server.name, server.url);
-});
+serverManager.start(db_config, server_port);

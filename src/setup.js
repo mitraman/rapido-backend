@@ -1,6 +1,7 @@
 var restify = require('restify');
 var plugins = require('restify-plugins');
 var pgp = require('pg-promise')();
+var validator = require('./handlers/validator');
 
 exports.initDB = function(db_host, db_port, db_name, db_user, db_password) {
 
@@ -20,14 +21,7 @@ exports.initDB = function(db_host, db_port, db_name, db_user, db_password) {
 
 exports.initServer = function() {
 
-  const server = restify.createServer({
-    name: 'Rapido-API',
-    version: '1.0.0'
-  });
 
-  server.use(plugins.acceptParser(server.acceptable));
-  server.use(plugins.queryParser());
-  server.use(plugins.bodyParser());
 
   return server;
 }
