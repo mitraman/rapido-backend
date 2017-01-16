@@ -1,3 +1,7 @@
 language: node_js
 node_js:
   - "6"
+services:
+  - postgresql
+env:
+  - RAPIDO_PORT=80 RAPIDO_DATABASE_HOST=localhost RAPIDO_DATABASE_PORT=5432 RAPIDO_DATABASE_NAME=rapido-test RAPIDO_DATABASE_USER=postgres

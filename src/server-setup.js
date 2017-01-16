@@ -20,7 +20,7 @@ const start = function start(dbConfig, serverPort, cb) {
         obj.done(); // success, release the connection;
       })
       .catch((error) => {
-        winston.warn('Database Connection Error:', error.message || error);
+        console.warn('Database Connection Error:', error.message || error);
       });
 
   // Setup Passport routines for user authentication
@@ -43,7 +43,7 @@ const start = function start(dbConfig, serverPort, cb) {
 
   // Start the server
   server.listen(serverPort, () => {
-    winston.log('%s listening at %s', server.name, server.url);
+    console.log('%s listening at %s', server.name, server.url);
   });
 
   if (cb) {

@@ -6,12 +6,6 @@
   "author": "Ronnie Mitra",
   "homepage": "www.rapidodesigner.com",
   "config": {
-    "db_name": "rapido",
-    "db_user": "postgres",
-    "db_host": "192.168.99.100",
-    "db_port": 32768,
-    "db_password": "password",
-    "port": "8090"
   },
   "scripts": {
     "start": "node src/server.js",

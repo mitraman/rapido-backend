@@ -2,8 +2,9 @@
 
 var request = require("request");
 var pgp = require('pg-promise')();
+var config = require('../src/config.js');
 
-const server_port = process.env.npm_package_config_port;
+const server_port = config.port;
 const headers = {
   'Content-Type': 'application/json'
 };

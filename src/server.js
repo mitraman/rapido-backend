@@ -1,15 +1,12 @@
 "use strict";
 
 const serverManager = require('./server-setup.js');
+const config = require('./config.js');
+const winston = require('winston');
 
-const dbConfig = {
-  host: process.env.npm_package_config_db_host,
-  port: process.env.npm_package_config_db_port,
-  database: process.env.npm_package_config_db_name,
-  user: process.env.npm_package_config_db_user,
-  password: process.env.npm_package_config_db_password,
-};
+winston.level = 'debug';
 
-const serverPort = process.env.npm_package_config_port;
-
-serverManager.start(dbConfig, serverPort);
+console.log('loading configuration from rapido.json');
+config.load('../rapido.json');
+console.log('starting server...');
+serverManager.start(config.database, config.port);

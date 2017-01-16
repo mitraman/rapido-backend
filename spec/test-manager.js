@@ -10,13 +10,17 @@ var jasmine = new Jasmine();
 var serverManager = require('../src/server-setup.js');
 var pgtools = require('pgtools');
 var pgp = require('pg-promise')();
+var config = require('../src/config.js');
+
+
+config.load('../rapido-test.json');
 
 // Use a test version of the database
 const db_config = {
-  host: process.env.npm_package_config_db_host,
-  port: process.env.npm_package_config_db_port,
-  user: process.env.npm_package_config_db_user,
-  password: process.env.npm_package_config_db_password
+  host: config.database.host,
+  port: config.database.port,
+  user: config.database.user,
+  password: config.database.password
 };
 
 console.info('Trying to drop rapido-test database...');
@@ -40,17 +44,9 @@ pgtools.dropdb(db_config, 'rapido-test', function(err, res) {
 })
 
 function run() {
-  const server_db_config = {
-    host: process.env.npm_package_config_db_host,
-    port: process.env.npm_package_config_db_port,
-    database: 'rapido-test',
-    user: process.env.npm_package_config_db_user,
-    password: process.env.npm_package_config_db_password
-  };
-
 
   console.info('Creating Users table...');
-  let db = pgp(server_db_config);
+  let db = pgp(config.database);
   // Initialize the database tables
   var queryFile = new pgp.QueryFile('../sql/users.sql');
   db.none(queryFile)
@@ -60,7 +56,7 @@ function run() {
 
 
     console.log('Starting Jasmine tests...');
-  serverManager.start(server_db_config, process.env.npm_package_config_port, function(server) {
+  serverManager.start(config.database, config.port, function(server) {
     jasmine.loadConfigFile('spec/support/jasmine.json');
 
     jasmine.onComplete(function(passed) {
