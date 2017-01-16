@@ -1,3 +1,6 @@
+
+![Build Status](https://travis-ci.org/apiacademy/rapido-backend.svg?branch=master)
+
 rapido-backend
 ==============
 
