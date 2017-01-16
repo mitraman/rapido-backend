@@ -1,3 +1,8 @@
+/**
+This test doesn't run well as part of the test suite because the config
+singleton is already loaded with values.  Disabling this for now
+**/
+
 var Config = require('../src/config.js');
 
 describe('Configurator', function() {
