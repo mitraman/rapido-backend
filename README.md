@@ -9,7 +9,8 @@ The backend API server for the [Rapido app](http://github.com/apiacademy/rapido-
 ##Setup
 
 You'll need a postgresql database.  You can find a dockerized version at https://hub.docker.com/_/postgres/.
-Modify the package.json config section with your database connection parameters.
+
+Edit `rapido.json` and `rapido-test.json` to configure the database connection and server port parameters.
 
 ##Run
 
