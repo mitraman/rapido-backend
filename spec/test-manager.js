@@ -28,7 +28,7 @@ console.info('Trying to drop rapido-test database...');
 pgtools.dropdb(db_config, 'rapido-test', function(err, res) {
 
   //Error code 3d000 means the DB didn't exist, which is fine
-  if( err && err.pgErr.code != '3D000') {
+  if( err && (!err.pgErr || err.pgErr.code != '3D000')) {
     console.error(err);
     process.exit(-1);
   }

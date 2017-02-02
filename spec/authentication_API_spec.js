@@ -14,7 +14,7 @@ const password = 'password';
 
 describe('Authentication', function() {
 
-  const urlBase = 'http://localhost:' + server_port;
+  const urlBase = 'http://localhost:' + server_port + '/api';
 
   describe('registration', function() {
     const registrationUrl = urlBase + '/register';

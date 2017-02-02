@@ -38,14 +38,23 @@ const start = function start(dbConfig, serverPort, cb) {
   server.use(validator());
 
   // Setup routes
-  server.post('/register', users.register);
-  server.post('/login', passport.authenticate('basic', { session: false }), users.login);
+  server.post('/api/register', users.register);
+  server.post('/api/login', passport.authenticate('basic', { session: false }), users.login);
+
+  // Serve static content on the root directory
+  server.get(/\/?.*/, restify.serveStatic({
+     directory: __dirname + '/public',
+     default: 'index.html'
+  }));
+
 
   // Start the server
   server.listen(serverPort, () => {
     console.log('%s listening at %s', server.name, server.url);
   });
 
+  // Return the server to a callback function if one has been specified
+  // TODO: turn this into a Promise
   if (cb) {
     cb(server);
   }
