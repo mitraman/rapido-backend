@@ -24,4 +24,6 @@ RUN npm install
 
 EXPOSE 8080
 
+ENV 
+
 CMD ["npm", "start"]
