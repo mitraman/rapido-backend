@@ -5,11 +5,10 @@
   "private": true,
   "author": "Ronnie Mitra",
   "homepage": "www.rapidodesigner.com",
-  "config": {
-  },
+  "config": {},
   "scripts": {
     "start": "node src/server.js",
-    "test": "node spec/test-manager.js"
+    "test": "istanbul cover --include-all-sources spec/test-manager.js"
   },
   "dependencies": {
     "restify": "^4.3.0",
@@ -28,7 +27,8 @@
     "promise": "~7.1.1",
     "pgtools": "~0.2.3",
     "eslint-config-google": "~0.7.1",
-    "eslint": "~3.13.1"
+    "eslint": "~3.13.1",
+    "istanbul": "~0.4.5"
   },
   "keywords": [],
   "repository": "",
