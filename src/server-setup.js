@@ -1,65 +1,51 @@
 "use strict";
 
-const restify = require('restify');
-const plugins = require('restify-plugins');
-const da = require('./db/DataAccessor');
-const validator = require('./handlers/validator');
-const pgp = require('pg-promise')();
+const express = require('express');
 const passport = require('passport');
 const passportManager = require('./security/passport-manager.js');
 const winston = require('winston');
+const logger = require('morgan');
+const bodyParser = require('body-parser');
 
 const users = require('./handlers/users.js');
 
-const start = function start(dbConfig, serverPort, cb) {
-  da.db = pgp(dbConfig);
-
-  // Make sure the db connection works
-  da.db.connect()
-      .then((obj) => {
-        obj.done(); // success, release the connection;
-      })
-      .catch((error) => {
-        console.warn('Database Connection Error:', error.message || error);
-      });
+const start = function start(serverPort, cb) {
 
   // Setup Passport routines for user authentication
   passportManager();
 
-  // Setup the Restify server
-  const server = restify.createServer({
-    name: 'Rapido-API',
-    version: '1.0.0',
-  });
+  // Setup the express server
+  const app = express();
+  app.use(logger('dev'));
+  app.use(bodyParser.json());
+  app.use(bodyParser.urlencoded({ extended: false }));
+  //server.use(express.static(path.join(__dirname, 'public')));
 
-  server.use(plugins.acceptParser(server.acceptable));
-  server.use(plugins.queryParser());
-  server.use(plugins.jsonBodyParser());
-  server.use(validator());
+  console.log(serverPort);
+
 
   // Setup routes
-  server.post('/api/register', users.register);
-  server.post('/api/login', passport.authenticate('basic', { session: false }), users.login);
-
-  // Serve static content on the root directory
-  server.get(/\/?.*/, restify.serveStatic({
-     directory: __dirname + '/public',
-     default: 'index.html'
-  }));
-
+  // server.post('/api/register', users.register);
+  // server.post('/api/login', passport.authenticate('basic', { session: false }), users.login);
+  //
+  // // Serve static content on the root directory
+  // server.get(/\/?.*/, restify.serveStatic({
+  //    directory: __dirname + '/public',
+  //    default: 'index.html'
+  // }));
 
   // Start the server
-  server.listen(serverPort, () => {
-    console.log('%s listening at %s', server.name, server.url);
+  const server = app.listen(serverPort, () => {
+    console.log('%s listening at %s', app.name, app.url);
   });
 
   // Return the server to a callback function if one has been specified
   // TODO: turn this into a Promise
   if (cb) {
-    cb(server);
+    cb(server, app);
   }
 };
 
 module.exports = {
-  start,
+  start
 };
