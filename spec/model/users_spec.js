@@ -1,6 +1,7 @@
 "use strict";
 
-var users = require('../../src/model/users.js');
+const users = require('../../src/model/users.js');
+const pgp = require('pg-promise');
 
 const newUser = {
   userName: 'testuser',
@@ -106,6 +107,7 @@ describe('find users', function() {
       fail("this find should have returned an empty result or error")
     }).catch((error)=>{
       expect(error).not.toBeUndefined();
+      expect(error.code).toBe(pgp.errors.queryResultErrorCode.noData);
     }).finally(done);
   })
 

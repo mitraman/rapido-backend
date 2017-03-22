@@ -22,7 +22,8 @@
     "express": "~4.15.2",
     "morgan": "~1.8.1",
     "body-parser": "~1.17.1",
-    "bluebird": "~3.5.0"
+    "bluebird": "~3.5.0",
+    "validator": "~7.0.0"
   },
   "devDependencies": {
     "jasmine": "~2.5.3",

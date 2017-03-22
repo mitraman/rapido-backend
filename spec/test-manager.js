@@ -11,7 +11,15 @@ var serverManager = require('../src/server-setup.js');
 var pgtools = require('pgtools');
 var pgp = require('pg-promise')();
 var config = require('../src/config.js');
+const winston = require('winston');
 const dataAccessor = require('../src/db/DataAccessor.js');
+
+// Set the log level
+var logger = new (winston.Logger)({
+  transports: [
+    new (winston.transports.Console)({ level: 'debug' }),
+  ]
+});
 
 
 config.load('../rapido-test.json');
@@ -24,7 +32,7 @@ const db_config = {
   password: config.database.password
 };
 
-console.info('Trying to drop rapido-test database...');
+winston.log('info', 'Trying to drop rapido-test database...');
 
 pgtools.dropdb(db_config, 'rapido-test', function(err, res) {
 
@@ -46,10 +54,10 @@ pgtools.dropdb(db_config, 'rapido-test', function(err, res) {
 
 function run() {
 
-  console.info('Creating Users table...');
+  winston.log('info', 'Creating Users table...');
 
   // initialize the database connection
-  console.log(config.database);
+  winston.log('debug', config.database);
   dataAccessor.start(config.database)
   .then(function(){
 
@@ -61,13 +69,13 @@ function run() {
 
   }).then(function(res) {
 
-    console.log('Starting Jasmine tests...');
+    winston.log('info', 'Starting Jasmine tests...');
     serverManager.start(config.port, function(server, app) {
       jasmine.loadConfigFile('spec/support/jasmine.json');
 
       jasmine.onComplete(function(passed) {
           if(passed) {
-              console.log('All specs have passed');
+              console.log('info', 'All specs have passed');
               server.close();
               process.exit();
           }
