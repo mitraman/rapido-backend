@@ -2,13 +2,15 @@
 
 const users = require('../../src/model/users.js');
 const pgp = require('pg-promise');
+const winston = require('winston')
 
 const newUser = {
   userName: 'testuser',
-  firstName: 'test',
-  lastName: 'user',
+  fullName: 'test',
+  nickName: 'user',
   password: 'blah',
-  email: 'test.user@test.com'
+  email: 'test.user@test.com',
+  verification: 'verificationtoken'
 };
 
 describe('create new users', function() {
@@ -16,12 +18,11 @@ describe('create new users', function() {
   it( 'should create a new user in the datastore', function(done) {
 
     const failTest = function(error) {
-      //console.log(error);
+      winston.log('error', error);
       expect(error).toBeUndefined();
     }
 
     const createUserResultTest = function(result) {
-      //console.log(result);
       expect(result.id).toBe(1);
       done();
     }
@@ -51,8 +52,8 @@ describe('update users', function() {
 
     const verifiedUser = {
       userName: 'testuser-verified',
-      firstName: 'Ian',
-      lastName: 'verified',
+      fullName: 'Ian Black',
+      nickName: 'Ian',
       password: 'blahasd',
       email: 'ian.verified@test.com'
     };
@@ -114,8 +115,8 @@ describe('find users', function() {
   it('should find a user based on email and verified status', function(done) {
     const verifiedUser = {
       userName: 'testuser-verified-2',
-      firstName: 'John',
-      lastName: 'verifiedo',
+      fullName: 'John E. Verified',
+      nickName: 'John',
       password: 'blahasasdd',
       email: 'john.verifiedo@test.com'
     };

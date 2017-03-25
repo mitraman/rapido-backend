@@ -1,6 +1,7 @@
 /*
  * Singleton Data Accessor for the Postgres Database
  */
+const winston = require('winston');
 const Promise = require('bluebird');
 // use bluebird as the promise library so we can take advantage of "finally"
 var options = {
@@ -13,6 +14,8 @@ const pgp = require('pg-promise')(options);
 var _db = null;
 
 function getDb() {
+  winston.log('debug', 'returning database connection');
+  //winston.log('debug', _db);
   return _db;
 }
 
@@ -20,17 +23,20 @@ function start(dbConfig) {
 
   return new Promise(function( fulfill, reject) {
 
+    winston.log('info', 'Attempting to start postgres database connection.');
 
     _db = pgp(dbConfig);
 
+    winston.log('info', 'Testing the postgres connection.');
     // Make sure the db connection works
     _db.connect()
         .then((obj) => {
           obj.done(); // success, release the connection;
+          winston.log('info', 'Database connection is up.')
           fulfill();
         })
         .catch((error) => {
-          console.warn('Database Connection Error:', error.message || error);
+          winston.log('warn', 'Database Connection Error:', error.message || error);
           reject(error);
         });
   });

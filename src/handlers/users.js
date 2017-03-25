@@ -3,21 +3,22 @@
 var passport = require('passport');
 var representer = require('../representers/json.js')();
 var passportManager = require('../security/passport-manager.js')();
-var userMgmt = require('../user-mgmt.js');
+var registrationService = require('../services/registration.js');
 
 
 module.exports = {
 
-	register: function(req, res, next) {
+	registrationHandler: function(req, res, next) {
 		if( !req.body) {
 			res.send(400, representer.errorMessage('The registration request is missing a body'));
 		}
 
-		// Create the user
+		// Create the user object
 		var username = req.body.username;
 		var password = req.body.password;
+		var email = req.body.email;
 
-		userMgmt.register(username, password, function(err, result) {
+		registrationService.register(username, password, function(err, result) {
 			if( err ) {
 				res.send(err.status, representer.errorMessage(err.message));
 			} else {

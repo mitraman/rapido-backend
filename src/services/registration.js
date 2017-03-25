@@ -10,7 +10,7 @@ const validator = require('validator');
 
 function registrationService() {};
 
-registrationService.register = function(email, password, firstName, lastName) {
+registrationService.register = function(email, password, fullName, nickName) {
   // Validate User inputs.
 	//if(userService.validate(username, password, firstname, lastname))	return;
 	winston.log('debug', 'registrationServer.register called for ' + email);
@@ -18,8 +18,8 @@ registrationService.register = function(email, password, firstName, lastName) {
 	return new Promise(function(fullfill, reject) {
 
 		email = validator.trim(email);
-		firstName = validator.trim(firstName);
-		lastName = validator.trim(lastName);
+		fullName = validator.trim(fullName);
+		nickName = validator.trim(nickName);
 		password = validator.trim(password);
 
 		// Validate and normalize the fields
@@ -27,12 +27,12 @@ registrationService.register = function(email, password, firstName, lastName) {
 			reject( new RapidoError(RapidoErrorCodes.invalidField, "email address is invalid"));
 		}
 
-		if( validator.isEmpty(firstName)) {
-			reject( new RapidoError(RapidoErrorCodes.invalidField, "firstName cannot be blank"));
+		if( validator.isEmpty(fullName)) {
+			reject( new RapidoError(RapidoErrorCodes.invalidField, "name cannot be blank"));
 		}
 
-		if( validator.isEmpty(lastName)) {
-			reject( new RapidoError(RapidoErrorCodes.invalidField, "lastName cannot be blank"));
+		if( validator.isEmpty(nickName)) {
+			reject( new RapidoError(RapidoErrorCodes.invalidField, "nick name cannot be blank"));
 		}
 
 		if( validator.isEmpty(password)) {
@@ -64,10 +64,12 @@ registrationService.register = function(email, password, firstName, lastName) {
 
 			winston.log('debug', 'Creating new user');
 
+			// TODO: Generate a verification token
+
 			// Now, try to create the user
 			usersDS.create( {
-				firstName: firstName,
-				lastName: lastName,
+				fullName: fullName,
+				nickName: nickName,
 				password: encryptedPassword,
 				email: email
 			})
@@ -75,8 +77,8 @@ registrationService.register = function(email, password, firstName, lastName) {
 				// return the newly created user object
 				fullfill ({
 					id: result.id,
-					firstName: firstName,
-					lastName: lastName,
+					fullName: fullName,
+					nickName: nickName,
 					email: email
 				});
 			})

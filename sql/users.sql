@@ -5,8 +5,8 @@ Create sequence users_id_seq;
 CREATE TABLE public.users
 (
     id integer NOT NULL DEFAULT nextval('users_id_seq'::regclass),
-    firstname character varying COLLATE pg_catalog."default",
-    lastname character varying COLLATE pg_catalog."default",
+    fullname character varying COLLATE pg_catalog."default",
+    nickname character varying COLLATE pg_catalog."default",
     password character varying COLLATE pg_catalog."default",
     email character varying COLLATE pg_catalog."default",
     isactive boolean,

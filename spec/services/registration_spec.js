@@ -2,27 +2,28 @@
 
 const registrationService = require('../../src/services/registration.js');
 const RapidoErrorCodes = require('../../src/errors/codes.js');
+const winston = require('winston');
 
 describe('register new users', function() {
 
   const password = "test-password";
-  const firstName = "testFirstName";
-  const lastName = "testLastName";
+  const fullName = "test FirstName";
+  const nickName = "testNick";
   const email = "duplicate.email@bad.com";
 
   it( 'should register a new user in the system', function(done) {
 
     const validEmail = "testEmail@email.com";
 
-    registrationService.register(validEmail, password, firstName, lastName)
+    registrationService.register(validEmail, password, fullName, nickName)
     .then((newUser)=>{
       expect(newUser).not.toBeUndefined();
       expect(newUser).not.toBe(null);
 
       expect(newUser.id).not.toBeUndefined();
       expect(newUser.id).not.toBe(null);
-      expect(newUser.firstName).toBe(firstName);
-      expect(newUser.lastName).toBe(lastName);
+      expect(newUser.fullName).toBe(fullName);
+      expect(newUser.nickName).toBe(nickName);
       expect(newUser.email).toBe(validEmail);
       expect(newUser.password).toBeUndefined();
     })
@@ -35,15 +36,15 @@ describe('register new users', function() {
   it( 'should reject a user with a duplicate email address', function(done) {
 
     // First register a user
-    registrationService.register(email, password, firstName, lastName)
+    registrationService.register(email, password, fullName, nickName)
     .then((newUser)=>{
       expect(newUser).not.toBeUndefined();
       expect(newUser).not.toBe(null);
 
       expect(newUser.id).not.toBeUndefined();
       expect(newUser.id).not.toBe(null);
-      expect(newUser.firstName).toBe(firstName);
-      expect(newUser.lastName).toBe(lastName);
+      expect(newUser.fullName).toBe(fullName);
+      expect(newUser.nickName).toBe(nickName);
       expect(newUser.email).toBe(email);
       expect(newUser.password).toBeUndefined();
     })
@@ -52,7 +53,7 @@ describe('register new users', function() {
     }).finally(()=>{
 
       // Try to create the user again
-      return registrationService.register(email, password, firstName, lastName);
+      return registrationService.register(email, password, fullName, nickName);
     })
     .then((result)=>{
       fail("duplicate user not detected.")
@@ -60,6 +61,7 @@ describe('register new users', function() {
     .catch((error)=>{
       // This is the result we expect.
       expect(error).not.toBeUndefined();
+      expect(error.name).toBe('RapidoError');
       expect(error.code).toBe(RapidoErrorCodes.duplicateUser);
     })
     .finally(done);
@@ -69,11 +71,12 @@ describe('register new users', function() {
 
     const invalidEmail = "notagoodemailaddress";
 
-    registrationService.register(invalidEmail, password, firstName, lastName)
+    registrationService.register(invalidEmail, password, fullName, nickName)
     .then((newUser)=> {
       fail("the registration attempt should have been rejected");
     })
     .catch((error)=> {
+      expect(error.name).toBe('RapidoError');
       expect(error.code).toBe(RapidoErrorCodes.invalidField);
     })
     .finally(done);
@@ -82,44 +85,49 @@ describe('register new users', function() {
 
   it( 'should reject a user with a missing email ', function(done) {
 
-    registrationService.register("", password, firstName, lastName)
+    registrationService.register("", password, fullName, nickName)
     .then((newUser)=> {
       fail("the registration attempt should have been rejected");
     })
     .catch((error)=> {
+      expect(error.name).toBe('RapidoError');
       expect(error.code).toBe(RapidoErrorCodes.invalidField);
     })
     .finally(done);
   })
 
-  it( 'should reject a user with a missing firstname ', function(done) {
-    registrationService.register(email, password, " ", lastName)
+  it( 'should reject a user with a missing full name ', function(done) {
+    registrationService.register(email, password, " ", nickName)
     .then((newUser)=> {
       fail("the registration attempt should have been rejected");
     })
     .catch((error)=> {
+      expect(error.name).toBe('RapidoError');
       expect(error.code).toBe(RapidoErrorCodes.invalidField);
+      //winston.log('debug', error);
     })
     .finally(done);
   })
 
-  it( 'should reject a user with a missing lastname ', function(done) {
-    registrationService.register(email, password, firstName, "")
+  it( 'should reject a user with a missing nick name ', function(done) {
+    registrationService.register(email, password, fullName, "")
     .then((newUser)=> {
       fail("the registration attempt should have been rejected");
     })
     .catch((error)=> {
+      expect(error.name).toBe('RapidoError');
       expect(error.code).toBe(RapidoErrorCodes.invalidField);
     })
     .finally(done);
   })
 
   it( 'should reject a user with a missing password ', function(done) {
-    registrationService.register(email, " ", firstName, lastName)
+    registrationService.register(email, " ", fullName, nickName)
     .then((newUser)=> {
       fail("the registration attempt should have been rejected");
     })
     .catch((error)=> {
+      expect(error.name).toBe('RapidoError');
       expect(error.code).toBe(RapidoErrorCodes.invalidField);
     })
     .finally(done);
@@ -128,17 +136,16 @@ describe('register new users', function() {
   it( 'should reject a user with an insecure password ', function(done) {
     const insecurePassword = "123";
 
-    registrationService.register(email, insecurePassword, firstName, lastName)
+    registrationService.register(email, insecurePassword, fullName, nickName)
     .then((newUser)=> {
       fail("the registration attempt should have been rejected");
     })
     .catch((error)=> {
+      expect(error.name).toBe('RapidoError');
       expect(error.code).toBe(RapidoErrorCodes.invalidField);
     })
     .finally(done);
   })
-
-
 
 
 });

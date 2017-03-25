@@ -1,22 +1,24 @@
 const Promise = require('bluebird');
 const dataAccessor = require('../db/DataAccessor.js');
+const winston = require('winston');
 
 const users = function() {};
 
-let db = dataAccessor.getDb();
-
 users.create = function( user ) {
 
+  const db = dataAccessor.getDb();
   return db.one({
     name: "create-user",
-    text: "INSERT INTO users(email, password, firstname, lastname, isactive, isverified) VALUES($1, $2, $3, $4, $5, $6) returning id",
-    values: [user.email, user.password, user.firstName, user.lastName,  true, false]
+    text: "INSERT INTO users(email, password, fullname, nickname, isactive, isverified) VALUES($1, $2, $3, $4, $5, $6) returning id",
+    values: [user.email, user.password, user.fullName, user.nickName,  true, false]
   });
 
 }
 
 //Allways use the id as as the filter for updating user data
 users.update = function( params, id ) {
+
+  const db = dataAccessor.getDb();
 
   if( !id ) {
     throw {
@@ -71,6 +73,8 @@ users.update = function( params, id ) {
 }
 
 users.find = function( params ) {
+
+  const db = dataAccessor.getDb();
 
   let queryString = "SELECT * FROM USERS WHERE";
   let queryParams = [];

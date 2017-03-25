@@ -15,12 +15,7 @@ const winston = require('winston');
 const dataAccessor = require('../src/db/DataAccessor.js');
 
 // Set the log level
-var logger = new (winston.Logger)({
-  transports: [
-    new (winston.transports.Console)({ level: 'debug' }),
-  ]
-});
-
+winston.level = 'debug';
 
 config.load('../rapido-test.json');
 
@@ -39,6 +34,7 @@ pgtools.dropdb(db_config, 'rapido-test', function(err, res) {
   //Error code 3d000 means the DB didn't exist, which is fine
   if( err && (!err.pgErr || err.pgErr.code != '3D000')) {
     console.error(err);
+    console.log("Is there a postrgres database running?  Have you verified the connection parameters in rapid-test.json?");
     process.exit(-1);
   }
 
