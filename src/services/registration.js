@@ -57,6 +57,7 @@ registrationService.register = function(email, password, fullName, nickName) {
 		.catch( (error) => {
 			// A no data error is expected, but anything else should be thrown
 			if( error.code != pgp.errors.queryResultErrorCode.noData) {
+				winston.log('error', 'An error occurred while searching for duplicate users during registration.', error);
 				reject(error);
 			}
 		})

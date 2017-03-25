@@ -9,4 +9,4 @@ winston.level = 'debug';
 console.log('loading configuration from rapido.json');
 config.load('../rapido.json');
 console.log('starting server...');
-serverManager.start(config.database, config.port);
+serverManager.start(config.port);

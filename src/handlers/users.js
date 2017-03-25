@@ -1,30 +1,70 @@
 "use strict";
 
-var passport = require('passport');
-var representer = require('../representers/json.js')();
-var passportManager = require('../security/passport-manager.js')();
-var registrationService = require('../services/registration.js');
+const passport = require('passport');
+const representer = require('../representers/json.js')();
+const passportManager = require('../security/passport-manager.js')();
+const registrationService = require('../services/registration.js');
+const winston = require('winston');
+const RapidoErrorCodes = require('../../src/errors/codes.js');
 
 
 module.exports = {
 
 	registrationHandler: function(req, res, next) {
+		winston.log('debug', 'registrationHandler called.');
+		winston.log('debug', req.body);
+
 		if( !req.body) {
 			res.send(400, representer.errorMessage('The registration request is missing a body'));
 		}
 
 		// Create the user object
-		var username = req.body.username;
+		var fullName = req.body.fullname;
+		var nickName = req.body.nickname;
 		var password = req.body.password;
 		var email = req.body.email;
 
-		registrationService.register(username, password, function(err, result) {
-			if( err ) {
-				res.send(err.status, representer.errorMessage(err.message));
-			} else {
-				res.send(representer.responseMessage(result));
-			}
+		// Make sure that all mandatory properties are present.  The actual values are validated inside the service object
+		if( !fullName ) {
+			winston.log('debug', 'fullname property is missing.')
+			res.status(400).send(representer.errorMessage("the 'fullname' property is missing from the request body"))
+			return;
+		}
+		if( !nickName ) {
+			winston.log('debug', 'nickname property is missing.')
+			res.status(400).send(representer.errorMessage("the 'nickname' property is missing from the request body"))
+			return;
+		}
+		if( !email ) {
+			winston.log('debug', 'email property is missing.')
+			res.status(400).send(representer.errorMessage("the 'email' property is missing from the request body"))
+			return;
+		}
+		if( !password ) {
+			winston.log('debug', 'password property is missing.')
+			res.status(400).send(representer.errorMessage("the 'password' property is missing from the request body"))
+			return;
+		}
+
+		registrationService.register(email, password, fullName, nickName)
+		.then((newUser)=>{
+			winston.log('debug', 'Returning succesful registration response message');
+			res.send(representer.responseMessage(newUser));
 		})
+		.catch((error)=>{
+			winston.log('error', 'Unable to register', error);
+			let status = 500;
+			let message = "Unable to register user";
+			if( error.name === 'RapidoError' && error.code === RapidoErrorCodes.duplicateUser ) {
+				status = 400;
+				message = error.message;
+			}else if( error.name === 'RapidoError' && error.code === RapidoErrorCodes.invalidField ) {
+				status = 400;
+				message = error.message;
+			}
+			res.status(status).send(representer.errorMessage(message));
+		})
+
 
 	},
 

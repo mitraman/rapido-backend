@@ -114,7 +114,7 @@ users.find = function( params ) {
   // console.log(queryParams);
 
   //TODO: Should this be one or many?  Should I create two different access methods?
-  return db.one({
+  return db.many({
     name: queryName,
     text: queryString,
     values: queryParams

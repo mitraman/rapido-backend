@@ -9,7 +9,7 @@ const newUser = {
   fullName: 'test',
   nickName: 'user',
   password: 'blah',
-  email: 'test.user@test.com',
+  email: 'test.usersspec@test.com',
   verification: 'verificationtoken'
 };
 
@@ -23,7 +23,7 @@ describe('create new users', function() {
     }
 
     const createUserResultTest = function(result) {
-      expect(result.id).toBe(1);
+      expect(result.id).not.toBe(null);
       done();
     }
 

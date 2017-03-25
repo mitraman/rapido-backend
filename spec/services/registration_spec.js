@@ -9,7 +9,7 @@ describe('register new users', function() {
   const password = "test-password";
   const fullName = "test FirstName";
   const nickName = "testNick";
-  const email = "duplicate.email@bad.com";
+  const email = "regspec.email@bad.com";
 
   it( 'should register a new user in the system', function(done) {
 
@@ -83,7 +83,7 @@ describe('register new users', function() {
 
   })
 
-  it( 'should reject a user with a missing email ', function(done) {
+  it( 'should reject a user with a blank email ', function(done) {
 
     registrationService.register("", password, fullName, nickName)
     .then((newUser)=> {
@@ -92,6 +92,18 @@ describe('register new users', function() {
     .catch((error)=> {
       expect(error.name).toBe('RapidoError');
       expect(error.code).toBe(RapidoErrorCodes.invalidField);
+    })
+    .finally(done);
+  })
+
+  it( 'should reject a user with an empty email field', function(done) {
+
+    registrationService.register(null, password, fullName, nickName)
+    .then((newUser)=> {
+      fail("the registration attempt should have been rejected");
+    })
+    .catch((error)=> {
+      expect(error.name).toBe('TypeError');
     })
     .finally(done);
   })

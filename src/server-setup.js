@@ -21,10 +21,10 @@ const start = function start(serverPort, cb) {
   app.use(bodyParser.urlencoded({ extended: false }));
   //server.use(express.static(path.join(__dirname, 'public')));
 
-  console.log(serverPort);
-
+  winston.log('info', 'server is listening on port: ' + serverPort);
 
   // Setup routes
+  app.post('/api/register', users.registrationHandler);
   // server.post('/api/register', users.register);
   // server.post('/api/login', passport.authenticate('basic', { session: false }), users.login);
   //

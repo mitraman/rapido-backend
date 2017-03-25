@@ -6,5 +6,5 @@
     "user": "postgres",
     "password": "password"
   },
-  "port": 8092
+  "port": 8090
 }
