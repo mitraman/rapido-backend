@@ -11,19 +11,52 @@ const validator = require('validator');
 const uuidV4 = require('uuid/v4');
 const nodemailer = require('nodemailer');
 const config = require('../config.js')
+const fs = require('fs');
+
+
+// Load email templates from file system
+let verificationEmailTemplatePlainText = null;
+let verificationEmailTemplateHtmlText = null;
+
+fs.readFile('./mail/verification.txt', 'utf8', function(err, data) {
+	if( err ) {
+		return winston.log('error', err);
+		throw err;
+	}
+	verificationEmailTemplatePlainText = data;
+});
+
+fs.readFile('./mail/verification.html', 'utf8', function(err, data) {
+	if( err ) {
+		return winston.log('error', err);
+	}
+	verificationEmailTemplateHtmlText = data;
+});
 
 function registrationService() {};
 
 function sendVerificationEmail(transporter, verificationToken, user) {
-	//TODO: grab email contents from a templatable file
+	if( !verificationEmailTemplatePlainText ) {
+		throw new RapidoError(RapidoErrorCodes.genericError, "Verification email plain text template missing");
+	}
+	if( !verificationEmailTemplateHtmlText ) {
+		throw new RapidoError(RapidoErrorCodes.genericError, "Verification email html template missing");
+	}
 
-	// setup email data with unicode symbols
+	const verificationLink = "rapido.com/verify?code=" + verificationToken;
+	// Replate the tokens in the email templates with the verification link
+	let plainTextEmail = verificationEmailTemplatePlainText.replace(/\$\^\w+/g, verificationLink);
+	//winston.log('debug', plainTextEmail);
+
+	let htmlEmail = verificationEmailTemplateHtmlText.replace(/\$\^\w+/g, verificationLink);
+	//winston.log('debug', htmlEmail)
+	
 	let mailOptions = {
 	    from: 'Rapido App <rapidomailer@gmail.com>', // sender address
 	    to: user.email, // list of receivers
-	    subject: 'Hello', // Subject line
-	    text: 'Hello world ?', // plain text body
-	    html: '<b>Hello world ?</b>' // html body
+	    subject: 'Welcome to Rapido', // Subject line
+	    text: plainTextEmail, // plain text body
+	    html: htmlEmail // html body
 	};
 
 	return transporter.sendMail(mailOptions)

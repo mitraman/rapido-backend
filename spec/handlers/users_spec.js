@@ -3,6 +3,9 @@
 const request = require("request");
 const config = require('../../src/config.js');
 const winston = require('winston');
+const mailServer = require('../mail-server.js');
+
+// TODO: Setup a simluated email service so that we can test the verification process.
 
 describe('Authentication API', function() {
 
@@ -34,7 +37,7 @@ describe('Authentication API', function() {
         });
     };
 
-    it( 'should register a new user', function(done) {
+    fit( 'should register a new user', function(done) {
 
       request.post(
         {
@@ -50,6 +53,7 @@ describe('Authentication API', function() {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(200);
             winston.log('debug', res.body);
+            expect(mailServer.findEmail(email)).not.toBeUndefined();
             done();
         }
       )

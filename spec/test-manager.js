@@ -12,6 +12,7 @@ var pgp = require('pg-promise')();
 var config = require('../src/config.js');
 const winston = require('winston');
 const dataAccessor = require('../src/db/DataAccessor.js');
+const mailServer = require('./mail-server.js');
 
 // Set the log level
 winston.level = 'debug';
@@ -64,9 +65,13 @@ function run() {
 
   }).then(function(res) {
 
+    winston.log('info', 'Starting mock email server...');
+    mailServer.start();
+
     winston.log('info', 'Starting Server and Jasmine tests...');
 
     serverManager.start(config.port, function(server, app) {
+      
       jasmine.loadConfigFile('spec/support/jasmine.json');
 
       jasmine.onComplete(function(passed) {
