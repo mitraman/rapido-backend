@@ -4,7 +4,7 @@ const request = require("request");
 const config = require('../../src/config.js');
 const winston = require('winston');
 
-describe('Authentication', function() {
+describe('Authentication API', function() {
 
   const server_port = config.port;
   const urlBase = 'http://localhost:' + server_port + '/api';
@@ -12,13 +12,13 @@ describe('Authentication', function() {
     'Content-Type': 'application/json'
   };
 
-  describe('registration', function() {
+  describe('POST /register', function() {
     const registrationUrl = urlBase + '/register';
 
     const fullname = "New User";
     const nickname = "Rondo"
     const password = "password";
-    const email = "new.usersspec@domain.com";
+    const email = "ronnie.mitra@gmail.com";
 
     const fieldErrorTest = function(jsonBody, done) {
       request.post(
@@ -35,7 +35,6 @@ describe('Authentication', function() {
     };
 
     it( 'should register a new user', function(done) {
-
 
       request.post(
         {

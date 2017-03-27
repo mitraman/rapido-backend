@@ -11,8 +11,6 @@
     "test": "istanbul cover --include-all-sources spec/test-manager.js"
   },
   "dependencies": {
-    "restify": "^4.3.0",
-    "restify-plugins": "^1.4.0",
     "passport": "~0.3.2",
     "passport-http-bearer": "~1.0.1",
     "bcrypt-nodejs": "0.0.3",
@@ -23,7 +21,9 @@
     "morgan": "~1.8.1",
     "body-parser": "~1.17.1",
     "bluebird": "~3.5.0",
-    "validator": "~7.0.0"
+    "validator": "~7.0.0",
+    "uuid": "~3.0.1",
+    "nodemailer": "~2.7.2"
   },
   "devDependencies": {
     "jasmine": "~2.5.3",

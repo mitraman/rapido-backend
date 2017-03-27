@@ -66,10 +66,10 @@ describe('update users', function() {
       return users.update({isVerified: true}, id)
     })
     .then((result)=>{
-      console.log(result);
+      winston.log('debug', result);
     })
     .catch((error)=>{
-      console.log(error);
+      winston.log('error', error);
       expect(error).not.toBe(null);
     }).finally(done);
   })

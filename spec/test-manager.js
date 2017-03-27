@@ -65,7 +65,7 @@ function run() {
   }).then(function(res) {
 
     winston.log('info', 'Starting Server and Jasmine tests...');
-  
+
     serverManager.start(config.port, function(server, app) {
       jasmine.loadConfigFile('spec/support/jasmine.json');
 

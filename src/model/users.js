@@ -1,6 +1,8 @@
 const Promise = require('bluebird');
 const dataAccessor = require('../db/DataAccessor.js');
 const winston = require('winston');
+const RapidoError = require('../errors/rapido-error.js');
+const RapidoErrorCodes = require('../errors/codes.js');
 
 const users = function() {};
 
@@ -51,10 +53,7 @@ users.update = function( params, id ) {
   }
 
   if( queryParams.length === 0 ) {
-    throw {
-      name: Error,
-      message: "No parameters provided for update operation."
-    }
+    throw new RapidoError(RapidoErrorCodes.invalidField, "No parameters provided for update operation.")
   }
 
   queryParams.push(id);
@@ -103,17 +102,9 @@ users.find = function( params ) {
   }
 
   if( queryParams.length === 0 ) {
-    throw {
-      name: Error,
-      message: "No parameters provided for find operation"
-    }
+    throw new RapidoError(RapidoErrorCodes.invalidField, "No parameters provided for find operation")
   }
 
-  // console.log(queryName);
-  // console.log(queryString);
-  // console.log(queryParams);
-
-  //TODO: Should this be one or many?  Should I create two different access methods?
   return db.many({
     name: queryName,
     text: queryString,

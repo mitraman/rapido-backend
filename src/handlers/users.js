@@ -7,16 +7,11 @@ const registrationService = require('../services/registration.js');
 const winston = require('winston');
 const RapidoErrorCodes = require('../../src/errors/codes.js');
 
-
 module.exports = {
 
 	registrationHandler: function(req, res, next) {
 		winston.log('debug', 'registrationHandler called.');
 		winston.log('debug', req.body);
-
-		if( !req.body) {
-			res.send(400, representer.errorMessage('The registration request is missing a body'));
-		}
 
 		// Create the user object
 		var fullName = req.body.fullname;
@@ -52,7 +47,7 @@ module.exports = {
 			res.send(representer.responseMessage(newUser));
 		})
 		.catch((error)=>{
-			winston.log('error', 'Unable to register', error);
+			winston.log('debug', 'Unable to register', error);
 			let status = 500;
 			let message = "Unable to register user";
 			if( error.name === 'RapidoError' && error.code === RapidoErrorCodes.duplicateUser ) {

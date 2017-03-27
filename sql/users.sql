@@ -31,8 +31,9 @@ Create sequence user_verify_id_seq;
 CREATE TABLE public.user_verify
 (
     id integer NOT NULL DEFAULT nextval('user_verify_id_seq'::regclass),
-    userid bigint,
+    userid integer,
     verifytoken character varying COLLATE pg_catalog."default",
+    generatedat timestamp with time zone DEFAULT now(),
     CONSTRAINT user_verify_pkey PRIMARY KEY (id)
 )
 WITH (

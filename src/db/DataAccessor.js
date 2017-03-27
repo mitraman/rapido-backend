@@ -14,7 +14,7 @@ const pgp = require('pg-promise')(options);
 var _db = null;
 
 function getDb() {
-  winston.log('debug', 'returning database connection');
+  //winston.log('debug', 'returning database connection');
   //winston.log('debug', _db);
   return _db;
 }

@@ -6,5 +6,19 @@
     "user": "postgres",
     "password": "password"
   },
-  "port": 8090
+  "port": 8090,
+  "nodemailer": {
+    "testmode": true,
+    "options": {
+      "host": "in-v3.mailjet.com",
+      "port": 25,
+      "auth": {
+        "user": "e775fe56c22cfb7f6b620f06c5e1bf82",
+        "pass": "a9a384b31cb54afd53d9c1e89b4cfd2a"
+      }
+    },
+    "paths": {
+      "verification": "./mail/verification.eml"
+    }
+  }
 }

@@ -9,6 +9,13 @@ module.exports = {
     user: process.env.npm_package_config_db_user,
     password: process.env.npm_package_config_db_password
   },
+  nodemailer: {
+    testmode: process.env.npm_package_config_nodemailer_testmode,
+    options: process.env.npm_package_config_nodemailer_options,
+    paths: {
+      verification: process.env.npm_package_config_nodemailer_path_verification
+    }
+  },
 
   load: function(configFile) {
 
@@ -21,6 +28,13 @@ module.exports = {
       user: process.env.npm_package_config_db_user,
       password: process.env.npm_package_config_db_password
     };
+    this.nodemailer = {
+      testmode: process.env.npm_package_config_nodemailer_testmode,
+      options: process.env.npm_package_config_nodemailer_options,
+      paths: {
+        verification: process.env.npm_package_config_nodemailer_path_verification
+      }
+    }
 
     // override npm config with json file
     if( configFile ) {
@@ -32,6 +46,9 @@ module.exports = {
         if( configJSON.database.user ) { this.database.user = configJSON.database.user };
         if( configJSON.database.password ) { this.database.password = configJSON.database.password };
         if( configJSON.port ) { this.port = configJSON.port };
+        if( configJSON.nodemailer.testmode ) { this.nodemailer.testmode = configJSON.nodemailer.testmode };
+        if( configJSON.nodemailer.options ) { this.nodemailer.options = configJSON.nodemailer.options };
+        if( configJSON.nodemailer.paths.verification ) { this.nodemailer.paths.verification = configJSON.nodemailer.paths.verification };
       }
       catch (e) {
           console.error('Unable to load file ' + configFile);
@@ -46,5 +63,8 @@ module.exports = {
     if( process.env.RAPIDO_DATABASE_USER ) { this.database.user = process.env.RAPIDO_DATABASE_USER }
     if( process.env.RAPIDO_DATABASE_PASSWORD ) { this.database.password = process.env.RAPIDO_DATABASE_PASSWORD }
     if( process.env.RAPIDO_PORT ) { this.port = parseInt(process.env.RAPIDO_PORT) }
+    if( process.env.RAPIDO_MAIL_TESTMODE ) { this.nodemailer.testmode = process.env.RAPIDO_MAIL_TESTMODE }
+    if( process.env.RAPIDO_MAIL_OPTIONS ) { this.nodemailer.options = process.env.RAPIDO_MAIL_OPTIONS }
+    if( process.env.RAPIDO_MAIL_PATH_VERIFICATION ) { this.nodemailer.paths.verification = process.env.RAPIDO_MAIL_PATH_VERIFICATION }
   }
 }
