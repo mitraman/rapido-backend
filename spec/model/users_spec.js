@@ -139,4 +139,29 @@ describe('find users', function() {
     }).finally(done);
   })
 
+  it('should find a user based on email and password', function(done) {
+    const registeredUser = {
+      userName: 'testuser-registered-1',
+      fullName: 'Calvin Hobbes',
+      nickName: 'CH',
+      password: 'asasas123',
+      email: 'calvin.registered@test.com'
+    };
+
+    // Create the user to be found
+
+    users.create(registeredUser)
+    .then( (result)=> {
+      return users.find({email: registeredUser.email, password: registeredUser.password });
+    })
+    .then((result)=>{
+      expect(result.firstname).toBe(registeredUser.firstName);
+    })
+    .catch((error)=>{
+      expect(error).toBeUndefined(null);
+    })
+    .finally(done);
+
+  })
+
 });

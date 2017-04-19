@@ -48,6 +48,7 @@ const start = function start(serverPort, cb) {
 
   // Setup routes
   app.post('/api/register', users.registrationHandler);
+  app.post('/api/login', users.loginHandler);
   // server.post('/api/register', users.register);
   // server.post('/api/login', passport.authenticate('basic', { session: false }), users.login);
   //

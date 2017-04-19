@@ -15,8 +15,12 @@ describe('Authentication API', function() {
     'Content-Type': 'application/json'
   };
 
+  const registrationUrl = urlBase + '/register';
+  const loginUrl = urlBase + '/login';
+
+
   describe('POST /register', function() {
-    const registrationUrl = urlBase + '/register';
+
 
     const fullname = "New User";
     const nickname = "Rondo"
@@ -206,5 +210,83 @@ describe('Authentication API', function() {
     })
 
   })
+
+  describe('POST /login', function() {
+
+
+    const password = "password";
+    const email = "ronnie.mitra@gmail.com";
+
+    fit( 'should return an authentication token for a valid user', function(done) {
+
+
+      // Register a new user
+      request.post(
+        {
+          url: registrationUrl,
+          headers: headers,
+          json: {
+            fullname: 'Ronnie Mitra',
+            nickname: 'ronnie',
+            password: password,
+            email: email
+          }
+        },function(err, res, body) {
+            expect(err).toBe(null);
+            expect(res.statusCode).toBe(200);
+
+            request.post(
+              {
+                url: loginUrl,
+                headers: headers,
+                json: {
+                  password: password,
+                  email: email
+                }
+              },function(err, res, body) {
+                  expect(err).toBe(null);
+                  expect(res.statusCode).toBe(200);
+                  done();
+              }
+            )
+
+        }
+      )
+    });
+
+    it( 'should reject an authentication attempt with a bad password', function(done) {
+      request.post(
+        {
+          url: loginUrl,
+          headers: headers,
+          json: {
+            password: 'badpassword',
+            email: email
+          }
+        },function(err, res, body) {
+            expect(err).toBe(null);
+            expect(res.statusCode).toBe(401);
+            done();
+        }
+      )
+    })
+
+    it( 'should reject an authentication attempt for an unknown user', function(done) {
+      request.post(
+        {
+          url: loginUrl,
+          headers: headers,
+          json: {
+            password: 'badpassword',
+            email: 'baduser@email.com'
+          }
+        },function(err, res, body) {
+            expect(err).toBe(null);
+            expect(res.statusCode).toBe(401);
+            done();
+        }
+      )
+    })
+  });
 
 });

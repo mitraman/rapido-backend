@@ -2,10 +2,13 @@
 
 const passport = require('passport');
 const representer = require('../representers/json.js')();
-const passportManager = require('../security/passport-manager.js')();
 const registrationService = require('../services/registration.js');
 const winston = require('winston');
+const bcrypt = require('bcrypt-nodejs');
 const RapidoErrorCodes = require('../../src/errors/codes.js');
+const pgp = require('pg-promise');
+const authentication = require('../security/authentication.js')
+const users = require('../model/users.js');
 
 module.exports = {
 
@@ -65,48 +68,32 @@ module.exports = {
 
 	},
 
-	login: function(req, res, next) {
-		// Authentication is handled by passportjs which should be included at the routing point.
-		res.send(representer.responseMessage(req.user))
+	loginHandler: function(req, res, next) {
+
+		// Extract the user details from the request
+		let email = req.body.email;
+		let clearTextPassword = req.body.password
+
+		// bcrypt the password for comparison
+		let password = bcrypt.hashSync(clearTextPassword);
+
+		// Lookup the user
+		users.find({email: email, password: password })
+		.then( (result) => {
+			// generate a jwt token
+			let jwtToken = authentication.generateJWT(email);
+			res.send(representer.responseMessage({token: jwtToken}));
+		})
+		.catch((error)=>{
+			// Could not lookup the user
+			if( error.name === 'QueryResultError' && error.code === pgp.errors.queryResultErrorCode.noData ) {
+				res.status(401).send(representer.errorMessage('Invalid login credentials'));
+			} else {
+				res.status(500).send(representer.errorMessage('An error occurred while trying to login'));
+			}
+
+		})
+
 	}
 
 }
-
-
-
-
-/***
-module.exports = function(pgDB, server) {
-
-
-server.post('/login', passport.authenticate('basic', {session: false}), function(req, res) {
-	console.log('/login');
-	res.send(200, 'blah');
-})
-
-
-server.post('/login',
-  passport.authenticate('basic', {session: false}),  function(req, res) {
-    console.log('/login');
-    res.status(200);
-		console.log('here I am');
-    res.send(req.user);
-  }
-);
-
-
-server.post('/logout', function(req, res) {
-		// Get the token from the request
-		var bearerString = req.headers.authorization;
-		var token = bearerString.substring('Bearer '.length, bearerString.length);
-		// Delete this token from the session collection
-        passportManager.deleteToken(token);
-
-
-		res.status(200);
-		res.send();
-	}
-);
-}
-
-***/
