@@ -19,7 +19,7 @@ CREATE TABLE public.projects
 )
 WITH (
     OIDS = FALSE
-)
+);
 
 COMMENT ON TABLE public.projects
     IS 'store only user associated projects with sketch data.';

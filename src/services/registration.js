@@ -50,7 +50,7 @@ function sendVerificationEmail(transporter, verificationToken, user) {
 
 	let htmlEmail = verificationEmailTemplateHtmlText.replace(/\$\^\w+/g, verificationLink);
 	//winston.log('debug', htmlEmail)
-	
+
 	let mailOptions = {
 	    from: 'Rapido App <rapidomailer@gmail.com>', // sender address
 	    to: user.email, // list of receivers
@@ -150,6 +150,10 @@ registrationService.register = function(email, password, fullName, nickName, nod
 			})
 			.then( (result) => {
 
+				// ** Disabling verification email feature until it is needed in the future
+				return result;
+
+				/*
 				// Only send an email if the transporter has been defined.  This is so that we can do lots of integration testing
 				// without sending emails.  In the future, a better solution can be found.
 				if( nodeMailerTransporter ) {
@@ -159,6 +163,7 @@ registrationService.register = function(email, password, fullName, nickName, nod
 				} else {
 					return result;
 				}
+				*/
 
 			})
 			.then( (result) => {
