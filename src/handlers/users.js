@@ -26,9 +26,11 @@ module.exports = {
 			return;
 		}
 		if( !nickName ) {
-			winston.log('debug', 'nickname property is missing.')
-			res.status(400).send(representer.errorMessage("the 'nickname' property is missing from the request body"))
-			return;
+			winston.log('debug', 'nickname property is missing.');
+			winston.log('debug', 'using fullname as the nickname property');
+			nickName = fullName;
+			// res.status(400).send(representer.errorMessage("the 'nickname' property is missing from the request body"))
+			// return;
 		}
 		if( !email ) {
 			winston.log('debug', 'email property is missing.')

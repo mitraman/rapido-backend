@@ -2,9 +2,22 @@
   "database": {
     "host": "192.168.99.100",
     "port": 32768,
-    "name": "rapido",
+    "name": "rapido-test",
     "user": "postgres",
     "password": "password"
   },
-  "port": 8090
+  "port": 9090,
+  "nodemailer": {
+    "options": {
+      "host": "localhost",
+      "port": 2525,
+      "secure": false,
+      "tls": {
+        "rejectUnauthorized": false
+      }
+    },
+    "paths": {
+      "verification": "./mail/verification.eml"
+    }
+  }
 }

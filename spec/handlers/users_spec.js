@@ -37,7 +37,7 @@ describe('Authentication API', function() {
         });
     };
 
-    fit( 'should register a new user', function(done) {
+    it( 'should register a new user', function(done) {
 
       request.post(
         {
@@ -52,7 +52,10 @@ describe('Authentication API', function() {
         },function(err, res, body) {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(200);
+            //TODO: validate the response properties
+
             winston.log('debug', res.body);
+            //TODO: replace with a spy
             expect(mailServer.findEmail(email)).not.toBeUndefined();
             done();
         }

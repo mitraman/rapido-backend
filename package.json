@@ -23,7 +23,8 @@
     "bluebird": "~3.5.0",
     "validator": "~7.0.0",
     "uuid": "~3.0.1",
-    "nodemailer": "~2.7.2"
+    "nodemailer": "~2.7.2",
+    "cors": "~2.8.3"
   },
   "devDependencies": {
     "jasmine": "~2.5.3",

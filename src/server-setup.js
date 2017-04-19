@@ -8,6 +8,7 @@ const logger = require('morgan');
 const bodyParser = require('body-parser');
 const RapidoError = require('./errors/rapido-error.js');
 const RapidoErrorCodes = require('./errors/codes.js');
+const cors = require('cors');
 
 const users = require('./handlers/users.js');
 
@@ -24,6 +25,7 @@ const start = function start(serverPort, cb) {
   app.use(logger('dev'));
   app.use(bodyParser.json());
   app.use(bodyParser.urlencoded({ extended: false }));
+  app.use(cors());
   //server.use(express.static(path.join(__dirname, 'public')));
 
   winston.log('info', 'server is listening on port: ' + serverPort);

@@ -18,6 +18,29 @@ describe('General API', function() {
     'Content-Type': 'application/json'
   };
 
+  describe ('CORS support', function() {
+    const registrationUrl = urlBase + '/register';
+
+    fit( 'should reply with CORS headers to a preflight OPTIONS request', function(done) {
+      request(
+        {
+          method: 'OPTIONS',
+          url: registrationUrl,
+          headers: {
+            'Access-Control-Request-Method': 'POST',
+            'Access-Control-Request-Headers': 'Content-Type'
+          }
+        },function(err, res, body) {
+            expect(err).toBe(null);
+            expect(res).not.toBe(null);
+            expect(res.statusCode).toBe(204);
+            expect(res.headers['access-control-allow-methods']).toBe('GET,HEAD,PUT,PATCH,POST,DELETE');
+            //winston.log('debug', res.headers);
+            done();
+        });
+    })
+  })
+
   describe('POST /register', function() {
     const registrationUrl = urlBase + '/register';
 
