@@ -6,6 +6,8 @@ const winston = require('winston');
 const nodemailer = require('nodemailer');
 const verification = require('../../src/model/user-verification.js');
 const uuidV4 = require('uuid/v4');
+const dataAccessor = require('../../src/db/DataAccessor.js');
+const bcrypt = require('bcrypt-nodejs');
 
 // Mock email transport used to test the email verfication code
 let mailData = {};
@@ -61,7 +63,36 @@ describe('register new users', function() {
 
   });
 
-  it ('should send a verification email after registration', function(done) {
+  it( 'should bcrypt passwords when storing in the databse', function(done) {
+    const validEmail = "passwordverification_testEmail@email.com";
+
+    registrationService.register(validEmail, password, fullName, nickName, mailTransporter)
+    .then((result)=>{
+      // Check the database to see if the password has been encrypted
+      const db = dataAccessor.getDb();
+      const query = 'select password from users where id=' + result.newUser.id;
+      db.one(query).then( (result)=> {
+        let encryptedPassword = bcrypt.hashSync(password);
+        // The hashes shouldn't be identical due to salting
+        expect(result.password).not.toBe(encryptedPassword);
+        bcrypt.compare(password, encryptedPassword, function(err, res) {
+          expect(err).toBeNull();
+          expect(res).toBe(true);
+        })
+      }).catch( (error)=> {
+        expect(error).toBeNull();
+        fail(error);
+      }).finally(done)
+    })
+    .catch((error)=>{
+      winston.log('warn', error);
+      expect(error).toBeUndefined();
+      fail(error);
+    })
+  })
+
+  // email verification has been disabled
+  xit ('should send a verification email after registration', function(done) {
     const validEmail = "testEmail2@email.com";
 
     registrationService.register(validEmail, password, fullName, nickName, mailTransporter)

@@ -80,6 +80,7 @@ describe('find users', function() {
     users.find({id: 1})
     .then((result)=>{
       expect(result.firstname).toBe(newUser.firstName);
+      expect(result.length).toBe(1);
     }).catch((error)=>{
       expect(error).toBeUndefined();
     }).finally(done);
@@ -89,6 +90,7 @@ describe('find users', function() {
     users.find({email: newUser.email})
     .then((result)=>{
       expect(result.firstname).toBe(newUser.firstName);
+      expect(result.length).toBe(1);
     }).catch((error)=>{
       expect(error).toBeUndefined();
     }).finally(done);
@@ -105,10 +107,9 @@ describe('find users', function() {
   it('should not find a user if the id is unknown', function(done) {
     users.find({id: 139992})
     .then((result)=>{
-      fail("this find should have returned an empty result or error")
+      expect(result.length).toBe(0);
     }).catch((error)=>{
-      expect(error).not.toBeUndefined();
-      expect(error.code).toBe(pgp.errors.queryResultErrorCode.noData);
+      expect(error).toBeNull();
     }).finally(done);
   })
 
@@ -162,6 +163,31 @@ describe('find users', function() {
     })
     .finally(done);
 
+  })
+
+  it('should not find a user if the password is invalid', function(done) {
+    const registeredUser = {
+      userName: 'testuser-registered-1',
+      fullName: 'Calvin Hobbes',
+      nickName: 'CH',
+      password: 'asasas123',
+      email: 'invalidpassword@test.com'
+    };
+
+    // Create the user to be found
+    users.create(registeredUser)
+    .then( (result)=> {
+      // Search for the user using bad credentials
+      return users.find({email: registeredUser.email, password: 'badpassword' });
+    })
+    .then((result)=>{
+      // Make sure an empty result is received
+      expect(result.length).toBe(0);
+    })
+    .catch((error)=>{
+      expect(error).toBeUndefined(null);
+    })
+    .finally(done);
   })
 
 });

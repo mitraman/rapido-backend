@@ -13,7 +13,6 @@
   "dependencies": {
     "passport": "~0.3.2",
     "passport-http-bearer": "~1.0.1",
-    "bcrypt-nodejs": "0.0.3",
     "pg-promise": "~5.5.1",
     "winston": "~2.3.0",
     "passport-http": "~0.3.0",
@@ -26,7 +25,8 @@
     "nodemailer": "~2.7.2",
     "cors": "~2.8.3",
     "passport-jwt": "~2.2.1",
-    "jsonwebtoken": "~7.3.0"
+    "jsonwebtoken": "~7.3.0",
+    "bcrypt-nodejs": "0.0.3"
   },
   "devDependencies": {
     "jasmine": "~2.5.3",

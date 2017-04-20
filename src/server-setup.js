@@ -1,8 +1,6 @@
 "use strict";
 
 const express = require('express');
-const passport = require('passport');
-const passportManager = require('./security/passport-manager.js');
 const winston = require('winston');
 const logger = require('morgan');
 const bodyParser = require('body-parser');
@@ -16,9 +14,6 @@ const users = require('./handlers/users.js');
 //TODO: Rename this to routesetup or something more meaningful
 
 const start = function start(serverPort, cb) {
-
-  // Setup Passport routines for user authentication
-  passportManager();
 
   // Setup the express server
   const app = express();

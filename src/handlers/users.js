@@ -72,26 +72,36 @@ module.exports = {
 
 		// Extract the user details from the request
 		let email = req.body.email;
-		let clearTextPassword = req.body.password
-
-		// bcrypt the password for comparison
-		let password = bcrypt.hashSync(clearTextPassword);
+		let password = req.body.password
 
 		// Lookup the user
-		users.find({email: email, password: password })
+		users.find({email: email})
 		.then( (result) => {
-			// generate a jwt token
-			let jwtToken = authentication.generateJWT(email);
-			res.send(representer.responseMessage({token: jwtToken}));
+			if( result.length === 0) {
+				res.status(401).send(representer.errorMessage('Invalid login credentials'));
+			}else if( result.length === 1) {
+				winston.log('debug', 'result: ', result[0]);
+				// Compare the passwords
+				bcrypt.compare(password, result[0].password, function(err, equivalent) {
+					if( !equivalent || err ) {
+						if( err ) { winston.log('warn', 'Unexpected error from bcrypt compare: ', err); }
+						res.status(401).send(representer.errorMessage('Invalid login credentials'));
+					}else {
+						// generate and return jwt token
+						let jwtToken = authentication.generateJWT(email);
+						res.send(representer.responseMessage({token: jwtToken}));
+					}
+        })
+			}else {
+				//uh oh
+				winston.log('warn', 'More than one user was returned when looking up user ', email);
+				res.status(500).send(representer.errorMessage('An error occurred while trying to login'));
+			}
 		})
 		.catch((error)=>{
 			// Could not lookup the user
-			if( error.name === 'QueryResultError' && error.code === pgp.errors.queryResultErrorCode.noData ) {
-				res.status(401).send(representer.errorMessage('Invalid login credentials'));
-			} else {
-				res.status(500).send(representer.errorMessage('An error occurred while trying to login'));
-			}
-
+			winston.log('error', error);
+			res.status(500).send(representer.errorMessage('An error occurred while trying to login'));
 		})
 
 	}

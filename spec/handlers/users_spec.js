@@ -58,9 +58,9 @@ describe('Authentication API', function() {
             expect(res.statusCode).toBe(200);
             //TODO: validate the response properties
 
-            winston.log('debug', res.body);
-            //TODO: replace with a spy
-            expect(mailServer.findEmail(email)).not.toBeUndefined();
+            //winston.log('debug', res.body);
+            // Mail verification has been disabled.
+            //expect(mailServer.findEmail(email)).not.toBeUndefined();
             done();
         }
       )
@@ -217,8 +217,9 @@ describe('Authentication API', function() {
     const password = "password";
     const email = "ronnie.mitra@gmail.com";
 
-    fit( 'should return an authentication token for a valid user', function(done) {
+    it( 'should return an authentication token for a valid user', function(done) {
 
+      let uniqueEmail = 'logintest1.' + email;
 
       // Register a new user
       request.post(
@@ -229,19 +230,18 @@ describe('Authentication API', function() {
             fullname: 'Ronnie Mitra',
             nickname: 'ronnie',
             password: password,
-            email: email
+            email: uniqueEmail
           }
         },function(err, res, body) {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(200);
-
             request.post(
               {
                 url: loginUrl,
                 headers: headers,
                 json: {
                   password: password,
-                  email: email
+                  email: uniqueEmail
                 }
               },function(err, res, body) {
                   expect(err).toBe(null);

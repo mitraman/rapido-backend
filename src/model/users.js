@@ -99,13 +99,16 @@ users.find = function( params ) {
       if( params.isVerified ) {
         queryBuilder("isVerified", "isverified");
       }
+      if( params.password ) {
+        queryBuilder("password", "password")
+      }
   }
 
   if( queryParams.length === 0 ) {
     throw new RapidoError(RapidoErrorCodes.invalidField, "No parameters provided for find operation")
   }
 
-  return db.many({
+  return db.manyOrNone({
     name: queryName,
     text: queryString,
     values: queryParams

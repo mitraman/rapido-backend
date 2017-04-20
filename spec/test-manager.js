@@ -15,7 +15,7 @@ const dataAccessor = require('../src/db/DataAccessor.js');
 const mailServer = require('./mail-server.js');
 
 // Set the log level
-winston.level = 'debug';
+winston.level = 'error';
 
 config.load('../rapido-test.json');
 
@@ -50,19 +50,26 @@ pgtools.dropdb(db_config, 'rapido-test', function(err, res) {
 
 function run() {
 
-  winston.log('info', 'Creating Users table...');
 
   // initialize the database connection
   winston.log('debug', config.database);
   dataAccessor.start(config.database)
   .then(function(){
-
     let db = dataAccessor.getDb();
-
     // Initialize the database tables
+    winston.log('info', 'Creating Users table...');
     var queryFile = new pgp.QueryFile('../sql/users.sql');
     return db.none(queryFile);
-
+  }).then(function(res) {
+    let db = dataAccessor.getDb();
+    winston.log('info', 'Creating Projects table...');
+    var queryFile = new pgp.QueryFile('../sql/projects.sql');
+    return db.none(queryFile);
+  }).then(function(res) {
+    let db = dataAccessor.getDb();
+    winston.log('info', 'Creating Sketches table...');
+    var queryFile = new pgp.QueryFile('../sql/sketches.sql');
+    return db.none(queryFile);
   }).then(function(res) {
 
     winston.log('info', 'Starting mock email server...');
@@ -71,7 +78,7 @@ function run() {
     winston.log('info', 'Starting Server and Jasmine tests...');
 
     serverManager.start(config.port, function(server, app) {
-      
+
       jasmine.loadConfigFile('spec/support/jasmine.json');
 
       jasmine.onComplete(function(passed) {

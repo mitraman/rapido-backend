@@ -113,73 +113,83 @@ registrationService.register = function(email, password, fullName, nickName, nod
 		}
 
 		// Encrypt the password before storing. Need to have alternate encyrption in future.
-		const encryptedPassword = bcrypt.hashSync(password);
+		winston.log('debug', 'plain text password: [' + password + ']');
+		//const encryptedPassword = bcrypt.hashSync(password);
 
-		winston.log('debug', 'Checking if user already exists');
-		// Check to make sure that this email address doesn't already exist in the database
-		usersDS.find({email: email})
-		.then( (result) => {
-			winston.log('debug', 'Existing user found, returning error');
-			// we shouldn't have received a result!  This means the user already exists.
-			reject(new RapidoError(RapidoErrorCodes.duplicateUser, "a user with this email address already exists"));
-		})
-		.catch( (error) => {
+		const saltRounds = 10;
+		winston.log('debug', 'hashing password');
+		bcrypt.hash(password, null, null, (err, encryptedPassword) => {
+			winston.log('debug', 'encrypted password:', encryptedPassword);
+			winston.log('debug', 'Checking if user already exists');
+			// Check to make sure that this email address doesn't already exist in the database
+			usersDS.find({email: email})
+			.then( (result) => {
+				if( result.length > 0) {
+					winston.log('debug', 'Existing user found, returning error');
+					// we shouldn't have received a result!  This means the user already exists.
+					reject(new RapidoError(RapidoErrorCodes.duplicateUser, "a user with this email address already exists"));
+				}else {
+					return result;
+				}
+			})
+			.catch( (error) => {
 			// A no data error is expected, but anything else should be thrown
 			if( error.code != pgp.errors.queryResultErrorCode.noData) {
 				winston.log('error', 'An error occurred while searching for duplicate users during registration.', error);
 				reject(error);
 			}
-		})
-		.finally( () => {
-
-			winston.log('debug', 'Creating new user');
-
-			// Now, try to create the user in the data store
-			usersDS.create( {
-				fullName: fullName,
-				nickName: nickName,
-				password: encryptedPassword,
-				email: email
 			})
-			.then( (result) => {
-				// Set the ID of the user object that we will be returning to the client
-				newUser.id = result.id;
+			.finally( () => {
 
-				// Try to insert a verirication entry into the verification table for emailing
-				return verificationDS.create(newUser.id, token);
-			})
-			.then( (result) => {
+				winston.log('debug', 'Creating new user');
 
-				// ** Disabling verification email feature until it is needed in the future
-				return result;
+				// Now, try to create the user in the data store
+				usersDS.create( {
+					fullName: fullName,
+					nickName: nickName,
+					password: encryptedPassword,
+					email: email
+				})
+				.then( (result) => {
+					// Set the ID of the user object that we will be returning to the client
+					newUser.id = result.id;
 
-				/*
-				// Only send an email if the transporter has been defined.  This is so that we can do lots of integration testing
-				// without sending emails.  In the future, a better solution can be found.
-				if( nodeMailerTransporter ) {
-					// Send a verification email
-					winston.log('debug', 'sending verification email');
-					return sendVerificationEmail(nodeMailerTransporter, token, newUser);
-				} else {
+					// Try to insert a verirication entry into the verification table for emailing
+					return verificationDS.create(newUser.id, token);
+				})
+				.then( (result) => {
+
+					// ** Disabling verification email feature until it is needed in the future
 					return result;
-				}
-				*/
 
-			})
-			.then( (result) => {
-				// return a result object if everything has gone well.
-				winston.log('debug', 'returning succesfully from user registration');
+					/*
+					// Only send an email if the transporter has been defined.  This is so that we can do lots of integration testing
+					// without sending emails.  In the future, a better solution can be found.
+					if( nodeMailerTransporter ) {
+						// Send a verification email
+						winston.log('debug', 'sending verification email');
+						return sendVerificationEmail(nodeMailerTransporter, token, newUser);
+					} else {
+						return result;
+					}
+					*/
 
-				fullfill ({
-					newUser: newUser,
-					verificationToken: token
-				});
+				})
+				.then( (result) => {
+					// return a result object if everything has gone well.
+					winston.log('debug', 'returning succesfully from user registration');
+
+					fullfill ({
+						newUser: newUser,
+						verificationToken: token
+					});
+				})
+				.catch( (error) => {
+					winston.log('warn', 'Registration Error:', error);
+					reject(error);
+				})
 			})
-			.catch( (error) => {
-				winston.log('warn', 'Registration Error:', error);
-				reject(error);
-			})
-		})
+		});
 });
 }
 

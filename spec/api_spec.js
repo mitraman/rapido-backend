@@ -21,7 +21,7 @@ describe('General API', function() {
   describe ('CORS support', function() {
     const registrationUrl = urlBase + '/register';
 
-    fit( 'should reply with CORS headers to a preflight OPTIONS request', function(done) {
+    it( 'should reply with CORS headers to a preflight OPTIONS request', function(done) {
       request(
         {
           method: 'OPTIONS',
