@@ -11,7 +11,7 @@ projects.create = function( project ) {
   const db = dataAccessor.getDb();
   return db.one({
     name: "create-project",
-    text: "INSERT INTO projects(name, description, userid, style) VALUES($1, $2, $3, $4) returning id, name, description, style",
+    text: "INSERT INTO projects(name, description, userid, style) VALUES($1, $2, $3, $4) returning id, name, description, style, createdat",
     values: [project.name, project.description, project.userId, project.style]
   });
 
@@ -22,7 +22,7 @@ projects.findByUser = function (userId) {
   const db = dataAccessor.getDb();
   return db.manyOrNone({
     name: "find-project-by-user",
-    text: "SELECT FROM projects WHERE userid=$1",
+    text: "SELECT * FROM projects WHERE userid=$1",
     values: [userId]
   });
 }

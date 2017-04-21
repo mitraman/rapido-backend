@@ -1,6 +1,5 @@
 "use strict";
 
-const passport = require('passport');
 const representer = require('../representers/json.js')();
 const registrationService = require('../services/registration.js');
 const winston = require('winston');
@@ -88,7 +87,8 @@ module.exports = {
 						res.status(401).send(representer.errorMessage('Invalid login credentials'));
 					}else {
 						// generate and return jwt token
-						let jwtToken = authentication.generateJWT(email);
+						let jwtToken = authentication.generateJWT({id: result[0].id, email: email});
+						winston.log('debug', 'token: ', jwtToken);
 						res.send(representer.responseMessage({token: jwtToken}));
 					}
         })

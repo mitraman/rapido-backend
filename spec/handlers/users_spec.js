@@ -4,6 +4,9 @@ const request = require("request");
 const config = require('../../src/config.js');
 const winston = require('winston');
 const mailServer = require('../mail-server.js');
+const authentication = require('../../src/security/authentication.js');
+const dataAccessor = require('../../src/db/DataAccessor.js');
+
 
 // TODO: Setup a simluated email service so that we can test the verification process.
 
@@ -56,7 +59,17 @@ describe('Authentication API', function() {
         },function(err, res, body) {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(200);
-            //TODO: validate the response properties
+
+            expect(body.newUser).not.toBeUndefined();
+            expect(body.newUser.id).not.toBeUndefined();
+
+            const db = dataAccessor.getDb();
+            let query = "SELECT * from users where email='" + email + "'";
+            db.any(query)
+            .then( (results) => {
+              expect(results.length).toBe(1);
+              done();
+            })
 
             //winston.log('debug', res.body);
             // Mail verification has been disabled.
@@ -68,6 +81,7 @@ describe('Authentication API', function() {
 
     it( 'should reject registration if the email already exists', function(done) {
 
+      let duplicateEmail = 'dupliateemail@email.com'
       request.post(
         {
           url: registrationUrl,
@@ -76,12 +90,35 @@ describe('Authentication API', function() {
             fullname: 'New Name',
             nickname: 'CRLF',
             password: 'asdfasdf',
-            email: email
+            email: duplicateEmail
           }
         },function(err, res, body) {
+          expect(err).toBe(null);
+          expect(res.statusCode).toBe(200);
+
+          // Send second registration request with the same email
+          request.post(
+            {
+              url: registrationUrl,
+              headers: headers,
+              json: {
+                fullname: 'Second User',
+                nickname: 'dupe',
+                password: 'asdfasdf',
+                email: duplicateEmail
+              }
+          }, function(err, res, body) {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(400);
-            done();
+            // Make sure that the user was not added to the database twice
+            const db = dataAccessor.getDb();
+            let query = "SELECT * from users where email='" + duplicateEmail + "'";
+            db.any(query)
+            .then( (results) => {
+              expect(results.length).toBe(1);
+              done();
+            })
+          });
         }
       )
     })
@@ -246,6 +283,15 @@ describe('Authentication API', function() {
               },function(err, res, body) {
                   expect(err).toBe(null);
                   expect(res.statusCode).toBe(200);
+                  expect(body.token).not.toBeUndefined();
+                  expect(body.token).not.toBeNull();
+                  let token = body.token;
+
+                  // Decode the token and make sure the properties are correct
+                  let decoded = authentication.validateJWT(token);
+                  winston.log('debug', 'decoded token', decoded);
+                  expect(decoded.email).toBe(uniqueEmail);
+                  expect(decoded.id).not.toBeUndefined();
                   done();
               }
             )

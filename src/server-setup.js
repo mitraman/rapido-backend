@@ -9,6 +9,10 @@ const RapidoErrorCodes = require('./errors/codes.js');
 const cors = require('cors');
 
 const users = require('./handlers/users.js');
+const projects = require('./handlers/projects.js');
+const echo = require('./handlers/echo.js');
+const authentication = require('./security/authentication.js');
+const middleware = require('./handlers/middleware.js');
 
 
 //TODO: Rename this to routesetup or something more meaningful
@@ -25,25 +29,15 @@ const start = function start(serverPort, cb) {
 
   winston.log('info', 'server is listening on port: ' + serverPort);
 
-  let requestValidator = function(req, res, next) {
-    // Make sure that the media type is JSON
-    if( !req.is('application/json')  ) {
-      throw new RapidoError(RapidoErrorCodes.unsupportedContentType, 'The content type ' + res.get('Content-Type') + ' is not supported.', 415);
-    }
 
-    // Reject the message if the client does not accept JSON
-    if( !req.accepts('application/json') ) {
-      throw new RapidoError(RapidoErrorCodes.unsupportedAcceptType, 'The content type ' + res.get('Content-Type') + ' specified in the accept header is not supported.', 415);
-    }
-
-    next();
-  };
-
-  app.use(requestValidator);
+  app.use(middleware.requestValidator);
 
   // Setup routes
+  app.all('/api/echo', echo.echoHandler);
   app.post('/api/register', users.registrationHandler);
   app.post('/api/login', users.loginHandler);
+  app.post('/api/projects', authentication.authenticateRequest, projects.createProjectHandler);
+  app.get('/api/projects', authentication.authenticateRequest, projects.findProjectsHandler)
   // server.post('/api/register', users.register);
   // server.post('/api/login', passport.authenticate('basic', { session: false }), users.login);
   //

@@ -10,7 +10,7 @@ Generic API tests for all routes
 
 **/
 
-describe('General API', function() {
+describe('General API Tests: ', function() {
 
   const server_port = config.port;
   const urlBase = 'http://localhost:' + server_port + '/api';
@@ -18,14 +18,15 @@ describe('General API', function() {
     'Content-Type': 'application/json'
   };
 
+  const echoUrl = urlBase + '/echo';
+
   describe ('CORS support', function() {
-    const registrationUrl = urlBase + '/register';
 
     it( 'should reply with CORS headers to a preflight OPTIONS request', function(done) {
       request(
         {
           method: 'OPTIONS',
-          url: registrationUrl,
+          url: echoUrl,
           headers: {
             'Access-Control-Request-Method': 'POST',
             'Access-Control-Request-Headers': 'Content-Type'
@@ -41,13 +42,12 @@ describe('General API', function() {
     })
   })
 
-  describe('POST /register', function() {
-    const registrationUrl = urlBase + '/register';
+  describe('Content Type Validator', function() {
 
     it( 'should reject a non JSON content type', function(done) {
       request.post(
         {
-          url: registrationUrl,
+          url: echoUrl,
           headers: {
             'Content-Type': 'application/xml'
           },
@@ -63,7 +63,7 @@ describe('General API', function() {
     it( 'should reject a malformed JSON body', function(done) {
       request.post(
         {
-          url: registrationUrl,
+          url: echoUrl,
           headers: headers,
           body: '<test>testing</test>'
         },function(err, res, body) {
@@ -77,7 +77,7 @@ describe('General API', function() {
     it( 'should reject an empty POST body', function(done) {
 
       request.post({
-        url: registrationUrl,
+        url: echoUrl,
         headers: headers
       }, function(err, res, body) {
         expect(err).toBe(null);
@@ -87,6 +87,31 @@ describe('General API', function() {
       }
       )
     });
+
+    it( 'should allow an empty GET body', function(done) {
+      request.get({
+        url: echoUrl
+      }, function(err, res, body) {
+        expect(err).toBe(null);
+        expect(res.statusCode).toBe(200);
+        done();
+      }
+      )
+    })
+
+    it( 'should reject a GET that accepts something other than application/json', function(done) {
+      request.get({
+        url: echoUrl,
+        headers : {
+          'Accept': 'text/plain'
+        }
+      }, function(err, res, body) {
+        expect(err).toBe(null);
+        expect(res.statusCode).toBe(406);
+        done();
+      }
+      )
+    })
 
   });
 });

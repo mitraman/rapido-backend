@@ -129,6 +129,9 @@ describe('find projects', function() {
     projects.findByUser(userId)
     .then( (result) => {
       expect(result.length).toBe(numProjects);
+      result.forEach(function(project){
+          expect(project.name).not.toBeUndefined();
+      })
     }).catch( (error) => {
       expect(error).toBeNull();
       winston.log('error', error);

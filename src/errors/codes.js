@@ -6,5 +6,6 @@ module.exports = {
   invalidField: 2,
   invalidVerificationToken: 3,
   unsupportedContentType: 4,
-  unsupportedAcceptType: 5
+  unsupportedAcceptType: 5,
+  POSTwithNoBody: 6
 };

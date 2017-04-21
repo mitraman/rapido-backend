@@ -8,11 +8,10 @@
   "config": {},
   "scripts": {
     "start": "node src/server.js",
-    "test": "istanbul cover --include-all-sources spec/test-manager.js"
+    "test-istanbul": "istanbul cover --include-all-sources spec/test-manager.js",
+    "test": "node spec/test-manager.js"
   },
   "dependencies": {
-    "passport": "~0.3.2",
-    "passport-http-bearer": "~1.0.1",
     "pg-promise": "~5.5.1",
     "winston": "~2.3.0",
     "passport-http": "~0.3.0",
@@ -24,7 +23,6 @@
     "uuid": "~3.0.1",
     "nodemailer": "~2.7.2",
     "cors": "~2.8.3",
-    "passport-jwt": "~2.2.1",
     "jsonwebtoken": "~7.3.0",
     "bcrypt-nodejs": "0.0.3"
   },

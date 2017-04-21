@@ -106,6 +106,7 @@ users.find = function( params ) {
 
   if( queryParams.length === 0 ) {
     throw new RapidoError(RapidoErrorCodes.invalidField, "No parameters provided for find operation")
+    //console.log('This is the error**************************')
   }
 
   return db.manyOrNone({
