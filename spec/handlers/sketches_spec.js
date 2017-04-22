@@ -6,7 +6,7 @@ const winston = require('winston');
 const dataAccessor = require('../../src/db/DataAccessor.js');
 const HandlerSupport = require('./support.js');
 
-describe('Projects API', function() {
+describe('Sketchtes API', function() {
 
   const server_port = config.port;
   const urlBase = 'http://localhost:' + server_port + '/api';
@@ -15,10 +15,8 @@ describe('Projects API', function() {
   };
 
   const projectsUrl = urlBase + '/projects';
+  let sketchesUrl = urlBase + '/projects/{projectsId}/sketches';
 
-  // Credentials for registering and login
-  const email = "project.test@email.com";
-  const password = "password";
   let token = "";
   let userid;
 
@@ -33,26 +31,43 @@ describe('Projects API', function() {
       const authValue = 'Bearer ' + result.token;
       headers['Authorization'] = authValue;
       userid = result.userId;
-      done();
-    }).catch( (error) => {
-      fail(error);
-    })
-  })
 
-  describe('POST /projects', function() {
-
-    it ('should reject a request without a token', function(done) {
-
+      // Create a project
       request.post(
         {
           url: projectsUrl,
+          headers: headers,
+          json: {
+            name: "Test Project",
+            description: "description",
+            style: "CRUD"
+          }
+        },function(err, res, body) {
+            expect(err).toBe(null);
+            expect(res.statusCode).toBe(201);
+
+            sketchesUrl = sketchesUrl.replace(/{projectsId}/gi, body.id);
+            console.log(sketchesUrl);
+            done();
+        }
+      )
+    }).catch( (error) => {
+      fail(error);
+    })
+  });
+
+  describe('POST /sketches', function() {
+
+    fit ('should reject a request without a token', function(done) {
+
+      request.post(
+        {
+          url: sketchesUrl,
           headers: {
             'Content-Type': 'application/json'
           },
           json: {
-            name: name,
-            description: description,
-            style: style
+            name: name
           }
         },function(err, res, body) {
             expect(err).toBe(null);
@@ -230,9 +245,7 @@ describe('Projects API', function() {
       })
 
     });
-  });
 
-  describe ('GET /projects/{id}', function(done) {
-    fail('to be implemented');
-  })
+
+  });
 })
