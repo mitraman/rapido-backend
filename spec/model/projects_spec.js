@@ -81,6 +81,7 @@ describe('create new projects', function() {
 describe('find projects', function() {
 
   const numProjects = 7;
+  let addedProjects = [];
   let userId;
 
   beforeAll(function(done) {
@@ -99,6 +100,7 @@ describe('find projects', function() {
         userId: userId
       }).then( (result) => {
         expect(result).not.toBeNull();
+        addedProjects.push(result);
         createProject(index+1);
       }).catch( (error) => {
         winston.log('error', error);
@@ -147,5 +149,28 @@ describe('find projects', function() {
       winston.log('error', error);
     }).finally(done);
   });
+
+  it('should find a specified project for a specified user', function(done) {
+    projects.find({
+      userId: userId,
+      id: addedProjects[numProjects-1].id
+    }).then( (result) => {
+      expect(result).not.toBeNull();
+      expect(result.length).toBe(1);
+    }).catch( (error) => {
+      fail(error);
+    }).finally(done);
+  })
+
+  it('should reject an attempt to find with an unknown paramter', function() {
+
+    expect( ()=>{
+      projects.find({
+        userId: userId,
+        name: 'not supported for find',
+        projectid: addedProjects[numProjects-1].id
+      })
+    } ).toThrow();
+  })
 
 });

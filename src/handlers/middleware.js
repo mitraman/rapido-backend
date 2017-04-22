@@ -22,8 +22,6 @@ module.exports = {
 
     if( !req.is('application/json') && ( req.method === 'POST' || req.method === 'PUT' ) ) {
       throw new RapidoError(RapidoErrorCodes.unsupportedContentType, 'The content type ' + req.get('Content-Type') + ' is not supported.', 415);
-    }else if( req.method === 'POST' && isEmpty(req.body)) {
-        throw new RapidoError(RapidoErrorCodes.POSTwithNoBody, 'POST messages with no body are not supported.', 400);
     }
 
     // Reject the message if the client does not accept JSON responses

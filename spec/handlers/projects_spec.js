@@ -232,7 +232,9 @@ describe('Projects API', function() {
     });
   });
 
-  describe ('GET /projects/{id}', function(done) {
-    fail('to be implemented');
+  describe ('GET /projects/{id}', function() {
+    it ('should retrieve a specific project', function(){
+      fail('to be implemented');
+    })
   })
 })

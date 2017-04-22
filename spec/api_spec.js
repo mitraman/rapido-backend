@@ -74,6 +74,8 @@ describe('General API Tests: ', function() {
         });
     });
 
+
+/*
     it( 'should reject an empty POST body', function(done) {
 
       request.post({
@@ -87,6 +89,7 @@ describe('General API Tests: ', function() {
       }
       )
     });
+*/
 
     it( 'should allow an empty GET body', function(done) {
       request.get({

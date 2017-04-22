@@ -18,13 +18,59 @@ projects.create = function( project ) {
 }
 
 projects.findByUser = function (userId) {
-
   const db = dataAccessor.getDb();
   return db.manyOrNone({
     name: "find-project-by-user",
     text: "SELECT * FROM projects WHERE userid=$1",
     values: [userId]
   });
+}
+
+projects.find = function( params ) {
+  const db = dataAccessor.getDb();
+
+  let queryString = "SELECT * FROM projects WHERE";
+  let queryParams = [];
+  let queryName = "find-projects-by";
+
+  function queryBuilder(paramName, valueName) {
+    if( !valueName ) {
+      valueName = paramName
+    }
+    if( queryParams.length > 0 ) { queryString += " AND"; }
+    queryParams.push(params[paramName]);
+    queryString += " " + valueName + "=$" + queryParams.length;
+    queryName += "-"+valueName;
+  }
+
+  let numberParamsRecognized = 0;
+
+  if( params ) {
+      if( params.id ) {
+        queryBuilder("id");
+        numberParamsRecognized++;
+      }
+      if( params.userId ) {
+        queryBuilder("userId");
+        numberParamsRecognized++;
+      }
+  }
+
+  if( numberParamsRecognized < Object.keys(params).length ) {
+    throw new RapidoError(RapidoErrorCodes.invalidField, "Unrecognized parameters provided for find projects operation");
+  }
+
+  if( queryParams.length === 0 ) {
+    throw new RapidoError(RapidoErrorCodes.invalidField, "No parameters provided for find projects operation")
+    //console.log('This is the error**************************')
+  }
+
+  return db.manyOrNone({
+    name: queryName,
+    text: queryString,
+    values: queryParams
+  });
+
 }
 
 module.exports = projects;

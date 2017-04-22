@@ -15,7 +15,8 @@ describe('Sketchtes API', function() {
   };
 
   const projectsUrl = urlBase + '/projects';
-  let sketchesUrl = urlBase + '/projects/{projectsId}/sketches';
+  let sketchesUrlTemplate = urlBase + '/projects/{projectsId}/sketches';
+  let sketchesUrl;
 
   let token = "";
   let userid;
@@ -46,7 +47,7 @@ describe('Sketchtes API', function() {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(201);
 
-            sketchesUrl = sketchesUrl.replace(/{projectsId}/gi, body.id);
+            sketchesUrl = sketchesUrlTemplate.replace(/{projectsId}/gi, body.id);
             console.log(sketchesUrl);
             done();
         }
@@ -58,7 +59,7 @@ describe('Sketchtes API', function() {
 
   describe('POST /sketches', function() {
 
-    fit ('should reject a request without a token', function(done) {
+    it ('should reject a request without a token', function(done) {
 
       request.post(
         {
@@ -81,15 +82,13 @@ describe('Sketchtes API', function() {
 
       request.post(
         {
-          url: projectsUrl,
+          url: sketchesUrl,
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIXVCJ9...TJVA95OrM7E20RMHrHDcEfxjoYZgeFONFh7HgQ'
           },
           json: {
-            name: name,
-            description: description,
-            style: style
+            name: name
           }
         },function(err, res, body) {
             expect(err).toBe(null);
@@ -99,153 +98,53 @@ describe('Sketchtes API', function() {
       )
     });
 
-    it( 'should create a new project', function(done) {
+    it( 'should reject an attempt to create a sketch for a project that is not owned by the user', function(done) {
+
+      let invalidSketchesUrl = sketchesUrlTemplate.replace(/{projectsId}/gi, 3200);
+      request.post({
+          url: invalidSketchesUrl,
+          headers: headers
+      },function(err, res, body) {
+          expect(res.statusCode).toBe(401);
+          done();
+      });
+
+    })
+
+    it( 'should create a new sketch', function(done) {
       request.post(
         {
-          url: projectsUrl,
+          url: sketchesUrl,
           headers: headers,
           json: {
-            name: name,
-            description: description,
-            style: style
+            name: name
           }
         },function(err, res, body) {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(201);
             expect(body.name).toBe(name);
-            expect(body.description).toBe(description);
-            expect(body.id).not.toBeUndefined();
+            expect(body.description).toBe('');
             expect(body.createdAt).not.toBeUndefined();
             done();
         }
       )
     })
 
-    it ('should reject a new project with a missing name', function(done) {
+    it( 'should create a new sketch with no name', function(done) {
       request.post(
         {
-          url: projectsUrl,
-          headers: headers,
-          json: {
-            description: description,
-            style: style
-          }
-        },function(err, res, body) {
+          url: sketchesUrl,
+          headers: headers
+        },function(err, res, rawBody) {
+          // Request probably doesn't parse the body if we don't send a JSON on the request
+          let body = JSON.parse(rawBody);
             expect(err).toBe(null);
-            expect(res.statusCode).toBe(400);
-            expect(body.error).toBe('the required property \'fullname\' is missing from the request body');
-            done();
-        }
-      )
-    })
-
-    it( 'should reject a new project with a bad style', function(done) {
-      request.post(
-        {
-          url: projectsUrl,
-          headers: headers,
-          json: {
-            name: name,
-            description: description,
-            style: 'BAD'
-          }
-        },function(err, res, body) {
-            expect(err).toBe(null);
-            expect(res.statusCode).toBe(400);
+            expect(res.statusCode).toBe(201);
+            expect(body.name).toBe('');
+            expect(body.createdAt).not.toBeUndefined();
             done();
         }
       )
     })
   })
-
-  describe('GET /projects', function() {
-
-
-
-    beforeEach(function() {
-      // Remove all of the project entries in the database for our test useer
-
-      const db = dataAccessor.getDb();
-      //console.log(userid);
-      db.query("DELETE FROM projects WHERE userid = " +  userid);
-
-    })
-
-    it( 'should reject an attempt to retrieve projects without a signed in user', function(done) {
-      request.get(
-        {
-          url: projectsUrl,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        },function(err, res, body) {
-            expect(err).toBe(null);
-            expect(res.statusCode).toBe(401);
-            done();
-        }
-      )
-    })
-
-    it ('should succesfully retrieve an empty project list for a signed in user', function(done) {
-        let projectCount = 0;
-        request.get({
-            url: projectsUrl,
-            headers: headers
-          }, function(err, res, body) {
-            expect(err).toBe(null);
-            expect(res.statusCode).toBe(200);
-            expect(body).not.toBeNull();
-            let jsonBody = JSON.parse(body);
-            expect(jsonBody.projects).not.toBeUndefined();
-            expect(jsonBody.projects.length).toBe(projectCount);
-            done();
-          })
-    });
-
-    it ('should succesfully retrieve a project list for a signed in user', function(done) {
-      const projectsToAdd = 6;
-
-      let addProject = function(index, finished) {
-        request.post(
-          {
-            url: projectsUrl,
-            headers: headers,
-            json: {
-              name: name + index ,
-              description: description,
-              style: style
-            }
-          },function(err, res, body) {
-              expect(res.statusCode).toBe(201);
-              if( index >= projectsToAdd ) {
-                // We are finished, call the next function
-                finished(index);
-              }else {
-                addProject(index+1, finished);
-              }
-          });
-      }
-
-      addProject(1, function(projectCount) {
-        request.get({
-            url: projectsUrl,
-            headers: headers
-          }, function(err, res, body) {
-            expect(err).toBe(null);
-            expect(res.statusCode).toBe(200);
-            expect(body).not.toBeNull();
-            let jsonBody = JSON.parse(body);
-            expect(jsonBody.projects).not.toBeUndefined();
-            expect(jsonBody.projects.length).toBe(projectCount);
-            jsonBody.projects.forEach(function(project) {
-              expect(project.name).not.toBeUndefined();
-            })
-            done();
-        })
-      })
-
-    });
-
-
-  });
 })

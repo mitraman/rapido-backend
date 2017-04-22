@@ -10,6 +10,7 @@ const cors = require('cors');
 
 const users = require('./handlers/users.js');
 const projects = require('./handlers/projects.js');
+const sketches = require('./handlers/sketches.js');
 const echo = require('./handlers/echo.js');
 const authentication = require('./security/authentication.js');
 const middleware = require('./handlers/middleware.js');
@@ -37,7 +38,8 @@ const start = function start(serverPort, cb) {
   app.post('/api/register', users.registrationHandler);
   app.post('/api/login', users.loginHandler);
   app.post('/api/projects', authentication.authenticateRequest, projects.createProjectHandler);
-  app.get('/api/projects', authentication.authenticateRequest, projects.findProjectsHandler)
+  app.get('/api/projects', authentication.authenticateRequest, projects.findProjectsHandler);
+  app.post('/api/projects/:projectId/sketches', authentication.authenticateRequest, sketches.createSketchHandler);
   // server.post('/api/register', users.register);
   // server.post('/api/login', passport.authenticate('basic', { session: false }), users.login);
   //
