@@ -5,12 +5,12 @@ Create sequence sketches_id_seq;
 CREATE TABLE public.sketches
 (
     id integer NOT NULL DEFAULT nextval('sketches_id_seq'::regclass),
+    name character varying COLLATE pg_catalog."default",
     description text COLLATE pg_catalog."default",
-    userid bigint,
+    userid integer REFERENCES users (id),
     projectid integer REFERENCES projects (id),
     createdat timestamp with time zone NOT NULL DEFAULT now(),
     modifiedat timestamp with time zone DEFAULT now(),
-    iteration integer NOT NULL,
     treedata jsonb,
     vocabulary jsonb,
     CONSTRAINT sketches_pkey PRIMARY KEY (id)

@@ -72,8 +72,8 @@ function run() {
     return db.none(queryFile);
   }).then(function(res) {
 
-    winston.log('info', 'Starting mock email server...');
-    mailServer.start();
+    // winston.log('info', 'Starting mock email server...');
+    // mailServer.start();
 
     winston.log('info', 'Starting Server and Jasmine tests...');
 
