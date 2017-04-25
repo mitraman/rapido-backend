@@ -4,6 +4,7 @@ const projects = require('../../src/model/projects.js');
 const users = require('../../src/model/users.js');
 const pgp = require('pg-promise');
 const winston = require('winston')
+const dataAccessor = require('../../src/db/DataAccessor.js');
 
 const newProject = {
   name: 'test project',
@@ -73,6 +74,21 @@ describe('create new projects', function() {
     }).catch( (error)=>{
       expect(error).not.toBe(null);
       expect(error.code).toBe('22P02'); // The postgres error code for ENUM constraint errors
+    }).finally(done);
+  })
+
+  it( 'should automatically create an empty sketch when a project is created', function(done) {
+    projects.create(newProject)
+    .then( (result) => {
+      expect(result).not.toBeNull();
+      expect(result.id).not.toBe(null);
+      const db = dataAccessor.getDb();
+      return db.any("select * from sketches where projectid=$1",[result.id])
+    }).then( (result) => {
+      expect(result.length).toBe(1);
+    }).catch( (error)=>{
+      winston.log('error', error);
+      fail(error);
     }).finally(done);
   })
 

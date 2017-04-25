@@ -6,6 +6,8 @@ const winston = require('winston');
 const dataAccessor = require('../../src/db/DataAccessor.js');
 const HandlerSupport = require('./support.js');
 
+
+
 describe('Projects API', function() {
 
   const server_port = config.port;
@@ -15,6 +17,8 @@ describe('Projects API', function() {
   };
 
   const projectsUrl = urlBase + '/projects';
+  const projectUrlTemplate = urlBase + '/project/{projectId}';
+  let projectUrl;
 
   // Credentials for registering and login
   const email = "project.test@email.com";
@@ -26,6 +30,29 @@ describe('Projects API', function() {
   const name = "project 1";
   const description = "a project description";
   const style = "CRUD";
+
+  // Utility function for setting up test cases
+  let addProject = function(projectsToAdd, projectList, index, finished) {
+    request.post(
+      {
+        url: projectsUrl,
+        headers: headers,
+        json: {
+          name: name + index ,
+          description: description,
+          style: style
+        }
+      },function(err, res, body) {
+          expect(res.statusCode).toBe(201);
+          projectList.push(body);
+          if( index >= projectsToAdd ) {
+            // We are finished, call the next function
+            finished(index);
+          }else {
+            addProject(projectsToAdd, projectList, index+1, finished);
+          }
+      });
+  }
 
   beforeAll(function(done) {
     HandlerSupport.registerAndLogin('ProjectsTest')
@@ -147,13 +174,18 @@ describe('Projects API', function() {
 
 
 
-    beforeEach(function() {
+    beforeEach(function(done) {
       // Remove all of the project entries in the database for our test useer
-
       const db = dataAccessor.getDb();
-      //console.log(userid);
-      db.query("DELETE FROM projects WHERE userid = " +  userid);
 
+      // First delete all of this user's sketches
+      db.query("DELETE FROM sketches where userid=" + userid)
+      .then( ()=> {
+        // Next delete the projects
+      return db.query("DELETE FROM projects WHERE userid = " +  userid)
+      }).catch( (error) => {
+        fail(error);
+      }).finally(done)
     })
 
     it( 'should reject an attempt to retrieve projects without a signed in user', function(done) {
@@ -189,29 +221,9 @@ describe('Projects API', function() {
 
     it ('should succesfully retrieve a project list for a signed in user', function(done) {
       const projectsToAdd = 6;
+      let addedProjects = [];
 
-      let addProject = function(index, finished) {
-        request.post(
-          {
-            url: projectsUrl,
-            headers: headers,
-            json: {
-              name: name + index ,
-              description: description,
-              style: style
-            }
-          },function(err, res, body) {
-              expect(res.statusCode).toBe(201);
-              if( index >= projectsToAdd ) {
-                // We are finished, call the next function
-                finished(index);
-              }else {
-                addProject(index+1, finished);
-              }
-          });
-      }
-
-      addProject(1, function(projectCount) {
+      addProject(projectsToAdd, addedProjects, 1, function(projectCount) {
         request.get({
             url: projectsUrl,
             headers: headers
@@ -233,8 +245,39 @@ describe('Projects API', function() {
   });
 
   describe ('GET /projects/{id}', function() {
-    it ('should retrieve a specific project', function(){
-      fail('to be implemented');
+
+
+
+    beforeEach(function() {
+      // Remove all of the project entries in the database for our test useer
+      const db = dataAccessor.getDb();
+      //console.log(userid);
+      db.query("DELETE FROM projects WHERE userid = " +  userid);
+
+    })
+
+    // Implement this if we need it later on.
+    xit ('should retrieve a specific project', function(done){
+      const projectsToAdd = 4;
+      let addedProjects = [];
+
+      addProject(projectsToAdd, addedProjects, 1, function(projectCount) {
+
+        let project = addedProjects[projectCount-1];
+        projectUrl =  projectUrlTemplate.replace(/{projectId}/gi, project.id);
+        request.get({
+            url: projectUrl,
+            headers: headers
+          }, function(err, res, body) {
+            console.log('made call');
+            expect(err).toBe(null);
+            expect(res.statusCode).toBe(200);
+            expect(body).not.toBeNull();
+            let jsonBody = JSON.parse(body);
+            expect(jsonBody.name).toBe(project.name)
+            done();
+        })
+      })
     })
   })
 })

@@ -1,8 +1,8 @@
 {
   "database": {
-    "host": "192.168.99.100",
+    "host": "localhost",
     "port": 32768,
-    "name": "rapido-test",
+    "name": "rapido",
     "user": "postgres",
     "password": "password"
   },

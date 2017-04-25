@@ -285,6 +285,10 @@ describe('Authentication API', function() {
                   expect(res.statusCode).toBe(200);
                   expect(body.token).not.toBeUndefined();
                   expect(body.token).not.toBeNull();
+                  expect(body.email).not.toBeUndefined();
+                  expect(body.userId).not.toBeUndefined();
+                  expect(body.nickName).not.toBeUndefined();
+                  expect(body.fullName).not.toBeUndefined();
                   let token = body.token;
 
                   // Decode the token and make sure the properties are correct

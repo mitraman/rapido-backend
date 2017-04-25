@@ -1,5 +1,6 @@
 const Promise = require('bluebird');
 const dataAccessor = require('../db/DataAccessor.js');
+const sketches = require('./sketches');
 const winston = require('winston');
 const RapidoError = require('../errors/rapido-error.js');
 const RapidoErrorCodes = require('../errors/codes.js');
@@ -9,10 +10,26 @@ const projects = function() {};
 projects.create = function( project ) {
 
   const db = dataAccessor.getDb();
-  return db.one({
-    name: "create-project",
-    text: "INSERT INTO projects(name, description, userid, style) VALUES($1, $2, $3, $4) returning id, name, description, style, createdat",
-    values: [project.name, project.description, project.userId, project.style]
+
+  let createProjectResult;
+
+  return new Promise( function(resolve, reject)  {
+    db.one({
+      name: "create-project",
+      text: "INSERT INTO projects(name, description, userid, style) VALUES($1, $2, $3, $4) returning id, name, description, style, createdat",
+      values: [project.name, project.description, project.userId, project.style]
+    }).then( (result) => {
+      // Store the result so we can return it later
+      createProjectResult = result;
+
+      // Create a default sketch for this project
+      return sketches.create({projectId: result.id, userId: project.userId})
+    }).then( (result) => {
+      // Everything went well, so return the original create project result
+      resolve(createProjectResult);
+    }).catch( (error) => {
+      reject(error);
+    })
   });
 
 }

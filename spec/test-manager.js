@@ -15,7 +15,7 @@ const dataAccessor = require('../src/db/DataAccessor.js');
 const mailServer = require('./mail-server.js');
 
 // Set the log level
-winston.level = 'error';
+winston.level = 'debug';
 
 config.load('../rapido-test.json');
 
@@ -75,9 +75,12 @@ function run() {
     // winston.log('info', 'Starting mock email server...');
     // mailServer.start();
 
-    winston.log('info', 'Starting Server and Jasmine tests...');
 
     serverManager.start(config.port, function(server, app) {
+
+      //console.log(app);
+      //console.log(server);
+      //console.log(app._router.stack);
 
       jasmine.loadConfigFile('spec/support/jasmine.json');
 

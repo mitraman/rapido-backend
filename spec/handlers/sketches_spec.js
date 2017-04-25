@@ -48,7 +48,6 @@ describe('Sketchtes API', function() {
             expect(res.statusCode).toBe(201);
 
             sketchesUrl = sketchesUrlTemplate.replace(/{projectsId}/gi, body.id);
-            console.log(sketchesUrl);
             done();
         }
       )

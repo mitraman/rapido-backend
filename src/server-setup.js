@@ -33,6 +33,7 @@ const start = function start(serverPort, cb) {
 
   app.use(middleware.requestValidator);
 
+  winston.log('debug', 'setting up routes...');
   // Setup routes
   app.all('/api/echo', echo.echoHandler);
   app.post('/api/register', users.registrationHandler);
@@ -48,6 +49,8 @@ const start = function start(serverPort, cb) {
   //    directory: __dirname + '/public',
   //    default: 'index.html'
   // }));
+  winston.log('debug', 'finished setting up routes');
+  winston.log('debug', serverPort);
 
   // Setup error handlers
   app.use(function (err, req, res, next) {
@@ -61,16 +64,19 @@ const start = function start(serverPort, cb) {
     }
   })
 
+  winston.log()
+
   // Start the server
   const server = app.listen(serverPort, () => {
-    console.log('%s listening at %s', app.name, app.url);
+    //console.log('%s listening at %s', app.name, app.url);
+    // Return the server to a callback function if one has been specified
+    // TODO: turn this into a Promise
+    if (cb) {
+      cb(server, app);
+    }
   });
 
-  // Return the server to a callback function if one has been specified
-  // TODO: turn this into a Promise
-  if (cb) {
-    cb(server, app);
-  }
+
 };
 
 module.exports = {

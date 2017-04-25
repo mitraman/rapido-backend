@@ -92,6 +92,7 @@ describe('General API Tests: ', function() {
 */
 
     it( 'should allow an empty GET body', function(done) {
+      winston.log('debug', echoUrl);
       request.get({
         url: echoUrl
       }, function(err, res, body) {

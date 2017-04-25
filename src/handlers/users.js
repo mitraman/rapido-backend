@@ -89,7 +89,14 @@ module.exports = {
 						// generate and return jwt token
 						let jwtToken = authentication.generateJWT({id: result[0].id, email: email});
 						winston.log('debug', 'token: ', jwtToken);
-						res.send(representer.responseMessage({token: jwtToken}));
+						let responseBody = {
+							token: jwtToken,
+							email: result[0].email,
+							userId: result[0].id,
+							nickName: result[0].nickname,
+							fullName: result[0].fullname
+						}
+						res.send(representer.responseMessage(responseBody));
 					}
         })
 			}else {
