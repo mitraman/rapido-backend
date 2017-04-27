@@ -71,6 +71,11 @@ function run() {
     var queryFile = new pgp.QueryFile('../sql/sketches.sql');
     return db.none(queryFile);
   }).then(function(res) {
+    let db = dataAccessor.getDb();
+    winston.log('info', 'Creating Events table...');
+    var queryFile = new pgp.QueryFile('../sql/events.sql');
+    return db.none(queryFile);
+  }).then(function(res) {
 
     // winston.log('info', 'Starting mock email server...');
     // mailServer.start();

@@ -24,7 +24,8 @@
     "nodemailer": "~2.7.2",
     "cors": "~2.8.3",
     "jsonwebtoken": "~7.3.0",
-    "bcrypt-nodejs": "0.0.3"
+    "bcrypt-nodejs": "0.0.3",
+    "node-cache": "~4.1.1"
   },
   "devDependencies": {
     "jasmine": "~2.5.3",
