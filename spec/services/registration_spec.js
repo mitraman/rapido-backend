@@ -19,8 +19,8 @@ let transport = {
         winston.log('debug', 'pretending to send an email');
         //winston.log('debug', 'storing email: ', mail)
         // Store the email in the mailData variable for later verification
-        //console.log("email recipient:" + mail.data.to);
-        //console.log(mail);
+        //winston.log("debug", "email recipient:" + mail.data.to);
+        //winston.log("debug", mail);
         mailData[mail.data.to] = mail;
         let envelope = mail.message.getEnvelope();
         let messageId = mail.message.messageId();

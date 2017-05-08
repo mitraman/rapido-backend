@@ -2,11 +2,98 @@
 
 const representer = require('../representers/json.js')();
 const winston = require('winston');
+const RapidoError = require('../../src/errors/rapido-error.js');
 const RapidoErrorCodes = require('../../src/errors/codes.js');
 const pgp = require('pg-promise');
 const projects =  require('../model/projects.js');
+const sketches = require('../model/sketches.js');
+const sketchService = require('../services/sketches.js');
+
+
+let transformProject = function(projectModel) {
+	return {
+		id: projectModel.id,
+		name: projectModel.name,
+		description: projectModel.description,
+		createdAt: projectModel.createdat,
+		style: projectModel.style,
+		vocabulary: projectModel.vocabulary,
+		sketches: []
+	}
+}
 
 module.exports = {
+
+	findProjectHandler: function(req, res, next) {
+		winston.log('debug', 'findProjectHandler called.');
+
+		let userId = req.credentials.id;
+		let projectId = req.params.projectId
+
+		winston.log('debug', 'userId:', userId);
+		winston.log('debug', 'projectId:', projectId);
+
+		//TODO: In the future, projects should have sharing flags so they can
+		// be viewed and edited by non-owner users and guests.
+		// Find the project (only if it is owned by this user)
+		let responseBody = {
+			project: {}
+		};
+		projects.find({
+			userId: userId,
+			id: projectId
+		}).then( (projects) => {
+			winston.log('debug', 'projects.find result:', projects);
+			if( projects.length === 0 ) {
+				//res.status(404).send(representer.errorMessage('Unable to locate the specified project for this user.'))
+				throw new RapidoError(RapidoErrorCodes.projectNotFound, 'Unable to locate the specified project for this user.', 404);
+			}else {
+				let foundProject = projects[0];
+
+				responseBody.project = transformProject(foundProject);
+				// Retrieve sketches for this project
+				return sketches.findByProject(projectId);
+
+			}
+		}).then( (sketches) => {
+			winston.log('debug', 'sketches.findByProject result:', sketches);
+			let getTreePromises = [];
+
+			// Tree data comes from the sketch service.
+			// Fire async promises for each sketch in the list and wait to collect the
+			// results.
+			for( let i = 0; i < sketches.length; i++ ) {
+				winston.log('debug', sketches[i]);
+				winston.log('debug', 'retrieving tree data for sketch ', sketches[i].id);
+				let sketch = {
+					id: sketches[i].id,
+					createdAt: sketches[i].createdAt
+				};
+				responseBody.project.sketches.push(sketch);
+				getTreePromises.push(sketchService.getTree(sketches[i].id));
+			}
+
+			return Promise.all(getTreePromises);
+		}).then( (trees) => {
+				winston.log('debug', 'result of Promise.all(getTreePromises):', trees);
+
+				for( let i = 0; i < trees.length; i++ ) {
+					responseBody.project.sketches[i].tree = trees[i];
+				}
+
+				// Send the data back to the client
+				winston.log('debug', 'sending responseBody: ',responseBody);
+				res.send(representer.responseMessage(responseBody));
+		}).catch( (error) => {
+			if( error.name === 'RapidoError' ) {
+				winston.log('debug', 'Caught a RapidoError:', error);
+				res.status(error.status).send(representer.errorMessage(error.message));
+			} else {
+				winston.log('warn', 'An error occured while retrieving a project: ', error);
+				res.status(500).send('An unexpected error occurred.');
+			}
+		})
+	},
 
 	findProjectsHandler: function(req, res, next) {
 		winston.log('debug', 'findProjectsHandler called.');
@@ -18,13 +105,7 @@ module.exports = {
 			// Create a collection of project results
 			let projectResults = [];
 			for( let i = 0; i < result.length; i++ ) {
-				projectResults.push({
-					id: result[i].id,
-					name: result[i].name,
-					description: result[i].description,
-					style: result[i].style,
-					createdAt: result[i].createdat
-				})
+				projectResults.push(transformProject(result[i]));
 			}
 			res.status(200).send(representer.responseMessage({
 				projects: projectResults
@@ -85,8 +166,7 @@ module.exports = {
 				createdAt: result.createdat
 			}));
     }).catch( (error) => {
-			console.log(error);
-      winston.log('warn', 'An error occurred while trying to create a new project: ', error);
+			winston.log('warn', 'An error occurred while trying to create a new project: ', error);
       res.status(500).send(representer.errorMessage('Unable to create new project'));
     })
 	}

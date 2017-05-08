@@ -7,5 +7,6 @@ module.exports = {
   invalidVerificationToken: 3,
   unsupportedContentType: 4,
   unsupportedAcceptType: 5,
-  POSTwithNoBody: 6
+  POSTwithNoBody: 6,
+  projectNotFound: 7
 };

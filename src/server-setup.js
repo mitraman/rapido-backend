@@ -14,6 +14,7 @@ const sketches = require('./handlers/sketches.js');
 const echo = require('./handlers/echo.js');
 const authentication = require('./security/authentication.js');
 const middleware = require('./handlers/middleware.js');
+const nodes = require('./handlers/nodes.js');
 
 
 //TODO: Rename this to routesetup or something more meaningful
@@ -22,7 +23,7 @@ const start = function start(serverPort, cb) {
 
   // Setup the express server
   const app = express();
-  app.use(logger('dev'));
+  //app.use(logger('dev'));
   app.use(bodyParser.json());
   app.use(bodyParser.urlencoded({ extended: false }));
   app.use(cors());
@@ -40,15 +41,12 @@ const start = function start(serverPort, cb) {
   app.post('/api/login', users.loginHandler);
   app.post('/api/projects', authentication.authenticateRequest, projects.createProjectHandler);
   app.get('/api/projects', authentication.authenticateRequest, projects.findProjectsHandler);
+  app.get('/api/projects/:projectId', authentication.authenticateRequest, projects.findProjectHandler);
   app.post('/api/projects/:projectId/sketches', authentication.authenticateRequest, sketches.createSketchHandler);
-  // server.post('/api/register', users.register);
-  // server.post('/api/login', passport.authenticate('basic', { session: false }), users.login);
-  //
-  // // Serve static content on the root directory
-  // server.get(/\/?.*/, restify.serveStatic({
-  //    directory: __dirname + '/public',
-  //    default: 'index.html'
-  // }));
+  app.post('/api/sketches/:sketchId/nodes', authentication.authenticateRequest, nodes.createRootNodeHandler);
+  app.post('/api/sketches/:sketchId/nodes/:nodeId', authentication.authenticateRequest, nodes.createChildNodeHandler);
+  app.patch('/api/sketches/:sketchId/nodes/:nodeId', authentication.authenticateRequest, nodes.updateNodePropertiesHandler);
+
   winston.log('debug', 'finished setting up routes');
   winston.log('debug', serverPort);
 
@@ -68,7 +66,7 @@ const start = function start(serverPort, cb) {
 
   // Start the server
   const server = app.listen(serverPort, () => {
-    //console.log('%s listening at %s', app.name, app.url);
+    //winston.log('debug', '%s listening at %s', app.name, app.url);
     // Return the server to a callback function if one has been specified
     // TODO: turn this into a Promise
     if (cb) {

@@ -16,8 +16,9 @@ projects.create = function( project ) {
   return new Promise( function(resolve, reject)  {
     db.one({
       name: "create-project",
-      text: "INSERT INTO projects(name, description, userid, style) VALUES($1, $2, $3, $4) returning id, name, description, style, createdat",
-      values: [project.name, project.description, project.userId, project.style]
+      text: "INSERT INTO projects(name, description, userid, style, vocabulary)\
+       VALUES($1, $2, $3, $4, $5) returning id, name, description, style, createdat, vocabulary",
+      values: [project.name, project.description, project.userId, project.style, '{}']
     }).then( (result) => {
       // Store the result so we can return it later
       createProjectResult = result;
@@ -79,7 +80,7 @@ projects.find = function( params ) {
 
   if( queryParams.length === 0 ) {
     throw new RapidoError(RapidoErrorCodes.invalidField, "No parameters provided for find projects operation")
-    //console.log('This is the error**************************')
+    //winston.log('debug', 'This is the error**************************')
   }
 
   return db.manyOrNone({

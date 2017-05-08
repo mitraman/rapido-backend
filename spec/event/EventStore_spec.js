@@ -3,195 +3,185 @@
 var EventStore = require('../../src/event/EventStore.js');
 var config = require('../../src/config.js');
 const dataAccessor = require('../../src/db/DataAccessor.js');
+const SketchEventStream = require('../../src/event/SketchEventStream.js');
+const Promise = require('bluebird');
+const winston = require('winston');
 
 describe('EventStore ', function() {
 
-  beforeEach(function() {
-    let es = new EventStore();
-    es.removeAllSubscribers();
+  let sketchId = 10;
+
+  beforeEach(function(done) {
+    //let es = new EventStore();
+    //es.clearAllStreams();
+    winston.log('debug', 'deleting all event data from database');
+    // remove the event history before each test
+    const db = dataAccessor.getDb();
+    db.query('delete from sketchevents;')
+    .then( () => {
+    }).finally(done);
   })
 
   it('should store an event', function(done) {
     let es = new EventStore();
-    let newEvent = {
-      eventId: 'uuid-eventid',
-      type: 'add-node-event',
-      data: {
-        sketch: 12332,
-        user: 12,
-        node: {
-          parent: 23,
-          name: '/bleh',
-          path: '/api/bleh',
-          responseData: {
-            'GET': {
-              contentType: 'application/json',
-              data: ''
-            }
-          }
-        }
-      }
-    }
-    es.push(newEvent)
+
+    let newEvent = { data: 'blah blah' };
+    let eventType = 'test_type';
+
+    es.push(sketchId, eventType, newEvent)
     .then( (result) => {
       expect(result.id).not.toBeUndefined();
-
-      // Check to see if the event was added to the postgres db
-      let db =  dataAccessor.getDb();
-      db.any('SELECT * from events')
-      .then( result => {
-        //expect(result.length).toBe(1);
-        console.log(result);
-        done();
-      })
-    }).catch( (error) => {
-      fail(error);
-    })
-  })
-
-  it('should store two events', function(done) {
-    let es = new EventStore();
-    let db =  dataAccessor.getDb();
-
-    es.push({name: 'test'})
-    .then( (result) => {
-      expect(result.id).not.toBeUndefined();
-
-      // Check to see if the event was added to the postgres db
-      return db.any('SELECT * from events');
-    }).then( result => {
-      //expect(result.length).toBe(1);
-      console.log(result);
-      return es.push({name:'second'});
-    }).then( result => {
-        return db.any('SELECT * from events');
-    }).then( result => {
-      console.log(result);
     }).catch( (error) => {
       fail(error);
     }).finally(done)
-
   })
 
-  it('should call a callback function when an event is added', function(done) {
+  it('should provide a readable event stream of all new events', function(done) {
     let es = new EventStore();
+    let eventCount = 0;
 
-    es.subscribe((eventReceived)=> {
-      expect(eventReceived.id).not.toBeUndefined();
-      expect(eventReceived.event.data.index).toBe(1);
-      done();
-    })
-
-    es.push({
-        eventId: 'id-1',
-        type: 'testing',
-        data: {
-          index: 1
-        }
-    });
-
-  })
-
-  it('should call a callback function when events are added', function(done) {
-    let es = new EventStore();
-
-    const numberOfEvents = 10;
-    let numberOfEventsReceived = 0;
-
-    es.subscribe((eventReceived)=> {
-      expect(eventReceived.id).not.toBeUndefined();
-      numberOfEventsReceived++;
-      if(numberOfEventsReceived === numberOfEvents) {
+    es.subscribe(sketchId, (event) => {
+      eventCount++;
+      if( eventCount === 3 ) {
         done();
       }
     })
 
-    for( let i = 0; i < numberOfEvents; i++ ) {
-      es.push({
-        eventId: 'id-1',
-        type: 'testing',
-        data: {
-          index: i
-        }
-      });
-    }
+     es.push(sketchId, 'test_event', { eventId: 'test', testname: 'stream-test-1' })
+     es.push(sketchId, 'test_event',{ eventId: 'test', testname: 'stream-test-1' })
+     es.push(sketchId, 'test_event',{ eventId: 'test', testname: 'stream-test-1' })
   })
 
-  it('should call a callback function when events that match a pattern are added', function(done) {
+
+  it('should provide a readable event stream of new events for a particular sketch ID', function(done) {
+    let es = new EventStore();
+    let eventCount = 0;
+
+    es.subscribe(sketchId, (event) => {
+      eventCount++;
+      expect(event.type).toBe('good');
+      if( eventCount === 2 ) {
+        done();
+      }
+    }, 0);
+
+    es.push(sketchId, 'good',{ eventId: 'test', type:'good', testname: 'stream-test-1' })
+    es.push(0, 'bad',{ eventId: 'test', type: 'bad', testname: 'stream-test-1' })
+    es.push(sketchId, 'good',{ eventId: 'test', type: 'good', testname: 'stream-test-1' })
+
+  })
+
+  it('should provide a history of events if an index is specified', function(done) {
     let es = new EventStore();
 
-    let filter = function(event) {
-      return ( event.type === 'update-node-event');
+    let events = [];
+    const numEvents = 100;
+    for( let i = 0; i < numEvents; i++ ) {
+      events.push(es.push(sketchId, 'pre', { eventId: i, type: 'pre'}));
     }
 
-    const numberOfEvents = 1;
-    let numberOfEventsReceived = 0;
+    let eventCount = 0;
+    let eventHandler = function(event) {
+      if( eventCount < numEvents ) {
+        expect(event.type).toBe('pre');
+      }
+      eventCount++;
+      if( eventCount === numEvents ) {
+        // Push a new event to make sure we can receive it
+        es.push(sketchId, 'post', { type: 'post'})
+      } else if( eventCount > numEvents ) {
+        // Make sure we received the new event.
+        expect(event.type).toBe('post');
+        done();
+      }
+    }
 
-    es.subscribe((eventReceived) => {
-      expect(eventReceived.id).not.toBeUndefined();
-      expect(eventReceived.event.type).toBe('update-node-event');
+    // Subscribe to the sketch event stream
+    es.subscribe(sketchId, eventHandler, 0);
+
+    // Fire the events
+    //Promise.all(events);
+    Promise.reduce(events, function(success, result) {
+      return new Promise( (resolve,reject) => {
+        resolve();
+      })
+    })
+  })
+
+  it('should transmit a client specified token when emitting an event', function(done) {
+    let es = new EventStore();
+    let token = 'test-token';
+
+    let eventHandler = function(event) {
+      expect(event.token).toBe(token);
       done();
-    }, filter);
+    }
 
-    es.push({
-      eventId: 'id-2',
-      type: 'add-profile'
-    });
-    es.push({
-      eventId: 'id-23890',
-      type: 'update-node-event'
-    });
-    es.push({
-      eventId: 'id-s',
-      type: 'add-profile'
-    });
+    es.subscribe(sketchId, eventHandler);
+    es.push(sketchId, 'test', { name: 'test-event'}, token);
+
   })
 
-  fit('should replay events from a starting index and send future events', function(done) {
-
+  it('should support many events being fired at the same time', function(done) {
     let es = new EventStore();
 
-    let lastEventId;
-    // First add a few events
-    es.push({ eventId: 'pre-event-1', type: 'pre-event', testname: 'replay1' });
-    es.push({ eventId: 'pre-event-2', type: 'pre-event', testname: 'replay1' });
-    es.push({ eventId: 'pre-event-3', type: 'pre-event', testname: 'replay1' })
-    .then( (result) => {
-      lastEventId = result.id;
+    let events = [];
+    const numEvents = 50;
+    for( let i = 0; i < numEvents; i++ ) {
+      events.push(es.push(sketchId, 'pre', { eventId: i, type: 'pre'}));
+    }
 
-      let numberOfEventsReceived = 0;
-      let startIndex = lastEventId;
+    let eventCount = 0;
+    let eventHandler = function(event) {
+      eventCount++;
+      if( eventCount >= numEvents ) {
+        done();
+      }
+    }
 
-      // console.log('lastEventId:', lastEventId);
-      // console.log('startIndex:', startIndex);
+    // Subscribe to the sketch event stream
+    es.subscribe(sketchId, eventHandler, 0);
 
-      let filter = function(event) {
-          return( event.testname === 'replay1');
-      };
+    // Fire the events
+    Promise.all(events);
+  })
 
-      // Start listening from the 2nd event
-      es.subscribe((eventReceived) => {
-        // console.log(eventReceived);
-        numberOfEventsReceived++;
-        if( eventReceived.id === lastEventId ) {
-          expect(eventReceived.event.type).toBe('pre-event');
-        }else {
-          expect(eventReceived.event.type).toBe('post-event');
-          if( numberOfEventsReceived == 3 ) {
-            done();
-          }
-        }
-      }, filter, startIndex)
+  it('should only send events to a matching listener', function(done) {
+    let es = new EventStore();
+    const wrongSketchId = 200;
 
-      es.push({ eventId: 'post-event-4', type: 'post-event', testname: 'replay1' });
-      es.push({ eventId: 'post-event-5', type: 'post-event', testname: 'replay1' });
+    let eventHandler = function(event) {
+      expect(event.data.sketchId).toBe(sketchId);
+      done();
+    }
 
-    });
+    let wrongHandler = function(event) {
+      fail('this stream should not have been called.');
+    }
 
-  });
+    es.subscribe(sketchId, eventHandler);
+    es.subscribe(wrongSketchId, wrongHandler);
 
-  it('should not replay any events if the subscription index is too high', function(done) {
-    fail('not implemented yet.');
+    es.push(sketchId, 'test_event', { sketchId: sketchId});
+  })
+
+  it('should stop sending events when a listener unsubscribes', function(done) {
+    let es = new EventStore();
+
+    let handlerSpy = jasmine.createSpy('handlerSpy')
+
+    es.subscribe(sketchId, handlerSpy);
+    es.push(sketchId, 'test_event', { sketchId: sketchId, test: 'subscribed'})
+    .then( () => {
+        return es.unsubscribe(sketchId, handlerSpy);
+    }).then( () => {
+        return es.push(sketchId, 'test_event', { sketchId: sketchId, test: 'unsubscribed'});
+    }).then( () => {
+        expect(handlerSpy.calls.count()).toBe(1);
+    }).catch( e => fail(e)).finally(done)
+
+
+
   })
 
 });

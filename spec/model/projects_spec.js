@@ -36,11 +36,12 @@ describe('create new projects', function() {
   it( 'should create a new project', function(done) {
     projects.create(newProject)
     .then( (result) => {
-      expect(result).not.toBeUndefined();
+      expect(result).toBeDefined();
       expect(result).not.toBeNull();
       expect(result.id).not.toBe(null);
       expect(result.name).toBe(newProject.name);
       expect(result.style).toBe(newProject.style);
+      expect(result.vocabulary).toEqual({});
     }).catch( (error)=>{
       winston.log('error', error);
       expect(error).toBe(null);
@@ -148,7 +149,7 @@ describe('find projects', function() {
     .then( (result) => {
       expect(result.length).toBe(numProjects);
       result.forEach(function(project){
-          expect(project.name).not.toBeUndefined();
+          expect(project.name).toBeDefined();
       })
     }).catch( (error) => {
       expect(error).toBeNull();

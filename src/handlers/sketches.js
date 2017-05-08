@@ -48,10 +48,6 @@ module.exports = {
       };
     }
 
-    // Set Parameters to default values if they are not defined
-    let name = (req.body.name) ? req.body.name : '';
-    let description = (req.body.description) ? req.body.description : '';
-
     // Get the project ID from the URL parameters
     let projectId = req.params.projectId;
 
@@ -66,8 +62,6 @@ module.exports = {
         throw new AuthorizationException("User is not authorized to create a sketch for project ID " + projectId);
       }else {
         return sketches.create({
-          name: name,
-          description: description,
           projectId: projectId,
           userId: userId
         })
@@ -75,8 +69,6 @@ module.exports = {
     }).then( (result) => {
       res.status(201).send(representer.responseMessage({
         id: result.id,
-        name: result.name,
-        description: result.description,
         createdAt: result.createdat
       }));
     }).catch( (e) => {

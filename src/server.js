@@ -7,11 +7,11 @@ const winston = require('winston');
 
 winston.level = 'debug';
 
-console.log('loading configuration from rapido.json');
+winston.log('debug', 'loading configuration from rapido.json');
 config.load('../rapido.json');
 
-console.log('connecting to databse');
+winston.log('debug', 'connecting to databse');
 dataAccessor.start(config.database)
 
-console.log('starting server...');
+winston.log('debug', 'starting server...');
 serverManager.start(config.port);

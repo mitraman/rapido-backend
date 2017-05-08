@@ -59,9 +59,9 @@ users.update = function( params, id ) {
   queryParams.push(id);
   queryString += " where id=$" + queryParams.length;
 
-  //  console.log(queryName);
-  //  console.log(queryString);
-  //  console.log(queryParams);
+  //  winston.log('debug', queryName);
+  //  winston.log('debug', queryString);
+  //  winston.log('debug', queryParams);
 
   return db.none({
     name: queryName,
@@ -106,7 +106,7 @@ users.find = function( params ) {
 
   if( queryParams.length === 0 ) {
     throw new RapidoError(RapidoErrorCodes.invalidField, "No parameters provided for find operation")
-    //console.log('This is the error**************************')
+    //winston.log('debug', 'This is the error**************************')
   }
 
   winston.log('debug', 'users.find:', queryString);

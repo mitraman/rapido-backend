@@ -6,9 +6,7 @@ const winston = require('winston');
 const dataAccessor = require('../../src/db/DataAccessor.js');
 const HandlerSupport = require('./support.js');
 
-
-
-describe('Projects API', function() {
+describe('handlers/projects.js ', function() {
 
   const server_port = config.port;
   const urlBase = 'http://localhost:' + server_port + '/api';
@@ -17,7 +15,7 @@ describe('Projects API', function() {
   };
 
   const projectsUrl = urlBase + '/projects';
-  const projectUrlTemplate = urlBase + '/project/{projectId}';
+  const projectUrlTemplate = urlBase + '/projects/{projectId}';
   let projectUrl;
 
   // Credentials for registering and login
@@ -55,6 +53,7 @@ describe('Projects API', function() {
   }
 
   beforeAll(function(done) {
+
     HandlerSupport.registerAndLogin('ProjectsTest')
     .then( (result) => {
       const authValue = 'Bearer ' + result.token;
@@ -64,6 +63,21 @@ describe('Projects API', function() {
     }).catch( (error) => {
       fail(error);
     })
+  })
+
+  beforeEach(function(done) {
+    // Remove database data
+    // Remove all of the project entries in the database for our test useer
+    const db = dataAccessor.getDb();
+
+    // First delete all of this user's sketches
+    db.query("DELETE FROM sketches where userid=" + userid)
+    .then( ()=> {
+      // Next delete the projects
+    return db.query("DELETE FROM projects WHERE userid = " +  userid)
+    }).catch( (error) => {
+      fail(error);
+    }).finally(done)
   })
 
   describe('POST /projects', function() {
@@ -172,22 +186,6 @@ describe('Projects API', function() {
 
   describe('GET /projects', function() {
 
-
-
-    beforeEach(function(done) {
-      // Remove all of the project entries in the database for our test useer
-      const db = dataAccessor.getDb();
-
-      // First delete all of this user's sketches
-      db.query("DELETE FROM sketches where userid=" + userid)
-      .then( ()=> {
-        // Next delete the projects
-      return db.query("DELETE FROM projects WHERE userid = " +  userid)
-      }).catch( (error) => {
-        fail(error);
-      }).finally(done)
-    })
-
     it( 'should reject an attempt to retrieve projects without a signed in user', function(done) {
       request.get(
         {
@@ -247,17 +245,33 @@ describe('Projects API', function() {
   describe ('GET /projects/{id}', function() {
 
 
+    it ('should return a 404 if the specified project was not found', function(done) {
+      const projectsToAdd = 1;
+      let addedProjects = [];
+      addProject(projectsToAdd, addedProjects, 1, function(projectCount) {
 
-    beforeEach(function() {
-      // Remove all of the project entries in the database for our test useer
-      const db = dataAccessor.getDb();
-      //console.log(userid);
-      db.query("DELETE FROM projects WHERE userid = " +  userid);
+        let project = addedProjects[0];
+        projectUrl =  projectUrlTemplate.replace(/{projectId}/gi, '239929');
+        request.get({
+            url: projectUrl,
+            headers: headers
+          }, function(err, res, body) {
+            expect(err).toBe(null);
+            expect(res.statusCode).toBe(404);
+            expect(body).not.toBeNull();
+            let jsonBody = JSON.parse(body);
+            expect(jsonBody.error).toBe('Unable to locate the specified project for this user.');
+            done();
+        })
+      })
+    })
 
+    xit( 'should return a 404 if the specified project is not owned by this user', function(done) {
+      fail('to be implemented');
     })
 
     // Implement this if we need it later on.
-    xit ('should retrieve a specific project', function(done){
+    it ('should retrieve a specific project', function(done){
       const projectsToAdd = 4;
       let addedProjects = [];
 
@@ -269,15 +283,29 @@ describe('Projects API', function() {
             url: projectUrl,
             headers: headers
           }, function(err, res, body) {
-            console.log('made call');
+            winston.log('debug', 'body:', body);
             expect(err).toBe(null);
             expect(res.statusCode).toBe(200);
             expect(body).not.toBeNull();
+
             let jsonBody = JSON.parse(body);
-            expect(jsonBody.name).toBe(project.name)
+            expect(jsonBody.project.name).toBe(project.name)
+            expect(jsonBody.project.description).toBe(project.description);
+            expect(jsonBody.project.style).toBe('CRUD');
+            expect(jsonBody.project.createdAt).toBeDefined();
+            expect(jsonBody.project.sketches).toBeDefined();
+            expect(jsonBody.project.sketches.length).toBe(1);
+
+            let sketch = jsonBody.project.sketches[0];
+            expect(sketch.id).toBeDefined();
+            expect(sketch.tree).toBeDefined();
+            expect(sketch.createdAt).toBeDefined();
+            expect(jsonBody.project.vocabulary).toEqual({});
+
             done();
         })
       })
     })
+
   })
 })

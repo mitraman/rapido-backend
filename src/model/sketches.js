@@ -10,8 +10,8 @@ sketches.create = function( sketch ) {
   const db = dataAccessor.getDb();
   return db.one({
     name: "create-sketch",
-    text: "INSERT INTO sketches(name, description, projectid, userid) VALUES($1, $2, $3, $4) returning id, name, description, createdat",
-    values: [sketch.name, sketch.description, sketch.projectId, sketch.userId]
+    text: "INSERT INTO sketches(projectid, userid) VALUES($1, $2) returning id, createdat",
+    values: [sketch.projectId, sketch.userId]
   });
 
 }
@@ -28,13 +28,12 @@ sketches.findByProject = function (projectId) {
       let sketches = [];
       for( let i = 0; i < result.length; i++ ) {
         sketches.push({
-          name: result[i].name,
-          description: result[i].description,
+          id: result[i].id,
           projectId: result[i].projectid,
           createdAt: result[i].createdat,
           modifiedAt: result[i].modifiedat,
-          sketchData: result[i].treedata,
-          vocabulary: result[i].vocabulary
+          tree: result[i].treedata,
+          orphans: result[i].orphans
         });
       }
       resolve(sketches);

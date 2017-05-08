@@ -6,6 +6,7 @@ const RapidoErrorCodes = require('../../src/errors/codes.js');
 const jwt = require('jsonwebtoken');
 const representer = require('../representers/json.js')();
 
+console.log('************************ GET SECRET FROM ENVIRONMENT!!!!! *****');
 //TODO: get the secret from the environment
 const secret = 'secret';
 
@@ -50,5 +51,6 @@ module.exports = {
 			next();
 		}
 	}
+
 
 }

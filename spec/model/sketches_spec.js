@@ -8,8 +8,6 @@ const winston = require('winston')
 const dataAccessor = require('../../src/db/DataAccessor.js');
 
 const newSketch = {
-  name: 'test sketch',
-  description: 'a sketch description',
   userId: -1,
   projectId: -1
 };
@@ -75,16 +73,16 @@ describe('sketch model', function() {
   });
 
   it( 'should find a list of sketches for a project', function (done) {
+
     // Add a few sketches
     const numSketches = 8;
+
     let addSketches = function (index, finished) {
       if( index >= numSketches ) {
         finished();
         return;
       }
       sketches.create({
-        name: newSketch.name + index,
-        description: newSketch.description,
         userId: newSketch.userId,
         projectId: newSketch.projectId
       }).then( (result) => {
@@ -94,6 +92,7 @@ describe('sketch model', function() {
       })
     }
 
+    //Recursive iterator to validate sketches.
     let validateSketches = function( sketches, done, index ) {
       if( !index ) {
         index = 0;
@@ -103,14 +102,12 @@ describe('sketch model', function() {
       }
       let sketch = sketches[index];
 
-      //console.log(sketch);
-      expect(sketch.name).toBe(newSketch.name+index);
-      expect(sketch.description).toBe(newSketch.description);
       expect(sketch.projectId).toBe(newSketch.projectId);
 
       validateSketches(sketches, done, index+1);
     }
 
+    // ** MAIN
     addSketches(0, () => {
       sketches.findByProject(newSketch.projectId)
       .then( (result)=> {

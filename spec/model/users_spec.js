@@ -38,10 +38,8 @@ describe('create new users', function() {
   xit( 'should reject a duplicate user insertion', function(done) {
     users.create(newUser)
     .then((result)=>{
-      console.log(result);
       fail("expected error");
     }).catch((error)=>{
-      console.log(error);
       expect(error).not.toBe(null);
     }).finally(done);
   });

@@ -12,6 +12,7 @@ CREATE TABLE public.projects
     name character varying COLLATE pg_catalog."default",
     description text COLLATE pg_catalog."default",
     userid integer REFERENCES users(id),
+    vocabulary jsonb,
     createdat timestamp with time zone NOT NULL DEFAULT now(),
     modifiedat timestamp with time zone DEFAULT now(),
     createdby bigint,

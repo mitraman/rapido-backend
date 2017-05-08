@@ -6,7 +6,7 @@ const winston = require('winston');
 const dataAccessor = require('../../src/db/DataAccessor.js');
 const HandlerSupport = require('./support.js');
 
-describe('Sketchtes API', function() {
+describe('Sketches API', function() {
 
   const server_port = config.port;
   const urlBase = 'http://localhost:' + server_port + '/api';
@@ -104,8 +104,8 @@ describe('Sketchtes API', function() {
           url: invalidSketchesUrl,
           headers: headers
       },function(err, res, body) {
-          expect(res.statusCode).toBe(401);
-          done();
+        expect(res.statusCode).toBe(401);
+        done();
       });
 
     })
@@ -121,25 +121,6 @@ describe('Sketchtes API', function() {
         },function(err, res, body) {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(201);
-            expect(body.name).toBe(name);
-            expect(body.description).toBe('');
-            expect(body.createdAt).not.toBeUndefined();
-            done();
-        }
-      )
-    })
-
-    it( 'should create a new sketch with no name', function(done) {
-      request.post(
-        {
-          url: sketchesUrl,
-          headers: headers
-        },function(err, res, rawBody) {
-          // Request probably doesn't parse the body if we don't send a JSON on the request
-          let body = JSON.parse(rawBody);
-            expect(err).toBe(null);
-            expect(res.statusCode).toBe(201);
-            expect(body.name).toBe('');
             expect(body.createdAt).not.toBeUndefined();
             done();
         }
