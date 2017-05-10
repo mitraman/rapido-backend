@@ -29,17 +29,17 @@ Sketches.getSubscription = function(sketchId, label) {
 
         // Create a new subscriber object
         subscriber = new TreeEventSubscription(sketchId, treeEventProcessor, label);
-
         Sketches.es.subscribe(sketchId, subscriber.onEvent, 0);
-
         winston.log('debug', '[Sketches.getSubscription] storing subscription: ', subscriber);
         // Store the subscription in cache
         Sketches.cache.set(sketchId, subscriber);
+        resolve(subscriber);
       }else {
         winston.log('debug', '[Sketches.getSubscription] An existing subscriber was retrieved form cache: ', subscriber);
         winston.log('debug', '[Sketches.getSubscription] lastEventIDProcessed:', subscriber.getLastEventID());
+        resolve(subscriber);
       }
-      resolve(subscriber);
+
     })
   });
 }
@@ -49,12 +49,37 @@ Sketches.prototype.getTree = function(sketchId, label) {
   // Get the most recent version of the tree by checking for the last event
   // recorded for this sketch.
   return new Promise( (resolve, reject) => {
+    let subscriber;
     Sketches.getSubscription(sketchId, label)
-    .then( subscription => {
-      winston.log('debug', '[Sketches.getTree] cached tree:', subscription.tree);
-      resolve({tree:subscription.tree});
-    })
-
+    .then( subscriber => {
+      winston.log('debug', '[Sketches.getTree] cached tree:', subscriber.tree);
+      this.subscriber = subscriber;
+      return Sketches.es.getLastEventID(sketchId);
+    }).then( lastEventID => {
+      if( lastEventID ) {
+        if( this.subscriber.lastEventIDProcessed >= lastEventID ) {
+          winston.log('debug', '[Sketches.getTree] subscriber is up to date')
+          resolve({tree:this.subscriber.tree})
+        }else {
+          winston.log('debug', '[Sketches.getTree] waiting for historical events to be applied.');
+          // Setup an event handler to listen for processed events
+          let processedHandler = function(event) {
+            // If we catch the event we are pushing, resolve the promise
+            winston.log('debug', '[Sketches.getTree] processed event caught:', event);
+            if( event.id >= lastEventID) {
+              this.subscriber.stream().removeListener('event_processed', processedHandler);
+              resolve({
+                tree: this.subscriber.tree
+              });
+            }
+          }.bind(this);
+          this.subscriber.stream().on('event_processed', processedHandler);
+        }
+      }else {
+        winston.log('debug', '[Sketches.getTree] no historical events exist for this sketch.');
+        resolve({tree:this.subscriber.tree});
+      }
+    });
   })
 }
 
@@ -239,6 +264,10 @@ Sketches.prototype.reset = function() {
       resolve(Sketches.cache.flushAll());
     })
   })
+}
+
+Sketches.prototype.getEventStore = function() {
+  return Sketches.es;
 }
 
 module.exports = new Sketches();

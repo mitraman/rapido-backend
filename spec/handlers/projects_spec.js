@@ -226,6 +226,7 @@ describe('handlers/projects.js ', function() {
             url: projectsUrl,
             headers: headers
           }, function(err, res, body) {
+            console.log(body);
             expect(err).toBe(null);
             expect(res.statusCode).toBe(200);
             expect(body).not.toBeNull();

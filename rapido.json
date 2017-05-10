@@ -6,6 +6,7 @@
     "user": "postgres",
     "password": "password"
   },
+  "secret": "replaced_by_env",
   "port": 9090,
   "nodemailer": {
     "options": {

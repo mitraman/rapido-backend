@@ -5,22 +5,22 @@ const winston = require('winston');
 const RapidoErrorCodes = require('../../src/errors/codes.js');
 const jwt = require('jsonwebtoken');
 const representer = require('../representers/json.js')();
+const config = require('../config.js');
 
-console.log('************************ GET SECRET FROM ENVIRONMENT!!!!! *****');
-//TODO: get the secret from the environment
-const secret = 'secret';
 
-module.exports = {
+let authentication = function() {
+	this.secret = config.secret;
+}
 
-	generateJWT: function(payload) {
-		return jwt.sign(payload, secret);
-  },
+authentication.prototype.generateJWT = function(payload) {
+	return jwt.sign(payload, this.secret);
+}
 
-	validateJWT: function(token) {
-		return jwt.verify(token, secret);
-	},
+authentication.prototype.validateJWT = function(token) {
+	return jwt.verify(token, this.secret);
+}
 
-	authenticateRequest(req, res, next) {
+authentication.prototype.authenticateRequest = function(req, res, next) {
 		winston.log('debug', 'In authentication middleware');
 
 		//TODO: use a regex to improve the pattern matching`
@@ -50,7 +50,6 @@ module.exports = {
 			}
 			next();
 		}
-	}
-
-
 }
+
+module.exports = new authentication();

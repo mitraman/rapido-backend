@@ -103,7 +103,9 @@ describe('/services/sketches.js ', function() {
 
     beforeEach(function(done){
       // Generate a tree
-      sketchService.addTreeNode(sketchId, node1).then(done);
+      sketchService.addTreeNode(sketchId, node1).then( result => {
+        node1.id = result.nodeId;
+      }).finally(done);
     })
 
     it('should return a cached copy of a sketch tree', function(done) {
@@ -117,7 +119,62 @@ describe('/services/sketches.js ', function() {
       }).finally(done);
     });
 
-  })
+    it('should return a sketch tree filled with historical events', function(done) {
+      // Add a few more events to the sketch
+      let child1 = createEmptyNode('child1', '/child1');
+      let child2 = createEmptyNode('child2', '/child2');
+      let grandchild1 = createEmptyNode('gc1', '/gc1');
+
+      sketchService.addTreeNode(sketchId, child1, node1.id)
+      .then( result => {
+        return sketchService.addTreeNode(sketchId, grandchild1, result.nodeId);
+      }).then( result => {
+        return sketchService.addTreeNode(sketchId, child2, node1.id);
+      }).then( result => {
+          // Flush the cache so that the tree needs to be rebuilt
+          return sketchService.reset();
+      }).then( result => {
+          // Make sure the tree is populated
+          return sketchService.getTree(sketchId);
+      }).then( result => {
+        winston.log('debug', result.tree)
+        expect(result.tree.rootNodes.length).toBe(1);
+        expect(result.tree.rootNodes[0].children.length).toBe(2);
+        expect(result.tree.rootNodes[0].children[0].name).toBe('child1');
+        expect(result.tree.rootNodes[0].children[0].children[0].name).toBe('gc1')
+      }).catch( e => {fail(e);}).finally(done);
+    });
+
+    fit('should wait for all historical events to be applied before returning a result', function(done) {
+      // Need to mock the Event Store to simulate a situation in which getTree
+      // must wait for events to finish processing.
+      spyOn(sketchService.getEventStore(), 'getLastEventID').and.callFake( ()=>{
+        return new Promise( (resolve,reject) => {
+          resolve(2);
+        });
+      })
+
+      let nodeId = 'node-id';
+
+      sketchService.getTree(sketchId)
+      .then(result => {
+        // getTree should not resolve until we push an event with id 2
+        expect(result.tree.hash[nodeId]).toBeDefined();
+      }).catch(e => {fail(e)}).finally(done);
+
+      // Push events
+      sketchService.getEventStore().push(sketchId,
+        'treenode_added',
+        {
+          id: 2,
+          node: {
+            id: nodeId,
+            name: 'testing',
+            fullpath: '/testing'
+          }
+        });
+      })
+    })
 
   describe('updateNode', function() {
     let sketchId = 10;

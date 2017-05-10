@@ -7,8 +7,11 @@
 // Setup logger before any other requires so that the winston is active.
  const winston = require('winston');
  // Set the log level
- //winston.level = 'debug';
- winston.level = 'off';
+ winston.level = 'debug';
+ //winston.level = 'off';
+
+const config = require('../src/config.js');
+config.load('../rapido-test.json');
 
 
 var Jasmine = require('jasmine');
@@ -16,7 +19,7 @@ var jasmine = new Jasmine();
 var serverManager = require('../src/server-setup.js');
 var pgtools = require('pgtools');
 var pgp = require('pg-promise')();
-var config = require('../src/config.js');
+
 const dataAccessor = require('../src/db/DataAccessor.js');
 const mailServer = require('./mail-server.js');
 
@@ -35,7 +38,6 @@ const mailServer = require('./mail-server.js');
 // })
 
 
-config.load('../rapido-test.json');
 
 // Use a test version of the database
 const db_config = {

@@ -56,15 +56,14 @@ module.exports = {
 
 			}
 		}).then( (sketches) => {
-			winston.log('debug', 'sketches.findByProject result:', sketches);
+			winston.log('debug', '[handler/projects.findByProject] retrieved sketches:', sketches);
 			let getTreePromises = [];
 
 			// Tree data comes from the sketch service.
 			// Fire async promises for each sketch in the list and wait to collect the
 			// results.
 			for( let i = 0; i < sketches.length; i++ ) {
-				winston.log('debug', sketches[i]);
-				winston.log('debug', 'retrieving tree data for sketch ', sketches[i].id);
+				winston.log('debug', '[handler/projects.findByProject] retrieving tree data for sketch ', sketches[i].id);
 				let sketch = {
 					id: sketches[i].id,
 					createdAt: sketches[i].createdAt
@@ -75,14 +74,15 @@ module.exports = {
 
 			return Promise.all(getTreePromises);
 		}).then( (trees) => {
-				winston.log('debug', 'result of Promise.all(getTreePromises):', trees);
+				winston.log('debug', '[handler/projects.findByProject] result of Promise.all(getTreePromises):', trees);
 
 				for( let i = 0; i < trees.length; i++ ) {
-					responseBody.project.sketches[i].tree = trees[i];
+					winston.log('debug', '[handler/projects.findByProject] sketch  #' + i + ' getTree result:', trees[i]);
+					responseBody.project.sketches[i].tree = trees[i].tree.rootNodes;
 				}
 
 				// Send the data back to the client
-				winston.log('debug', 'sending responseBody: ',responseBody);
+				winston.log('debug', '[handler/projects.findByProject] sending responseBody: ',responseBody);
 				res.send(representer.responseMessage(responseBody));
 		}).catch( (error) => {
 			if( error.name === 'RapidoError' ) {

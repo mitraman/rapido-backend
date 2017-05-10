@@ -9,34 +9,6 @@ const projects = require('../model/projects.js');
 
 module.exports = {
 
-	findSketchesHandler: function(req, res, next) {
-		winston.log('debug', 'findSketchesHandler called.');
-    /*
-		let userId = req.credentials.id;
-		projects.findByUser(userId)
-		.then( (result) => {
-			winston.log('debug', 'found projects: ', result);
-			// Create a collection of project results
-			let projectResults = [];
-			for( let i = 0; i < result.length; i++ ) {
-				projectResults.push({
-					id: result[i].id,
-					name: result[i].name,
-					description: result[i].description,
-					style: result[i].style,
-					createdAt: result[i].createdat
-				})
-			}
-			res.status(200).send(representer.responseMessage({
-				projects: projectResults
-			}));
-		}).catch( (error) => {
-			winston.log('warn', 'An error occurred while trying to find projects: ', error);
-      res.status(500).send(representer.errorMessage('Unable to retrieve projects'));
-		})
-    */
-	},
-
 	createSketchHandler: function(req, res, next) {
 		winston.log('debug', 'createProjectHandler called.');
 		winston.log('debug', req.body);
