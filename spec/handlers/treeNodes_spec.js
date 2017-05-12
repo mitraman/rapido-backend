@@ -124,6 +124,15 @@ describe('handlers/nodes.js', function() {
       )
     })
 
+    it('should apply updates to a set of nodes', function(done) {
+      request.post(
+        url: nodeUrl,
+        headers: headers
+      ), function(err, res, body) {
+
+      }
+    })
+
     it('should update the name and path of a node', function(done) {
       request.post(
         {

@@ -1,6 +1,5 @@
 "use strict";
 
-const passport = require('passport');
 const winston = require('winston');
 const RapidoErrorCodes = require('../../src/errors/codes.js');
 const jwt = require('jsonwebtoken');

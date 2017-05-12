@@ -44,6 +44,9 @@ TreeEventProcessor.treenode_updated_fields = function(event, tree) {
     throw new Error('unable to locate node to be udated.');
   }
 
+  //TODO: remove fullpath as a property.  fullpath should be constructed
+  // based on the tree data, not persisted
+
   // Iterate through the properties and update
   Object.keys(event.data.fields).forEach((fieldKey)=> {
     if(fieldKey === 'name') {
