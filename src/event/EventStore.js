@@ -26,6 +26,7 @@ EventStore.processNextEvent = function() {
     return;
   }
 
+  let userId = eventObject.userId;
   let sketchId = eventObject.sketchId;
   let eventType = eventObject.eventType;
   let newEvent = eventObject.event;
@@ -35,7 +36,7 @@ EventStore.processNextEvent = function() {
   winston.log('debug', '[EventStore.processNextEvent] for sketch '
     + sketchId  +' with event:', newEvent);
   let jsonData = JSON.stringify(newEvent);
-  EventStore.db.one('INSERT INTO sketchevents (sketchid, eventtype, eventdata) VALUES ($1, $2, $3) RETURNING ID', [sketchId, eventType, jsonData])
+  EventStore.db.one('INSERT INTO sketchevents (userid, sketchid, eventtype, eventdata) VALUES ($1, $2, $3, $4) RETURNING ID', [userId, sketchId, eventType, jsonData])
   .then( data => {
     winston.log('debug', '[EventStore.processNextEvent] stored event: ', newEvent);
 
@@ -46,9 +47,7 @@ EventStore.processNextEvent = function() {
       token: token
     }
     winston.log('debug', 'listeners:', EventStore.eventEmitter.listeners(sketchId));
-    EventStore.eventEmitter.listeners(sketchId).forEach(listener => {
-      console.log('>>>', listener);
-    })
+
     // Emit to event listeners
     winston.log('debug', '[EventStore.processNextEvent] listener count for '
       + sketchId + ' events is : ' + EventStore.eventEmitter.listenerCount(sketchId));
@@ -64,10 +63,11 @@ EventStore.processNextEvent = function() {
 
 }
 // Pushes an event onto the event store queue for processing as soon as possible
-EventStore.prototype.push = function (sketchId, eventType, newEvent, token) {
+EventStore.prototype.push = function (userId, sketchId, eventType, newEvent, token) {
   winston.log('debug', '[EventStore.push] called with event:', newEvent);
   return new Promise( (resolve,reject) => {
     EventStore.eventQueue.push({
+      userId: userId,
       sketchId: sketchId,
       eventType: eventType,
       event: newEvent,

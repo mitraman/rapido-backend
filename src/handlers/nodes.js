@@ -23,7 +23,7 @@ module.exports = {
 		let sketchId = req.params.sketchId
 		let nodeId;
 
-    sketchService.addTreeNode(sketchId, newNode, null, transactionID)
+    sketchService.addTreeNode(userId, sketchId, newNode, null, transactionID)
     .then( result => {
 			winston.log('debug', '[createRootNodeHandler] result of addTreeNode:', result);
 			let responseBody =
@@ -54,7 +54,7 @@ module.exports = {
 		winston.log('debug', '[createChildNodeHandler] sketchId: ' + sketchId);
 		winston.log('debug', '[createChildNodeHandler] parentId: ' + parentId);
 
-    sketchService.addTreeNode(sketchId, newNode, parentId)
+    sketchService.addTreeNode(userId, sketchId, newNode, parentId)
     .then( result => {
 				winston.log('debug', '[createChildNodeHandler] result of addTreeNode: ', result);
         res.status(201).send(representer.responseMessage({
@@ -74,6 +74,7 @@ module.exports = {
   updateNodePropertiesHandler: function(req, res, next) {
 		winston.log('debug', '[updateNodePropertiesHandler] handling request');
 
+		let userId = req.credentials.id;
 		let sketchId = req.params.sketchId;
 		let nodeId = req.params.nodeId;
 		winston.log('debug', '[updateNodePropertiesHandler] nodeId: ', nodeId);
@@ -101,7 +102,7 @@ module.exports = {
 							key: dataKey,
 							fields: dataFields
 						}
-						updatePromises.push(sketchService.updateBodyData(sketchId, nodeId, responseDataUpdate));
+						updatePromises.push(sketchService.updateBodyData(userId, sketchId, nodeId, responseDataUpdate));
 					});
 			}else if( key === 'name' ) {
 					winston.log('debug', '[updateNodePropertiesHandler] populating a field update event for the name field');
@@ -115,7 +116,7 @@ module.exports = {
 		})
 
 		if( updateFields ) {
-			updatePromises.push(sketchService.updateNodeDetails(sketchId, nodeId, responseFieldsUpdate));
+			updatePromises.push(sketchService.updateNodeDetails(userId, sketchId, nodeId, responseFieldsUpdate));
 		}
 
 		if(updatePromises.length === 0) {

@@ -31,6 +31,7 @@ describe('/services/sketches.js ', function() {
 
   beforeEach(function(done) {
     this.sketchId = 10;
+    this.userId = 99;
 
     // remove the event history before each test
     const db = dataAccessor.getDb();
@@ -38,8 +39,6 @@ describe('/services/sketches.js ', function() {
     .then( () => {
       // Flush all subscribers
       return sketchService.reset();
-    }).then( () => {
-      expect(sketchService.getEventStore._emitter().eventNames().length).toBe(0);
     }).finally(done);
   })
 
@@ -54,11 +53,10 @@ describe('/services/sketches.js ', function() {
   describe('addNode', function() {
 
     it('should add a root node to a sketch tree', function(done) {
-      console.log('&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&');
       winston.log('info', 'should add a root node to a sketch tree');
       let newNode = createEmptyNode('root_test', '/api/root_test');
 
-      sketchService.addTreeNode(this.sketchId, newNode, null, 'test1')
+      sketchService.addTreeNode(this.userId, this.sketchId, newNode, null, 'test1')
       .then( (result) => {
         expect(result).toBeDefined();
         expect(result.nodeId).toBeDefined();
@@ -74,19 +72,14 @@ describe('/services/sketches.js ', function() {
       winston.log('info', 'should add a child node to an existing node');
       let parentNode = createEmptyNode('parent', '/parent');
       let childNode = createEmptyNode('child', '/child');
-      sketchService.addTreeNode(this.sketchId, parentNode, null, 'add_child_test(parent)')
+      sketchService.addTreeNode(this.userId, this.sketchId, parentNode, null, 'add_child_test(parent)')
       .then( result => {
         expect(result.nodeId).toBeDefined();
         expect(result.tree.rootNodes[0].name).toBe(parentNode.name);
         let parentNodeId = result.nodeId;
-        return sketchService.addTreeNode(this.sketchId, childNode, parentNodeId, 'add_child_test(child)')
+        return sketchService.addTreeNode(this.userId, this.sketchId, childNode, parentNodeId, 'add_child_test(child)')
       }).then( result => {
         expect(result.nodeId).toBeDefined();
-        console.log('***************************************************************', result);
-        console.log('result.tree.rootNodes.length:', result.tree.rootNodes.length);
-        result.tree.rootNodes.forEach( node => {
-          console.log('node:', node);
-        });
         expect(result.tree.rootNodes.length).toBe(1);
         let parentNode = result.tree.rootNodes[0];
         expect(parentNode.children.length).toBe(1);
@@ -99,7 +92,7 @@ describe('/services/sketches.js ', function() {
       let childNode = createEmptyNode('child', '/child');
       let badParentNodeId = 99;
 
-      sketchService.addTreeNode(this.sketchId, childNode, badParentNodeId, 'add_bad_child')
+      sketchService.addTreeNode(this.userId, this.sketchId, childNode, badParentNodeId, 'add_bad_child')
       .then( (result) => {
         fail('addTreeNode should have rejected this operation');
       }).catch( e => {
@@ -115,7 +108,7 @@ describe('/services/sketches.js ', function() {
       this.node2 = createEmptyNode('name2', '/name2');
 
       // Generate a tree
-      sketchService.addTreeNode(this.sketchId, this.node1).then( result => {
+      sketchService.addTreeNode(this.userId, this.sketchId, this.node1).then( result => {
         this.node1.id = result.nodeId;
       }).finally(done);
     })
@@ -133,18 +126,16 @@ describe('/services/sketches.js ', function() {
 
     it('should return a sketch tree filled with historical events', function(done) {
 
-      console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-
       // Add a few more events to the sketch
       let child1 = createEmptyNode('child1', '/child1');
       let child2 = createEmptyNode('child2', '/child2');
       let grandchild1 = createEmptyNode('gc1', '/gc1');
 
-      sketchService.addTreeNode(this.sketchId, child1, this.node1.id)
+      sketchService.addTreeNode(this.userId, this.sketchId, child1, this.node1.id)
       .then( result => {
-        return sketchService.addTreeNode(this.sketchId, grandchild1, result.nodeId);
+        return sketchService.addTreeNode(this.userId, this.sketchId, grandchild1, result.nodeId);
       }).then( result => {
-        return sketchService.addTreeNode(this.sketchId, child2, this.node1.id);
+        return sketchService.addTreeNode(this.userId, this.sketchId, child2, this.node1.id);
       }).then( result => {
           // Flush the cache so that the tree needs to be rebuilt
           return sketchService.reset();
@@ -187,7 +178,7 @@ describe('/services/sketches.js ', function() {
 
         winston.log('debug', 'Pushing fake event into event store');
         // Push events
-        sketchService.getEventStore().push(this.sketchId,
+        sketchService.getEventStore().push(this.userId, this.sketchId,
           'treenode_added',
           {
             id: 300,
@@ -208,10 +199,10 @@ describe('/services/sketches.js ', function() {
       this.originalChildNode = createEmptyNode('original_child', '/original_child');
 
       // Generate a tree
-      sketchService.addTreeNode(this.sketchId, this.originalNode)
+      sketchService.addTreeNode(this.userId, this.sketchId, this.originalNode)
       .then( (result) => {
         this.originalNode.id = result.nodeId;
-        return sketchService.addTreeNode(this.sketchId, this.originalChildNode, result.nodeId)
+        return sketchService.addTreeNode(this.userId, this.sketchId, this.originalChildNode, result.nodeId)
       }).then( result => {
         this.originalChildNode.id = result.nodeId;
       }).finally(done);
@@ -230,7 +221,7 @@ describe('/services/sketches.js ', function() {
         }
       }
 
-      sketchService.updateBodyData(this.sketchId, this.originalNode.id, updateObject)
+      sketchService.updateBodyData(this.userId, this.sketchId, this.originalNode.id, updateObject)
       .then( (result) => {
         let putData = result.tree.rootNodes[0].data.put;
         expect(putData.queryParams).toBe(updateObject.fields.queryParams);
@@ -244,12 +235,13 @@ describe('/services/sketches.js ', function() {
     it('should reject an attempt to update a CRUD node that does not exist', function(done) {
 
       // Add a root node
-      sketchService.updateBodyData(this.sketchId, 300, {})
+      sketchService.updateBodyData(this.userId, this.sketchId, 300, {})
       .then( () => {
         fail('the update call should have failed');
       }).catch( e => {
         expect(e).toBeDefined();
-        expect(e.startsWith('Cannot update response data for non-existent node')).toBe(true);
+        //console.log(e);
+        expect(e.message.startsWith('Cannot update response data for non-existent node')).toBe(true);
       }).finally(done);
     })
 
@@ -263,7 +255,7 @@ describe('/services/sketches.js ', function() {
       }
 
       // First add a root node
-      sketchService.updateNodeDetails(this.sketchId, this.originalNode.id, updateObject)
+      sketchService.updateNodeDetails(this.userId, this.sketchId, this.originalNode.id, updateObject)
       .then( result => {
         expect(result.tree.rootNodes[0].fullpath).not.toBe(this.originalNode.fullpath);
         expect(result.tree.rootNodes[0].fullpath).toBe('newPath');
@@ -277,9 +269,9 @@ describe('/services/sketches.js ', function() {
       const updateObject2 = { nodeId: this.originalNode.id, fields: { fullpath: '2' } };
       const updateObject3 = { nodeId: this.originalNode.id, fields: { fullpath: '3' } };
 
-      sketchService.updateNodeDetails(this.sketchId, this.originalNode.id, updateObject)
-      sketchService.updateNodeDetails(this.sketchId, this.originalNode.id, updateObject2)
-      sketchService.updateNodeDetails(this.sketchId, this.originalNode.id, updateObject3)
+      sketchService.updateNodeDetails(this.userId, this.sketchId, this.originalNode.id, updateObject)
+      sketchService.updateNodeDetails(this.userId, this.sketchId, this.originalNode.id, updateObject2)
+      sketchService.updateNodeDetails(this.userId, this.sketchId, this.originalNode.id, updateObject3)
       .then(() => {
         winston.log('debug', 'Trying to get tree');
         return sketchService.getTree( this.sketchId )
@@ -302,9 +294,9 @@ describe('/services/sketches.js ', function() {
 
       sketchService.getTree(sketch1)
       .then( result => {
-        return sketchService.addTreeNode(sketch2, node1);
+        return sketchService.addTreeNode(this.userId, sketch2, node1);
       }).then( result => {
-        return sketchService.addTreeNode(sketch3, node2);
+        return sketchService.addTreeNode(this.userId, sketch3, node2);
       }).then( result => {
         return sketchService.getTree(sketch1)
       }).then( result => {

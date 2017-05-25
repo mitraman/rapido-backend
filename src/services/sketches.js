@@ -85,7 +85,7 @@ Sketches.prototype.getTree = function(sketchId, label) {
   })
 }
 
-Sketches.prototype.addTreeNode = function(sketchId, treeNode, parentId, label) {
+Sketches.prototype.addTreeNode = function(userId, sketchId, treeNode, parentId, label) {
   return new Promise( (resolve, reject) => {
     // Generate a unique ID for the new node
     const nodeId = uuidV4();
@@ -125,7 +125,7 @@ Sketches.prototype.addTreeNode = function(sketchId, treeNode, parentId, label) {
 
       winston.log('debug', '[Sketches.addTreeNode] recording tree node addition event');
       // Record the tree node addition event
-      return Sketches.es.push(sketchId,
+      return Sketches.es.push(userId, sketchId,
         'treenode_added',
         {
           parentId: parentId,
@@ -143,7 +143,7 @@ Sketches.prototype.addTreeNode = function(sketchId, treeNode, parentId, label) {
   });
 }
 
-Sketches.prototype.updateBodyData = function(sketchId, nodeId, updateObject, label) {
+Sketches.prototype.updateBodyData = function(userId, sketchId, nodeId, updateObject, label) {
   return new Promise( (resolve, reject) => {
     // Generate a temporary token to identify the event that we are pushing
     const token = uuidV4();
@@ -182,7 +182,7 @@ Sketches.prototype.updateBodyData = function(sketchId, nodeId, updateObject, lab
 
       winston.log('debug', '[Sketches.updateBodyData] recording tree node response data update event');
       // Record the tree node update event
-      return Sketches.es.push(sketchId,
+      return Sketches.es.push(userId, sketchId,
         'treenode_updated_data',
         {
           nodeId: nodeId,
@@ -195,7 +195,7 @@ Sketches.prototype.updateBodyData = function(sketchId, nodeId, updateObject, lab
   });
 }
 
-Sketches.prototype.updateNodeDetails = function(sketchId, nodeId, updateObject, label) {
+Sketches.prototype.updateNodeDetails = function(userId, sketchId, nodeId, updateObject, label) {
   return new Promise( (resolve, reject) => {
     // Generate a temporary token to identify the event that we are pushing
     const token = uuidV4();
@@ -234,7 +234,7 @@ Sketches.prototype.updateNodeDetails = function(sketchId, nodeId, updateObject, 
 
       winston.log('debug', '[Sketches.updateNodeDetails] recording tree node response data update event');
       // Record the tree node update event
-      return Sketches.es.push(sketchId,
+      return Sketches.es.push(userId, sketchId,
         'treenode_updated_fields',
         {
           nodeId: nodeId,

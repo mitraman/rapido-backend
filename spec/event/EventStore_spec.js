@@ -12,6 +12,7 @@ describe('EventStore ', function() {
   beforeAll(function() {
     this.es = new EventStore();
     this.sketchId = 10;
+    this.userId = 99;
   })
 
   beforeEach(function(done) {
@@ -68,9 +69,9 @@ describe('EventStore ', function() {
       }
     })
 
-     this.es.push(this.sketchId, 'test_event', { eventId: 'test', testname: 'stream-test-1' })
-     this.es.push(this.sketchId, 'test_event',{ eventId: 'test', testname: 'stream-test-1' })
-     this.es.push(this.sketchId, 'test_event',{ eventId: 'test', testname: 'stream-test-1' })
+     this.es.push(this.userId, this.sketchId, 'test_event', { eventId: 'test', testname: 'stream-test-1' })
+     this.es.push(this.userId, this.sketchId, 'test_event',{ eventId: 'test', testname: 'stream-test-1' })
+     this.es.push(this.userId, this.sketchId, 'test_event',{ eventId: 'test', testname: 'stream-test-1' })
   })
 
 
@@ -86,9 +87,9 @@ describe('EventStore ', function() {
       }
     }, 0);
 
-    this.es.push(this.sketchId, 'good',{ eventId: 'test', type:'good', testname: 'stream-test-1' })
-    this.es.push(0, 'bad',{ eventId: 'test', type: 'bad', testname: 'stream-test-1' })
-    this.es.push(this.sketchId, 'good',{ eventId: 'last-event', type: 'good', testname: 'stream-test-1' })
+    this.es.push(this.userId, this.sketchId, 'good',{ eventId: 'test', type:'good', testname: 'stream-test-1' })
+    this.es.push(this.userId, 0, 'bad',{ eventId: 'test', type: 'bad', testname: 'stream-test-1' })
+    this.es.push(this.userId, this.sketchId, 'good',{ eventId: 'last-event', type: 'good', testname: 'stream-test-1' })
 
   })
 
@@ -103,7 +104,7 @@ describe('EventStore ', function() {
       eventCount++;
       if( eventCount === numEvents ) {
         // Push a new event to make sure we can receive it
-        this.es.push(this.sketchId, 'post', { type: 'post'})
+        this.es.push(this.userId, this.sketchId, 'post', { type: 'post'})
       } else if( eventCount > numEvents ) {
         // Make sure we received the new event.
         expect(event.type).toBe('post');
@@ -120,7 +121,7 @@ describe('EventStore ', function() {
     }
 
   Promise.reduce(eventData, (accumulator, eventInfo) => {
-      return this.es.push(this.sketchId, 'pre', { eventId: eventInfo.id, type: 'pre'});
+      return this.es.push(this.userId, this.sketchId, 'pre', { eventId: eventInfo.id, type: 'pre'});
     }, 0).then( acc => {
       winston.log('debug', 'Finished firing events');
     })
@@ -135,7 +136,7 @@ describe('EventStore ', function() {
     }
 
     this.es.subscribe(this.sketchId, eventHandler);
-    this.es.push(this.sketchId, 'test', { name: 'test-event'}, token);
+    this.es.push(this.userId, this.sketchId, 'test', { name: 'test-event'}, token);
 
   })
 
@@ -144,7 +145,7 @@ describe('EventStore ', function() {
     let events = [];
     const numEvents = 50;
     for( let i = 0; i < numEvents; i++ ) {
-      events.push(this.es.push(this.sketchId, 'pre', { eventId: i, type: 'pre'}));
+      events.push(this.es.push(this.userId, this.sketchId, 'pre', { eventId: i, type: 'pre'}));
     }
 
     let eventCount = 0;
@@ -178,7 +179,7 @@ describe('EventStore ', function() {
     this.es.subscribe(this.sketchId, eventHandler);
     this.es.subscribe(wrongSketchId, wrongHandler);
 
-    this.es.push(this.sketchId, 'test_event', { sketchId: this.sketchId});
+    this.es.push(this.userId, this.sketchId, 'test_event', { sketchId: this.sketchId});
 
   })
 
@@ -190,11 +191,11 @@ describe('EventStore ', function() {
     let handlerSpy = jasmine.createSpy('handlerSpy')
 
     this.es.subscribe(this.sketchId, handlerSpy);
-    this.es.push(this.sketchId, 'test_event', { sketchId: this.sketchId, test: 'subscribed'})
+    this.es.push(this.userId, this.sketchId, 'test_event', { sketchId: this.sketchId, test: 'subscribed'})
     .then( () => {
         return this.es.unsubscribe(this.sketchId, handlerSpy);
     }).then( () => {
-        return this.es.push(this.sketchId, 'test_event', { sketchId: this.sketchId, test: 'unsubscribed'});
+        return this.es.push(this.userId, this.sketchId, 'test_event', { sketchId: this.sketchId, test: 'unsubscribed'});
     }).then( () => {
         expect(handlerSpy.calls.count()).toBe(1);
     }).catch( e => fail(e)).finally(done)
