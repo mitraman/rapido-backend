@@ -18,6 +18,7 @@ function getDb() {
   //winston.log('debug', _db);
   if( _db === null ) {
       winston.log('warn', 'Attempting to retrieve database accessor but it hasn\'t been initalized with start() yet.');
+      throw new Error('Database has not been initialized.  Use start() to initialize the database.');
   }
   return _db;
 }

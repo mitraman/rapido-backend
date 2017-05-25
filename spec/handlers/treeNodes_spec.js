@@ -65,6 +65,7 @@ describe('handlers/nodes.js', function() {
 
     it( 'should create a new node at the root level (/nodes)', function(done) {
 
+
       request.post(
         {
           url: nodesUrl,
@@ -124,15 +125,6 @@ describe('handlers/nodes.js', function() {
       )
     })
 
-    it('should apply updates to a set of nodes', function(done) {
-      request.post(
-        url: nodeUrl,
-        headers: headers
-      ), function(err, res, body) {
-
-      }
-    })
-
     it('should update the name and path of a node', function(done) {
       request.post(
         {
@@ -183,11 +175,13 @@ describe('handlers/nodes.js', function() {
                 url: nodeUrl,
                 headers: headers,
                 json: {
-                  responseData: {
+                  data: {
                     'get' : {
                       enabled: true,
                       contentType: 'application/json',
-                      body: '{ "name": "some_value"}'
+                      queryParams: '?name=value',
+                      requestBody: '{ "test": "testing" }',
+                      responseBody: '{ "name": "some_value"}'
                     }
                   }
                 }
@@ -195,10 +189,12 @@ describe('handlers/nodes.js', function() {
                 winston.log('debug', 'body:', body);
                 expect(res.statusCode).toBe(200);
                 let node = body.tree[0];
-                expect(node.responseData.get).toBeDefined();
-                expect(node.responseData.get.enabled).toBe(true);
-                expect(node.responseData.get.contentType).toBe('application/json');
-                expect(node.responseData.get.body).toBe('{ "name": "some_value"}');
+                expect(node.data.get).toBeDefined();
+                expect(node.data.get.enabled).toBe(true);
+                expect(node.data.get.contentType).toBe('application/json');
+                expect(node.data.get.queryParams).toBe('?name=value');
+                expect(node.data.get.requestBody).toBe('{ "test": "testing" }');
+                expect(node.data.get.responseBody).toBe('{ "name": "some_value"}');
                 done();
               }
             )
@@ -224,11 +220,13 @@ describe('handlers/nodes.js', function() {
                 headers: headers,
                 json: {
                   name: 'new_name',
-                  responseData: {
+                  data: {
                     'get' : {
                       enabled: true,
                       contentType: 'application/json',
-                      body: '{ "name": "some_value"}'
+                      queryParams: '?name=value',
+                      requestBody: '{}',
+                      responseBody: '{ "name": "some_value"}'
                     }
                   }
                 }
@@ -237,10 +235,50 @@ describe('handlers/nodes.js', function() {
                 expect(res.statusCode).toBe(200);
                 let node = body.tree[0];
                 expect(node.name).toBe('new_name');
-                expect(node.responseData.get).toBeDefined();
-                expect(node.responseData.get.enabled).toBe(true);
-                expect(node.responseData.get.contentType).toBe('application/json');
-                expect(node.responseData.get.body).toBe('{ "name": "some_value"}');
+                expect(node.data.get).toBeDefined();
+                expect(node.data.get.enabled).toBe(true);
+                expect(node.data.get.contentType).toBe('application/json');
+                expect(node.data.get.queryParams).toBe("?name=value");
+                expect(node.data.get.requestBody).toBe("{}");
+                expect(node.data.get.responseBody).toBe('{ "name": "some_value"}');
+                done();
+              }
+            )
+        }
+      )
+    })
+
+    it('should udpate the enabled status of a node', function(done) {
+      request.post(
+        {
+          url: nodesUrl,
+          headers: headers
+        },function(err, res, body) {
+            expect(res.statusCode).toBe(201);
+            let jsonBody = JSON.parse(body);
+            expect(jsonBody.node.id).toBeDefined();
+            let nodeId = jsonBody.node.id;
+            let nodeUrl = paramaterizedNodeUrl.replace(/:nodeId/gi, nodeId);
+            request(
+              {
+                method: 'PATCH',
+                url: nodeUrl,
+                headers: headers,
+                json: {
+                  name: 'new_name',
+                  data: {
+                    'get' : {
+                      enabled: false,
+                    }
+                  }
+                }
+              }, function( err, res, body) {
+                winston.log('debug', 'body:', body);
+                expect(res.statusCode).toBe(200);
+                let node = body.tree[0];
+                expect(node.name).toBe('new_name');
+                expect(node.data.get).toBeDefined();
+                expect(node.data.get.enabled).toBe(false);
                 done();
               }
             )
@@ -265,11 +303,11 @@ describe('handlers/nodes.js', function() {
                 url: nodeUrl,
                 headers: headers,
                 json: {
-                  responseData: {
+                  data: {
                     'get' : {
                       enabled: true,
                       contentType: 'application/json',
-                      body: '{ "name": "some_value"}'
+                      responseBody: '{ "name": "some_value"}'
                     },
                     'put' : {
                       enabled: false
@@ -277,20 +315,20 @@ describe('handlers/nodes.js', function() {
                     'patch' : {
                       enabled: true,
                       contentType: 'application/json',
-                      body: '{ "name": "some_other_value"}'
+                      responseBody: '{ "name": "some_other_value"}'
                     }
                   }
                 }
               }, function( err, res, body) {
-                winston.log('debug', 'body:', body);
+                //winston.log('debug', 'body:', body);
                 expect(res.statusCode).toBe(200);
                 let node = body.tree[0];
-                expect(node.responseData.get).toBeDefined();
-                expect(node.responseData.get.enabled).toBe(true);
-                expect(node.responseData.get.contentType).toBe('application/json');
-                expect(node.responseData.get.body).toBe('{ "name": "some_value"}');
-                expect(node.responseData.put.enabled).toBe(false);
-                expect(node.responseData.patch.enabled).toBe(true);
+                expect(node.data.get).toBeDefined();
+                expect(node.data.get.enabled).toBe(true);
+                expect(node.data.get.contentType).toBe('application/json');
+                expect(node.data.get.responseBody).toBe('{ "name": "some_value"}');
+                expect(node.data.put.enabled).toBe(false);
+                expect(node.data.patch.enabled).toBe(true);
                 done();
               }
             )
@@ -298,7 +336,35 @@ describe('handlers/nodes.js', function() {
       )
     })
 
-    it( 'should reject a request to change a sketch that is not owned by this user', function() {
+    it('should reject an attempt to update a node that does not exist', function(done) {
+      console.log(nodesUrl);
+      request.post(
+        {
+          url: nodesUrl,
+          headers: headers
+        },function(err, res, body) {
+            expect(res.statusCode).toBe(201);
+            let nodeUrl = paramaterizedNodeUrl.replace(/:nodeId/gi, 'bad-node-id');
+            request(
+              {
+                method: 'PATCH',
+                url: nodeUrl,
+                headers: headers,
+                json: {
+                  name: 'newname',
+                  fullpath: '/newname'
+                }
+              }, function( err, res, body) {
+                winston.log('debug', 'body:', body);
+                expect(res.statusCode).toBe(400);
+                done();
+              }
+            )
+        }
+      )
+    })
+
+    it( 'should reject a request to change a sketch that is not owned by this user', function(done) {
       request.post(
         {
           url: nodesUrl,

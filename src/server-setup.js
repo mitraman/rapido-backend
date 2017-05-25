@@ -62,8 +62,6 @@ const start = function start(serverPort, cb) {
     }
   })
 
-  winston.log()
-
   // Start the server
   const server = app.listen(serverPort, () => {
     //winston.log('debug', '%s listening at %s', app.name, app.url);

@@ -209,6 +209,7 @@ describe('handlers/projects.js ', function() {
           }, function(err, res, body) {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(200);
+            //console.log(body);
             expect(body).not.toBeNull();
             let jsonBody = JSON.parse(body);
             expect(jsonBody.projects).not.toBeUndefined();

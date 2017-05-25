@@ -26,7 +26,7 @@ class TreeEventSubscription {
   }
 
   onEvent(event) {
-    winston.log('debug', '[TreeEventSubscription.onEvent] received an event:', event);
+    winston.log('debug', '[TreeEventSubscription.onEvent] (' + this.name + ') received an event:', event);
 
     if( !event ) {
       // null events may be recieved if another module tries to write the event handler to a log message

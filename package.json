@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node src/server.js",
     "test-istanbul": "istanbul cover --include-all-sources spec/test-manager.js",
-    "test": "node spec/test-manager.js"
+    "test": "node spec/test-manager.js",
+    "init": "node sql/init-db.js"
   },
   "dependencies": {
     "pg-promise": "~5.5.1",

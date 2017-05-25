@@ -9,6 +9,7 @@ const Promise = require('bluebird');
 
 module.exports = {
 
+	//TODO: createRootNdoe and createChildNode should use the same code
 	createRootNodeHandler: function(req, res, next) {
 		winston.log('debug', '[createRootNodeHandler] handling request');
 		let transactionID = uuidV4();
@@ -16,7 +17,7 @@ module.exports = {
     let newNode = {
         name: '',
         fullpath: '',
-        responseData: {}
+        data: {}
     }
     let userId = req.credentials.id;
 		let sketchId = req.params.sketchId
@@ -44,7 +45,7 @@ module.exports = {
     let newNode = {
         name: '',
         fullpath: '',
-        responseData: {}
+        data: {}
     }
 		let userId = req.credentials.id;
 		let sketchId = req.params.sketchId;
@@ -83,21 +84,24 @@ module.exports = {
 
 		let keys = Object.keys(req.body);
 		keys.forEach( key => {
-			if( key === 'responseData' ) {
-					winston.log('debug', '[updateNodePropertiesHandler] populating a responseData update event')
+			if( key === 'data' ) {
+					winston.log('debug', '[updateNodePropertiesHandler] populating a data update event')
 					// Parse the response data
-					let dataKeys = Object.keys(req.body.responseData);
+					let dataKeys = Object.keys(req.body.data);
 					dataKeys.forEach( dataKey => {
-						let responseData = req.body.responseData[dataKey];
-						let responseDataFields = {};
-						if( responseData.contentType ) { responseDataFields.contentType = responseData.contentType };
-						if( responseData.enabled ) { responseDataFields.enabled = responseData.enabled };
-						if( responseData.body ) { responseDataFields.body = responseData.body };
+						let data = req.body.data[dataKey];
+						winston.log('adebug', '[updateNodePropertiesHandler] req.body.data[key]:', data);
+						let dataFields = {};
+						if( data.contentType ) { dataFields.contentType = data.contentType };
+						if( data.hasOwnProperty('enabled') ) { console.log('data.enabled'); dataFields.enabled = data.enabled };
+						if( data.queryParams ) { dataFields.queryParams = data.queryParams };
+						if( data.requestBody ) { dataFields.requestBody = data.requestBody };
+						if( data.responseBody ) { dataFields.responseBody = data.responseBody };
 						let responseDataUpdate = {
 							key: dataKey,
-							fields: responseDataFields
+							fields: dataFields
 						}
-						updatePromises.push(sketchService.updateResponseData(sketchId, nodeId, responseDataUpdate));
+						updatePromises.push(sketchService.updateBodyData(sketchId, nodeId, responseDataUpdate));
 					});
 			}else if( key === 'name' ) {
 					winston.log('debug', '[updateNodePropertiesHandler] populating a field update event for the name field');
@@ -114,6 +118,11 @@ module.exports = {
 			updatePromises.push(sketchService.updateNodeDetails(sketchId, nodeId, responseFieldsUpdate));
 		}
 
+		if(updatePromises.length === 0) {
+			winston.log('debug', '[updateNodePropertiesHandler] nothing to update');
+			res.status(400).send(representer.errorMessage('Unable to recognize any fields to update'));
+		}
+
 		Promise.all(updatePromises).then(results => {
 			return sketchService.getTree(sketchId)
 		}).then( result => {
@@ -123,8 +132,13 @@ module.exports = {
 			// 	tree: result.tree.treeNodes
 			// }))
 		}).catch( e => {
-			winston.log('error', 'An error occurred while trying to update node data:', e);
-			res.status(500).send(representer.errorMessage("An unexpected error occurred"));
+			winston.log('debug', '[updateNodePropertiesHandler] error:', e);
+			if(e.name === 'RapidoError') {
+				res.status(e.status).send(representer.errorMessage(e.message));
+			}else {
+				winston.log('error', 'An unexpected error occurred while trying to update node data:', e);
+				res.status(500).send(representer.errorMessage("An unexpected error occurred"));
+			}
 		})
 
   }

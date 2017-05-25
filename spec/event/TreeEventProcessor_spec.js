@@ -14,7 +14,6 @@ let treenodeAddedEvent = function(parentId, id, responseData) {
         id: id,
         name: id,
         fullpath: '/' + id,
-        responseData: responseData,
         children: []
       }
     }
@@ -183,17 +182,19 @@ describe('TreeEventProcessor', function() {
       }).catch( e => { fail(e); }).finally(done);
     })
 
-    it('should add a get responseData object of an existing node', function(done) {
+    it('should add a get data object of an existing node', function(done) {
       let addEvent = treenodeAddedEvent(null, 'node1', {});
       const updateDataEvent = {
-        type: 'treenode_updated_responsedata',
+        type: 'treenode_updated_data',
         data: {
           nodeId: 'node1',
           key: 'get',
           fields: {
             contentType: 'application/json',
             enabled: false,
-            body: '{[{name: \"sample value\"}]'
+            queryParams:'?name=value&name=value',
+            requestBody: '',
+            responseBody: '{[{name: \"sample value\"}]'
           }
         }
       }
@@ -202,38 +203,40 @@ describe('TreeEventProcessor', function() {
       .then( (updatedTree) => {
         return treeEventProcessor.applyTreeEvent(updateDataEvent, updatedTree);
       }).then( (tree) => {
-        let getData = tree.rootNodes[0].responseData.get;
+        let getData = tree.rootNodes[0].data.get;
         expect(getData).toBeDefined();
         expect(getData.contentType).toBe(updateDataEvent.data.fields.contentType);
         expect(getData.enabled).toBe(updateDataEvent.data.fields.enabled);
-        expect(getData.body).toEqual(updateDataEvent.data.fields.body);
+        expect(getData.responseBody).toEqual(updateDataEvent.data.fields.responseBody);
+        expect(getData.requestBody).toEqual(updateDataEvent.data.fields.requestBody);
+        expect(getData.queryParams).toEqual(updateDataEvent.data.fields.queryParams);
       }).catch( e => { fail(e); }).finally(done);
 
     });
 
-    it('should replace a put responseData object of an existing node', function(done) {
+    it('should replace a put data object of an existing node', function(done) {
       let addEvent = treenodeAddedEvent(null, 'node1', {});
       const firstUpdateDataEvent = {
-        type: 'treenode_updated_responsedata',
+        type: 'treenode_updated_data',
         data: {
           nodeId: 'node1',
           key: 'put',
           fields: {
             contentType: 'application/json',
             enabled: false,
-            body: '{[{name: \"sample value\"}]'
+            responseBody: '{[{name: \"sample value\"}]'
           }
         }
       };
 
 
       const secondUpdateDataEvent = {
-        type: 'treenode_updated_responsedata',
+        type: 'treenode_updated_data',
         data: {
           nodeId: 'node1',
           key: 'put',
           fields: {
-            body: 'new'
+            responseBody: 'new'
           }
         }
       };
@@ -245,22 +248,22 @@ describe('TreeEventProcessor', function() {
       }).then( (updatedTree) => {
         return treeEventProcessor.applyTreeEvent(secondUpdateDataEvent, updatedTree);
       }).then( (tree) => {
-        let putData = tree.rootNodes[0].responseData.put;
+        let putData = tree.rootNodes[0].data.put;
         expect(putData).toBeDefined();
         expect(putData.contentType).toBe(firstUpdateDataEvent.data.fields.contentType);
         expect(putData.enabled).toBe(firstUpdateDataEvent.data.fields.enabled);
-        expect(putData.body).toEqual(secondUpdateDataEvent.data.fields.body);
+        expect(putData.responseBody).toEqual(secondUpdateDataEvent.data.fields.responseBody);
       }).catch( e => { fail(e); }).finally(done);
     })
 
-    it('should reject an attempt to update the repsonseData of a non-existent node', function(done) {
+    it('should reject an attempt to update the data of a non-existent node', function(done) {
       const badUpdateDataEvent = {
-        type: 'treenode_updated_responsedata',
+        type: 'treenode_updated_data',
         data: {
           nodeId: 'node1',
           key: 'put',
           fields: {
-            body: 'new'
+            responseBody: 'new'
           }
         }
       };
@@ -270,7 +273,8 @@ describe('TreeEventProcessor', function() {
         fail('this call should have been rejected.')
       }).catch( e => {
         expect(e).toBeDefined();
-        expect(e.message.startsWith('Unable to update response data for non-existent node')).toBe(true);
+        expect(e.message).toBeDefined();
+        expect(e.message.startsWith('Unable to update data for non-existent node')).toBe(true);
       }).finally(done);
 
     })

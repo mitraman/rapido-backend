@@ -60,25 +60,34 @@ TreeEventProcessor.treenode_updated_fields = function(event, tree) {
   return tree;
 }
 
-TreeEventProcessor.treenode_updated_responsedata = function(event, tree ) {
-  winston.log('debug', '[TreeEventProcessor.treenode_updated_responsedata] applying treenode_updated_responsedata event: ', event);
+TreeEventProcessor.treenode_updated_data = function(event, tree ) {
+  winston.log('debug', '[TreeEventProcessor.treenode_updated_data] applying treenode_updated_data event: ', event);
   let node = tree.hash[event.data.nodeId];
 
   if( !node ) {
-    throw Error('Unable to update response data for non-existent node id:', event.data.nodeId);
+    throw Error('Unable to update data for non-existent node id:', event.data.nodeId);
   }
-
   let dataKey = event.data.key;
-  if( !node.responseData[dataKey] ) {
-    // Create the repsonse data object if it doesn't already exist
-    node.responseData[dataKey] = {
+    winston.log('debug', '[TreeEventProcessor.treenode_updated_data] node:', node);
+  if( !node.data ) {
+    node.data = {};
+  }
+  winston.log('debug', '[TreeEventProcessor.treenode_updated_data] node.data:', node.data);
+
+  if( !node.data[dataKey] ) {
+    winston.log('debug', '[TreeEventProcessor.treenode_updated_data] creating empty data object');
+
+    // Create the data object if it doesn't already exist
+    node.data[dataKey] = {
       contentType: '',
       enabled: false,
-      body: ''
+      queryParams: '',
+      requestBody: '',
+      responseBody: ''
     };
   }
 
-  let dataObject = node.responseData[dataKey];
+  let dataObject = node.data[dataKey];
 
   // Update properties
   Object.keys(event.data.fields).forEach( (fieldKey) => {
@@ -86,10 +95,14 @@ TreeEventProcessor.treenode_updated_responsedata = function(event, tree ) {
       dataObject.contentType = event.data.fields.contentType;
     }else if( fieldKey === 'enabled' ) {
       dataObject.enabled = event.data.fields.enabled;
-    }else if( fieldKey === 'body' ) {
-      dataObject.body = event.data.fields.body;
+    }else if( fieldKey === 'queryParams' ) {
+      dataObject.queryParams = event.data.fields.queryParams;
+    }else if( fieldKey === 'requestBody' ) {
+      dataObject.requestBody = event.data.fields.requestBody;
+    }else if( fieldKey === 'responseBody' ) {
+      dataObject.responseBody = event.data.fields.responseBody;
     }else {
-      winston.log('warn', '[TreeEventProcessor.treenode_updated_responsedata] unable to handle update of response data property ' + fieldKey);
+      winston.log('warn', '[TreeEventProcessor.treenode_updated_data] unable to handle update of node data property ' + fieldKey);
     }
   });
 

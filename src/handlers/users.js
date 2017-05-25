@@ -61,6 +61,7 @@ module.exports = {
 				status = 400;
 				message = error.message;
 			}
+			res.type('json');
 			res.status(status).send(representer.errorMessage(message));
 		})
 
