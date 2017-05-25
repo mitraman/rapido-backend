@@ -94,7 +94,7 @@ module.exports = {
 						winston.log('adebug', '[updateNodePropertiesHandler] req.body.data[key]:', data);
 						let dataFields = {};
 						if( data.contentType ) { dataFields.contentType = data.contentType };
-						if( data.hasOwnProperty('enabled') ) { console.log('data.enabled'); dataFields.enabled = data.enabled };
+						if( data.hasOwnProperty('enabled') ) { dataFields.enabled = data.enabled };
 						if( data.queryParams ) { dataFields.queryParams = data.queryParams };
 						if( data.requestBody ) { dataFields.requestBody = data.requestBody };
 						if( data.responseBody ) { dataFields.responseBody = data.responseBody };

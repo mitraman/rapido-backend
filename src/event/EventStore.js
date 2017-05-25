@@ -146,11 +146,6 @@ EventStore.prototype.getLastEventID = function( sketchId ) {
 EventStore.prototype.subscribe = function(sketchId, listener, startIndex) {
   winston.log('debug', '[EventStore.subscribe] adding listener for sketch ID:', sketchId);
 
-  console.log(EventStore.eventEmitter.listeners(sketchId));
-  if( EventStore.eventEmitter.listeners(sketchId).length > 0 ) {
-    console.log('%%%% ', EventStore.eventEmitter.listeners(sketchId)[0]);
-  }
-
   //EventStore.eventEmitter.on(sketchId, event => listener);
   EventStore.eventEmitter.on(sketchId, listener);
 
