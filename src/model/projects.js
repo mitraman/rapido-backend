@@ -6,11 +6,9 @@ const RapidoError = require('../errors/rapido-error.js');
 const RapidoErrorCodes = require('../errors/codes.js');
 
 const projects = function() {};
+const db = dataAccessor.getDb();
 
 projects.create = function( project ) {
-
-  const db = dataAccessor.getDb();
-
   let createProjectResult;
 
   return new Promise( function(resolve, reject)  {
@@ -36,7 +34,6 @@ projects.create = function( project ) {
 }
 
 projects.findByUser = function (userId) {
-  const db = dataAccessor.getDb();
   return db.manyOrNone({
     name: "find-project-by-user",
     text: "SELECT * FROM projects WHERE userid=$1",
@@ -45,7 +42,6 @@ projects.findByUser = function (userId) {
 }
 
 projects.find = function( params ) {
-  const db = dataAccessor.getDb();
 
   let queryString = "SELECT * FROM projects WHERE";
   let queryParams = [];
@@ -88,7 +84,58 @@ projects.find = function( params ) {
     text: queryString,
     values: queryParams
   });
+}
 
+projects.update = function( id, params ) {
+  if( !id ) {
+    throw new RapidoError(RapidoErrorCodes.invalidField, "Cannot update a project with id of null");
+  }
+
+  let queryString = "UPDATE projects SET ";
+  let queryParams = [];
+  let queryName = "update-projects-by";
+
+  function queryBuilder(paramName, valueName) {
+    if( !valueName ) {
+      valueName = paramName
+    }
+    if( queryParams.length > 0 ) { queryString += ", "; }
+    queryParams.push(params[paramName]);
+    queryString += " " + valueName + "=$" + queryParams.length;
+    queryName += "-"+valueName;
+  }
+
+  let numberParamsRecognized = 0;
+
+  if( params ) {
+      if( params.name ) {
+        queryBuilder("name");
+        numberParamsRecognized++;
+      }
+      if( params.description ) {
+        queryBuilder("description");
+        numberParamsRecognized++;
+      }
+  }
+
+  if( numberParamsRecognized < Object.keys(params).length ) {
+    throw new RapidoError(RapidoErrorCodes.invalidField, "Unrecognized parameters provided for update project operation");
+  }
+
+  if( queryParams.length === 0 ) {
+    throw new RapidoError(RapidoErrorCodes.invalidField, "No parameters provided for update project operation")
+    //winston.log('debug', 'This is the error**************************')
+  }
+
+  // Add the conditional clause to the query string
+  queryString += " WHERE id = " + id;
+
+  console.log(queryString);
+  return db.none({
+    name: queryName,
+    text: queryString,
+    values: queryParams
+  });
 }
 
 module.exports = projects;
