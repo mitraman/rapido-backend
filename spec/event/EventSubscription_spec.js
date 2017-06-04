@@ -3,12 +3,12 @@
 const winston = require('winston');
 const Promise = require('bluebird');
 const SketchEventStream = require('../../src/event/SketchEventStream.js');
-const TreeEventSubscription = require('../../src/event/TreeEventSubscription.js');
+const EventSubscription = require('../../src/event/EventSubscription.js');
 const EventStore = require('../../src/event/EventStore.js');
-const treeEventProcessor = require('../../src/event/TreeEventProcessor.js');
+const eventProcessor = require('../../src/event/EventProcessor.js');
 const dataAccessor = require('../../src/db/DataAccessor.js');
 
-describe('TreeEventSubscription', function() {
+describe('EventSubscription', function() {
 
   beforeAll(function() {
       this.es = new EventStore();
@@ -16,7 +16,7 @@ describe('TreeEventSubscription', function() {
   });
 
   beforeEach(function(done) {
-    spyOn(treeEventProcessor, "applyTreeEvent").and.callFake(function(event, tree) {
+    spyOn(eventProcessor, "applyEvent").and.callFake(function(event, graph) {
       return new Promise( (resolve,reject) => {
         resolve();
       } )
@@ -31,7 +31,7 @@ describe('TreeEventSubscription', function() {
   })
 
   it('should emit an \'event_processed\' event when a SketchEvent is completely processed ', function(done) {
-    let eventHandler = new TreeEventSubscription(this.sketchId, treeEventProcessor);
+    let eventHandler = new EventSubscription(this.sketchId, eventProcessor);
     let testEvent = { id: 3, name: 'test', type: 'testing'}
 
     let processStream = eventHandler.stream();
@@ -45,7 +45,7 @@ describe('TreeEventSubscription', function() {
   })
 
   it('should record the lastEventID handled', function(done) {
-    let eventHandler = new TreeEventSubscription(this.sketchId, treeEventProcessor);
+    let eventHandler = new EventSubscription(this.sketchId, eventProcessor);
     let eventCount = 0;
 
     // Get a stream to be alerted when events are applied to the cache
@@ -66,19 +66,19 @@ describe('TreeEventSubscription', function() {
   })
 
   it('should apply an event using a TreeEventProcessor', function() {
-    let eventHandler = new TreeEventSubscription(this.sketchId, treeEventProcessor);
+    let eventHandler = new EventSubscription(this.sketchId, eventProcessor);
 
     eventHandler.onEvent({id: 1, type: 'test_type'});
-    expect(treeEventProcessor.applyTreeEvent).toHaveBeenCalledTimes(1);
+    expect(eventProcessor.applyEvent).toHaveBeenCalledTimes(1);
 
   })
 
   it('should store the state of a tree after applying a treenode_added event', function(done) {
-    let eventHandler = new TreeEventSubscription(this.sketchId, treeEventProcessor);
+    let eventHandler = new EventSubscription(this.sketchId, eventProcessor);
     let nodeId = 'a1';
 
     // Let the real processor handle the event
-    treeEventProcessor.applyTreeEvent.and.callThrough();
+    eventProcessor.applyEvent.and.callThrough();
 
     let processStream = eventHandler.stream();
     processStream.on('event_processed', function(processEvent) {
@@ -93,7 +93,7 @@ describe('TreeEventSubscription', function() {
   })
 
   it('should process events emitted by the EventStore module', function(done) {
-    let subscriber = new TreeEventSubscription(this.sketchId, treeEventProcessor);
+    let subscriber = new EventSubscription(this.sketchId, eventProcessor);
 
     let processStream = subscriber.stream();
     processStream.on('event_processed', function(processEvent) {
@@ -109,12 +109,13 @@ describe('TreeEventSubscription', function() {
       }
     }
 
+    const userId = 1;
     this.es.subscribe(this.sketchId, subscriber.onEvent, 0 );
-    this.es.push(this.sketchId, 'treenode_added', newEvent);
+    this.es.push(userId, this.sketchId, 'treenode_added', newEvent);
   })
 
   it('should return the this.sketchId for this subscription', function() {
-    let subscriber = new TreeEventSubscription(this.sketchId, treeEventProcessor);
+    let subscriber = new EventSubscription(this.sketchId, eventProcessor);
     expect(subscriber.getSketchID()).toBe(this.sketchId);
   })
 

@@ -7,8 +7,8 @@ let TreeEventProcessor = function () {
 };
 
 
-TreeEventProcessor.treenode_moved = function(event, tree) {
-  winston.log('devbug', '[TreeEventProcessor.treenode_moved] applying treenode_moved event: ', event);
+TreeEventProcessor.prototype.treenode_moved = function(event, tree) {
+  winston.log('debug', '[TreeEventProcessor.treenode_moved] applying treenode_moved event: ', event);
   if( !event.data ) {
     throw new Error('event is missing data property');
   }
@@ -63,7 +63,7 @@ TreeEventProcessor.treenode_moved = function(event, tree) {
 
 }
 
-TreeEventProcessor.treenode_added = function(event, tree) {
+TreeEventProcessor.prototype.treenode_added = function(event, tree) {
   winston.log('debug', '[TreeEventProcessor.treenode_added] applying treenode_added event: ', event);
   if( !event.data ) {
     throw new Error('event is missing data property');
@@ -97,7 +97,7 @@ TreeEventProcessor.treenode_added = function(event, tree) {
   return tree;
 }
 
-TreeEventProcessor.treenode_updated_fields = function(event, tree) {
+TreeEventProcessor.prototype.treenode_updated_fields = function(event, tree) {
   let node = tree.hash[event.data.nodeId];
   if( !node ) {
     throw new Error('unable to locate node to be udated.');
@@ -119,7 +119,7 @@ TreeEventProcessor.treenode_updated_fields = function(event, tree) {
   return tree;
 }
 
-TreeEventProcessor.treenode_updated_data = function(event, tree ) {
+TreeEventProcessor.prototype.treenode_updated_data = function(event, tree ) {
   winston.log('debug', '[TreeEventProcessor.treenode_updated_data] applying treenode_updated_data event: ', event);
   let node = tree.hash[event.data.nodeId];
 
@@ -168,21 +168,21 @@ TreeEventProcessor.treenode_updated_data = function(event, tree ) {
   return tree;
 }
 
-TreeEventProcessor.prototype.applyTreeEvent = function(event, tree) {
-  return new Promise( (resolve,reject) => {
-    winston.log('debug', '[TreeEventProcessor.applyTreeEvent]  handling event: ', event);
-    if( !TreeEventProcessor[event.type]) {
-      reject('unable to handle an unknown event type: ' + event.type);
-    } else {
-      // Apply the function
-      try {
-        winston.log('debug', '[TreeEventProcessor.applyTreeEvent] processing event.id:', event.id)
-        resolve(TreeEventProcessor[event.type](event, tree));
-      }catch(e) {
-        reject(e);
-      }
-    }
-  })
-}
+// TreeEventProcessor.prototype.applyTreeEvent = function(event, tree) {
+//   return new Promise( (resolve,reject) => {
+//     winston.log('debug', '[TreeEventProcessor.applyTreeEvent]  handling event: ', event);
+//     if( !TreeEventProcessor[event.type]) {
+//       reject('unable to handle an unknown event type: ' + event.type);
+//     } else {
+//       // Apply the function
+//       try {
+//         winston.log('debug', '[TreeEventProcessor.applyTreeEvent] processing event.id:', event.id)
+//         resolve(TreeEventProcessor[event.type](event, tree));
+//       }catch(e) {
+//         reject(e);
+//       }
+//     }
+//   })
+// }
 
 module.exports = new TreeEventProcessor();

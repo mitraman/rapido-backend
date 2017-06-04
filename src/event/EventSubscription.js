@@ -6,10 +6,10 @@ const Promise = require('bluebird');
 const SketchEventStream = require('./SketchEventStream.js');
 const EventEmitter = require('events');
 
-class TreeEventSubscription {
+class EventSubscription {
   constructor(sketchId, processor, name) {
     this.sketchId = sketchId;
-    this.treeEventProcessor = processor;
+    this.eventProcessor = processor;
     this.emitter = new EventEmitter();
     this.tree = {
       hash: {},
@@ -26,49 +26,49 @@ class TreeEventSubscription {
   }
 
   onEvent(event) {
-    winston.log('debug', '[TreeEventSubscription.onEvent] (' + this.name + ') received an event:', event);
+    winston.log('debug', '[EventSubscription.onEvent] (' + this.name + ') received an event:', event);
 
     if( !event ) {
       // null events may be recieved if another module tries to write the event handler to a log message
-      winston.log('warn', '[TreeEventSubscription.onEvent] null event recieved - is someone trying to print the eventHandler in a log message?');
+      winston.log('warn', '[EventSubscription.onEvent] null event recieved - is someone trying to print the eventHandler in a log message?');
       return;
     }
 
     // This event should be newer than the last event processed - if not, something has gone wrong
     if( event.id <= this.lastEventIDProcessed ) {
       winston.log('error',
-      '[TreeEventSubscription.onEvent] An event has been recieved that is older or the same as the last event id of ' + this.lastEventIDProcessed
+      '[EventSubscription.onEvent] An event has been recieved that is older or the same as the last event id of ' + this.lastEventIDProcessed
       +' : ', event);
       return;
     }
 
-    winston.log('info', '[TreeEventSubscription.onEvent] adding event to an event queue with length of', this.eventQueue.length);
+    winston.log('info', '[EventSubscription.onEvent] adding event to an event queue with length of', this.eventQueue.length);
     // add the event to the queue
     this.eventQueue.push(event);
 
 
     let processEventQueue = function() {
-      winston.log('debug', '[TreeEventSubscription.onEvent] calling treeEventProcessor with tree:', this.tree);
+      winston.log('debug', '[EventSubscription.onEvent] calling treeEventProcessor with tree:', this.tree);
 
       let queuedEvent = this.eventQueue.shift();
 
       // Apply the event
-      this.treeEventProcessor.applyTreeEvent(queuedEvent, this.tree)
+      this.eventProcessor.applyEvent(queuedEvent, this.tree)
       .then( (updatedTree) => {
-        winston.log('debug', '[TreeEventSubscription.onEvent] event processed succesfully.  tree result:', updatedTree);
+        winston.log('debug', '[EventSubscription.onEvent] event processed succesfully.  tree result:', updatedTree);
         // store the state of the tree
         this.tree = updatedTree;
 
         // Update the last event processed for this sketch
         this.lastEventIDProcessed = queuedEvent.id;
-        winston.log('debug', '[TreeEventSubscription.onEvent] ('+this.name+') event_processed event listeners: ', this.emitter.listenerCount('event_processed') );
-        winston.log('debug', '[TreeEventSubscription.onEvent] emitting event_processed event to listeners for event ID ', queuedEvent.id);
+        winston.log('debug', '[EventSubscription.onEvent] ('+this.name+') event_processed event listeners: ', this.emitter.listenerCount('event_processed') );
+        winston.log('debug', '[EventSubscription.onEvent] emitting event_processed event to listeners for event ID ', queuedEvent.id);
         // Alert any subscribers to our event stream that this event has been completely processed
         this.emitter.emit('event_processed', queuedEvent);
 
       }).catch( e => {
         // If we hit an error, there isn't much we can do except to log it
-        winston.log('error', '[TreeEventSubscription.onEvent] (event:' + queuedEvent + ') unexpected error:', e);
+        winston.log('error', '[EventSubscription.onEvent] (event:' + queuedEvent + ') unexpected error:', e);
       }).finally( () => {
         if( this.eventQueue.length > 0 ) {
           processEventQueue();
@@ -96,4 +96,4 @@ class TreeEventSubscription {
 
 }
 
-module.exports = TreeEventSubscription;
+module.exports = EventSubscription;

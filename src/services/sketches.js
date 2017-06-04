@@ -4,8 +4,8 @@ const EventStore = require('../event/EventStore.js');
 const winston = require('winston');
 const uuidV4 = require('uuid/v4');
 const Cache = require('./Cache.js');
-const TreeEventSubscription = require('../event/TreeEventSubscription.js')
-const treeEventProcessor = require('../../src/event/TreeEventProcessor.js');
+const EventSubscription = require('../event/EventSubscription.js')
+const eventProcessor = require('../../src/event/EventProcessor.js');
 const Promise = require('bluebird');
 const RapidoError = require('../errors/rapido-error.js');
 const RapidoErrorCodes = require('../errors/codes.js');
@@ -29,7 +29,7 @@ Sketches.getSubscription = function(sketchId, label) {
         winston.log('debug', '[Sketches.getSubscription] No subscriber found in cache, creating a new subscription');
 
         // Create a new subscriber object
-        subscriber = new TreeEventSubscription(sketchId, treeEventProcessor, label);
+        subscriber = new EventSubscription(sketchId, eventProcessor, label);
         Sketches.es.subscribe(sketchId, subscriber.onEvent, 0);
         winston.log('debug', '[Sketches.getSubscription] storing subscription: ', subscriber);
         // Store the subscription in cache
