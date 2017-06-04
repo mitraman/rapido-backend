@@ -1,0 +1,7 @@
+== Errors
+
+This would be a section on error handling
+
+=== Error Codes
+
+I might put error code handling documentation here.

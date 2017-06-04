@@ -38,7 +38,8 @@
     "eslint": "~3.13.1",
     "istanbul": "~0.4.5",
     "smtp-server": "~2.0.3",
-    "envelope": "~1.0.6"
+    "envelope": "~1.0.6",
+    "asciidoctor.js": "1.5.6-preview.1"
   },
   "keywords": [],
   "repository": "",

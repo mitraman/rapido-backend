@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge"><![endif]-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 1.5.6.dev">
+<title>Rapido API Documentation</title>
+<link rel="stylesheet" href="css/rapidodoc.css">
+</head>
+<body class="article toc2 toc-left">
+<div id="header">
+<h1>Rapido API Documentation</h1>
+<div id="toc" class="toc2">
+<div id="toctitle">S</div>
+<ul class="sectlevel1">
+<li><a href="#_concepts">Concepts</a>
+<ul class="sectlevel2">
+<li><a href="#_about_the_api">About the API</a></li>
+<li><a href="#_errors">Errors</a></li>
+</ul>
+</li>
+<li><a href="#_resources">Resources</a></li>
+<li><a href="#_projects">/projects</a>
+<ul class="sectlevel2">
+<li><a href="#_retrieve_projects">Retrieve Projects</a></li>
+<li><a href="#_create_a_project">Create a Project</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="_concepts">Concepts</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_about_the_api">About the API</h3>
+<div class="paragraph">
+<p>The Rapido API is a backend implementation that supports the web version of the Rapido API sketching application.
+It provides a set of functions for working with user profiles, API sketches and exporting data to other formats.</p>
+</div>
+<div class="sect3">
+<h4 id="_who_is_this_for">Who is this for?</h4>
+<div class="paragraph">
+<p>The Rapido API is intended for use by the Rapido web application only.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_errors">Errors</h3>
+<div class="paragraph">
+<p>Errors can occur at any time with this API.
+The HTTP status code will indicate if the problem happened because something went wrong in the API or if something was wrong with the request that you&#8217;ve sent.
+The 4xx series of HTTP status codes indicate that there was a problem with the request message.
+This means that you should fix your message before trying to send it again.
+The 5xx series of HTTP status codes indicate that there was a problem on the server.
+You can try sending your message again without changing it to see if it will work the second time.</p>
+</div>
+<div class="paragraph">
+<p>Error messages may also include an application specific error codes.
+The following table lists all of the error codes:
+TK: include an error table</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_resources">Resources</h2>
+<div class="sectionbody">
+
+</div>
+</div>
+<div class="sect1 api-reference">
+<h2 id="_projects">/projects</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <em>projects</em> resource is a container for a user&#8217;s API sketches.</p>
+</div>
+<div class="sect2">
+<h3 id="_retrieve_projects">Retrieve Projects</h3>
+<div class="sect3 api-description">
+<h4 id="_object_details">Object Details</h4>
+<div class="paragraph">
+<p>Retrieves a list of project resources for the authenticated user.
+Returns a JSON collection object.</p>
+</div>
+<div class="paragraph">
+<p>Request Query Properties</p>
+</div>
+<table class="tableblock frame-all grid-all spread">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">sort</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">an optional sort attribute</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">max</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the maximum number of entries to return</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3 api-example">
+<h4 id="_retrieve_projects_example">Retrieve Projects Example</h4>
+<div id="example1" class="exampleblock">
+<div class="title">Example 1. Title of example</div>
+<div class="content">
+<div class="paragraph">
+<p>curl <a href="http://rapido.com/api/projects?sort=ascending&amp;max=10" class="bare">http://rapido.com/api/projects?sort=ascending&amp;max=10</a></p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_create_a_project">Create a Project</h3>
+<div class="sect3 api-description">
+<h4 id="_object_details_2">Object Details</h4>
+<div class="paragraph">
+<p>Create a new project</p>
+</div>
+<div class="paragraph">
+<p>Request Properties</p>
+</div>
+<table class="tableblock frame-all grid-all spread">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the name of the project (required)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">description</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">a description for the project (optional)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3 api-example">
+<h4 id="_create_a_project_example">Create a Project Example</h4>
+<div class="exampleblock">
+<div class="content">
+<div class="paragraph">
+<p>curl -X post <a href="http://rapido.com/api/projects" class="bare">http://rapido.com/api/projects</a>
+{
+  "name": "blah",
+  "description": "blah"
+}</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2017-05-28 15:30:34 DST
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,8 @@
+== About the API
+
+The Rapido API is a backend implementation that supports the web version of the Rapido API sketching application.
+It provides a set of functions for working with user profiles, API sketches and exporting data to other formats.
+
+=== Who is this for?
+
+The Rapido API is intended for use by the Rapido web application only.

@@ -6,6 +6,61 @@ const Promise = require('bluebird');
 let TreeEventProcessor = function () {
 };
 
+
+TreeEventProcessor.treenode_moved = function(event, tree) {
+  winston.log('devbug', '[TreeEventProcessor.treenode_moved] applying treenode_moved event: ', event);
+  if( !event.data ) {
+    throw new Error('event is missing data property');
+  }
+  if( !event.data.sourceId ) {
+    throw new Error('treenode_moved event is missing a required property: data.sourceId');
+  }
+
+  // Make sure the the target id exists in the tree
+  let sourceNode = tree.hash[event.data.sourceId];
+  if( !sourceNode ) {
+    throw new Error('Unable to move a non-existent node');
+  }
+
+  // Make sure that the target id exists in the tree
+  if( event.data.targetId && !tree.hash[event.data.targetId] ) {
+    throw new Error('Unable to move node to a non-existent target.');
+  }
+
+  // Remove the source node from its parent's child list
+  let parentNode = tree.hash[sourceNode.parentId];
+  let childList = null;
+  if( !parentNode ) {
+    // This is a rootNode, so manipulate the rootNodes array
+    childList = tree.rootNodes;
+  } else {
+    childList = parentNode.children;
+
+  }
+  for( let i = 0; i < childList.length; i++ ) {
+    let child = childList[i];
+
+    if( child.id === sourceNode.id ) {
+      childList.splice(i, 1);
+      break;
+    }
+  }
+
+  if( !event.data.targetId ) {
+    // We are moving this node to the root
+    tree.rootNodes.push(sourceNode);
+  } else {
+    // Add the source node to its new target
+    tree.hash[event.data.targetId].children.push(sourceNode);
+  }
+
+  // Update the parentId property of the node
+  sourceNode.parentId = event.data.targetId;
+
+  return tree;
+
+}
+
 TreeEventProcessor.treenode_added = function(event, tree) {
   winston.log('debug', '[TreeEventProcessor.treenode_added] applying treenode_added event: ', event);
   if( !event.data ) {
@@ -29,6 +84,8 @@ TreeEventProcessor.treenode_added = function(event, tree) {
     tree.rootNodes.push(newNode);
   }else {
     let parentNode = tree.hash[event.data.parentId];
+    // set the parentId to make moves and deletes easier
+    newNode.parentId = event.data.parentId;
     winston.log('debug', '[TreeEventProcessor.treenode_added] Pushing node into children of parent node: ', parentNode);
     parentNode.children.push(newNode);
   }

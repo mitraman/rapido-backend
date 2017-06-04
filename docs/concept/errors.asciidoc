@@ -1,0 +1,11 @@
+== Errors
+
+Errors can occur at any time with this API.
+The HTTP status code will indicate if the problem happened because something went wrong in the API or if something was wrong with the request that you've sent.
+The 4xx series of HTTP status codes indicate that there was a problem with the request message.
+This means that you should fix your message before trying to send it again.
+The 5xx series of HTTP status codes indicate that there was a problem on the server.
+You can try sending your message again without changing it to see if it will work the second time.
+
+Error messages may also include an application specific error codes.
+The following table lists all of the error codes:

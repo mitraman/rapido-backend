@@ -1,0 +1,69 @@
+[role="api-reference"]
+= /projects
+
+The _projects_ resource is a container for a user's API sketches.
+
+== Retrieve Projects
+
+[role="api-description"]
+=== Object Details
+
+Retrieves a list of project resources for the authenticated user.
+Returns a JSON collection object.
+
+Request Query Properties
+|===
+|sort | an optional sort attribute
+|max | the maximum number of entries to return
+|===
+
+[role="api-example"]
+=== Retrieve Projects Example
+.Title of example
+[[example1]]
+====
+curl http://rapido.com/api/projects?sort=ascending&max=10
+====
+
+== Create a Project
+
+[role="api-description"]
+=== Object Details
+
+Create a new project
+
+Request Properties
+|===
+|name | the name of the project (required)
+|description | a description for the project (optional)
+|===
+
+[role="api-example"]
+=== Create a Project Example
+====
+curl -X post http://rapido.com/api/projects
+{
+  "name": "blah",
+  "description": "blah"
+}
+====
+
+
+
+// [role="api-description"]
+// === Delete all Projects
+//
+// Deletes all the projects associated with a user
+//
+// blah blah
+//
+// [role="api-example"]
+// === Delete all projects example
+// ==== Request Message
+// ====
+// curl -X delete http://rapido.com/api/projects
+// ====
+// ==== Response Message
+// ====
+// http 202
+// ====

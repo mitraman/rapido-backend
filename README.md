@@ -16,6 +16,8 @@ Edit `rapido.json` and `rapido-test.json` to configure the database connection a
 
 use `npm start` to bring the server up.
 
+You will need to run 'npm init' the first time in order to initialize the database tables.
+
 ##Test
 
 use `npm test` to start the Jasmine tests.  Tests require a running postgresql database.  The test scripts create a database called rapido-test.  We use Istanbul to check for code coverage and contributions MUST have a coverage rate of 100%.  If you have code that is impossible to test you can add a statement to [exclude it from testing](https://github.com/gotwarlost/istanbul/blob/master/ignoring-code-for-coverage.md)
