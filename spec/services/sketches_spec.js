@@ -281,6 +281,75 @@ describe('/services/sketches.js ', function() {
     })
   })
 
+  describe('move node', function() {
+
+    beforeEach(function(done){
+      this.nodeA = createEmptyNode('a', '/a');
+      this.nodeB = createEmptyNode('b', '/b');
+      this.nodeC = createEmptyNode('c', '/c');
+      this.nodeD = createEmptyNode('d', '/d');
+
+      // Generate a tree
+      sketchService.addTreeNode(this.userId, this.sketchId, this.nodeA)
+      .then( result => {
+        this.nodeA.id = result.nodeId;
+        return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeB, this.nodeA.id);
+      }).then( result => {
+        this.nodeB.id = result.nodeId;
+        return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeC, this.nodeB.id);
+      }).then( result => {
+        this.nodeC.id = result.nodeId;
+        return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeD);
+      }).then( result => {
+        this.nodeD.id = result.nodeId;
+      }).finally(done);
+
+    })
+
+    it('should reject an atempt to move a node when the source id is not defined', function(done) {
+      sketchService.moveNode(this.userId, this.sketchId)
+      .then( () => {
+        fail('this call should have failed');
+      }).catch( e => {
+        expect(e).toBeDefined();
+        expect(e.message.startsWith('Cannot move undefined node')).toBe(true);
+      }).finally(done);
+    })
+
+    it('should reject an attempt to move a node to a non-existent parent', function(done) {
+      sketchService.moveNode(this.userId, this.sketchId, this.nodeB.id, 'bad-id' )
+      .then( () => {
+        fail('this call should have failed');
+      }).catch( e => {
+        expect(e).toBeDefined();
+        expect(e.message.startsWith('Cannot move node to non-existent target node with ID:')).toBe(true);
+      }).finally(done);
+    })
+
+    it('should reject an attempt to make a circular tree', function(done) {
+      sketchService.moveNode(this.userId, this.sketchId, this.nodeA.id, this.nodeC.id)
+      .then( () => {
+        fail('circular move should have failed.');
+      }).catch( e => {
+        expect(e).toBeDefined();
+        expect(e.message).toBe('Unable to move node because it would result in a circular tree.');
+      }).finally(done);
+    });
+
+    it('should apply a node move event', function(done) {
+      // Move node b to node d
+      sketchService.moveNode(this.userId, this.sketchId, this.nodeB.id, this.nodeD.id)
+      .then(() => {
+        winston.log('debug', 'Trying to get tree');
+        return sketchService.getTree( this.sketchId )
+      }).then( result => {
+        expect(result.tree.hash[this.nodeA.id].children.length).toBe(0);
+        expect(result.tree.hash[this.nodeD.id].children.length).toBe(1);
+        expect(result.tree.hash[this.nodeD.id].children[0].id).toBe(this.nodeB.id);
+      }).catch( e=> {fail(e)}).then(done)
+    });
+  })
+
   describe('general tests', function() {
 
     it('should populate three sketch cache without conflict', function(done) {

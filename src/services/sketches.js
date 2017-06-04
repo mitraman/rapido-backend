@@ -246,6 +246,95 @@ Sketches.prototype.updateNodeDetails = function(userId, sketchId, nodeId, update
   });
 }
 
+Sketches.prototype.moveNode = function(userId, sketchId, sourceNodeId, targetNodeId, label) {
+  return new Promise( (resolve, reject) => {
+    // Generate a temporary token to identify the event that we are pushing
+    const token = uuidV4();
+
+    // Retrieve a subscriber object (the tree cache is available from the subscriber)
+    Sketches.getSubscription(sketchId, label)
+    .then( subscriber =>  {
+      winston.log('debug', '[Sketches.moveNode] subscriber:', subscriber);
+
+      // Validate the request
+      if(targetNodeId) {
+        if(!subscriber.tree.hash[targetNodeId]) {
+          let errorMessage = 'Cannot move node to non-existent target node with ID:' + targetNodeId;
+          reject(new RapidoError(RapidoErrorCodes.invalidField, errorMessage, 400));
+          //reject('Cannot add node to non-existent parent node with ID:' + parentId);
+          return;
+        }
+      }
+
+      if(!sourceNodeId ) {
+        let errorMessage = 'Cannot move undefined node';
+        reject(new RapidoError(RapidoErrorCodes.invalidField, errorMessage, 400));
+        //reject('Cannot add node to non-existent parent node with ID:' + parentId);
+        return;
+      }
+
+      if( !subscriber.tree.hash[sourceNodeId]  ) {
+        let errorMessage = 'Cannot move non-existent node with id: ' + sourceNodeId;
+        reject(new RapidoError(RapidoErrorCodes.invalidField, errorMessage, 400));
+        //reject('Cannot add node to non-existent parent node with ID:' + parentId);
+        return;
+      }
+
+      // Make sure that this move wouldn't result in a circular tree
+      // This means we need to walk through all of the children in the source node
+      //  and make sure the target id isn't found
+      let isChild = function(node, id) {
+        if(!node.children) {
+          return false;
+        }
+        for( let i = 0; i< node.children.length; i++ ) {
+          let child = node.children[i];
+          if( child.id === id ) {
+            return true;
+          }
+          if( isChild(child, id) ) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      if(isChild(subscriber.tree.hash[sourceNodeId], targetNodeId)) {
+        let errorMessage = 'Unable to move node because it would result in a circular tree.';
+        reject(new RapidoError(RapidoErrorCodes.invalidField, errorMessage, 400));
+        //reject('Cannot add node to non-existent parent node with ID:' + parentId);
+        return;
+      }
+
+      // Setup an event handler to listen for processed events
+      let processedHandler = function(event) {
+        // If we catch the event we are pushing, resolve the promise
+        winston.log('[Sketches.moveNode] processed event caught:', event);
+        if( event.token === token) {
+          //now that we know the event has been processed, stop listening
+          subscriber.stream().removeListener('event_processed', processedHandler);
+          resolve({
+            tree: subscriber.tree
+          });
+        }
+      }
+      subscriber.stream().on('event_processed', processedHandler);
+
+      winston.log('debug', '[Sketches.moveNode] recording tree node move event');
+      // Record the tree move addition event
+      return Sketches.es.push(userId, sketchId,
+        'treenode_moved',
+        {
+          sourceId: sourceNodeId,
+          targetId: targetNodeId
+        }, token);
+    }).catch( e => {
+      reject(e);
+    })
+  });
+}
+
+
 Sketches.prototype.reset = function() {
   // Used for unit testing, unsubscribes and flushe all subscribers in the cache
 

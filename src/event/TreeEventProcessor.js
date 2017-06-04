@@ -27,6 +27,8 @@ TreeEventProcessor.treenode_moved = function(event, tree) {
     throw new Error('Unable to move node to a non-existent target.');
   }
 
+  winston.log('debug', '[TreeEventProcessor.treenode_moved] moving node ' + event.data.sourceId + ' to ' + event.data.targetId );
+
   // Remove the source node from its parent's child list
   let parentNode = tree.hash[sourceNode.parentId];
   let childList = null;
