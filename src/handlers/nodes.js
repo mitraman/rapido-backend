@@ -142,7 +142,37 @@ module.exports = {
 			}
 		})
 
-  }
+  },
+
+	moveNodeHandler: function(req, res, next) {
+		winston.log('debug', '[moveNodeHandler] handling request');
+
+		let userId = req.credentials.id;
+		let sketchId = req.params.sketchId;
+		let nodeId = req.params.nodeId;
+
+		winston.log('debug', '[moveNodeHandler] nodeId: ', nodeId);
+		let target = req.body.target;
+		if( !target) {
+			res.status(400).send(representer.errorMessage('Required field \'target\' is missing from request body'));
+			return;
+		}
+
+		sketchService.moveNode(userId, sketchId, nodeId, target)
+    .then( result => {
+				winston.log('debug', '[moveNodeHandler] result of moveNode: ', result);
+				res.status(200).send(representer.responseMessage({ tree: result.tree.rootNodes}));
+    }).catch( e => {
+			winston.log('debug', '[moveNodeHandler] error:', e);
+			if(e.name === 'RapidoError') {
+				res.status(e.status).send(representer.errorMessage(e.message));
+			}else {
+				winston.log('error', 'An unexpected error occurred while trying to update node data:', e);
+				res.status(500).send(representer.errorMessage("An unexpected error occurred"));
+			}
+		})
+
+	}
 
 
 }

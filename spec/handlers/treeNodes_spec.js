@@ -15,6 +15,8 @@ describe('handlers/nodes.js', function() {
     'Content-Type': 'application/json'
   };
 
+  let sketchId = 10;
+
   let nodesUrl = urlBase + '/sketches/10/nodes';
   let paramaterizedNodeUrl = urlBase + '/sketches/10/nodes/:nodeId';
   let token = "";
@@ -337,7 +339,7 @@ describe('handlers/nodes.js', function() {
     })
 
     it('should reject an attempt to update a node that does not exist', function(done) {
-      console.log(nodesUrl);
+      //console.log(nodesUrl);
       request.post(
         {
           url: nodesUrl,
@@ -397,4 +399,126 @@ describe('handlers/nodes.js', function() {
       )
     })
   })
+
+  describe('PUT /nodes/:nodeId/move', function() {
+
+    beforeAll(function(done) {
+      this.paramaterizedNodeMoveUrl = paramaterizedNodeUrl + '/move';
+      HandlerSupport.registerAndLogin('ProjectsTest')
+      .then( (result) => {
+        const authValue = 'Bearer ' + result.token;
+        headers['Authorization'] = authValue;
+        userid = result.userId;
+        done();
+      }).catch( (error) => {
+        fail(error);
+      })
+    })
+
+    beforeEach(function(done) {
+      // remove the event history before each test
+      const db = dataAccessor.getDb();
+      db.query('delete from sketchevents;')
+      .then( () => {
+        // Flush all subscribers
+        return sketchService.reset();
+      }).finally(done);
+    })
+
+    it('should reject a request that does not designate a target', function(done) {
+      const nodeId = 'badid';
+      let nodeMoveUrl = this.paramaterizedNodeMoveUrl.replace(/:nodeId/gi, nodeId);
+      request.put(
+        {
+          url: nodeMoveUrl,
+          headers: headers
+        }, function( err, res, body) {
+          winston.log('debug', 'body:', body);
+          expect(res.statusCode).toBe(400);
+          let bodyJSON = JSON.parse(body);
+          expect(bodyJSON.error).toBe('Required field \'target\' is missing from request body');
+          done();
+        }
+      );
+    })
+
+    it(' should reject a request to move a node that does not exist', function(done) {
+      const nodeId = 'badid';
+      let nodeMoveUrl = this.paramaterizedNodeMoveUrl.replace(/:nodeId/gi, nodeId);
+      request.put(
+        {
+          url: nodeMoveUrl,
+          headers: headers,
+          json: {
+            target: 'some-target'
+          }
+        }, function( err, res, body) {
+          winston.log('debug', 'body:', body);
+          expect(res.statusCode).toBe(400);
+          expect(body.error).toBe('Cannot move node to non-existent target node with ID:some-target')
+          done();
+        }
+      );
+    })
+
+    it(' should move a node ', function(done) {
+      // Use the sketch service to create a tree
+      let createEmptyNode = function(name, fullpath) {
+        return {
+          name: name,
+          fullpath: fullpath
+        }
+      }
+
+      let nodeA = createEmptyNode('a', '/a');
+      let nodeB = createEmptyNode('b', '/b');
+      let nodeC = createEmptyNode('c', '/c');
+      let nodeD = createEmptyNode('d', '/d');
+
+      //TODO: this test module needs to be cleaned up so that it uses 'this'
+      let userId = userid;
+
+      sketchService.addTreeNode(userId, sketchId, nodeA)
+      .then( result => {
+        nodeA.id = result.nodeId;
+        return sketchService.addTreeNode(userId, sketchId, nodeB, nodeA.id);
+      }).then( result => {
+        nodeB.id = result.nodeId;
+        return sketchService.addTreeNode(userId, sketchId, nodeC, nodeB.id);
+      }).then( result => {
+        nodeC.id = result.nodeId;
+        return sketchService.addTreeNode(userId, sketchId, nodeD);
+      }).then( result => {
+        return nodeD.id = result.nodeId;
+      }).then( result => {
+        const nodeId = nodeC.id;
+        let nodeMoveUrl = this.paramaterizedNodeMoveUrl.replace(/:nodeId/gi, nodeId);
+        request.put(
+          {
+            url: nodeMoveUrl,
+            headers: headers,
+            json: {
+              target: nodeD.id
+            }
+          }, function( err, res, body) {
+            winston.log('debug', 'body:', body);
+            expect(res.statusCode).toBe(200);
+            expect(body.tree).toBeDefined();
+            let a = body.tree[0];
+            expect(a.id).toBe(nodeA.id);
+            let b = a.children[0];
+            expect(b.id).toBe(nodeB.id);
+            expect(b.children.length).toBe(0);
+            let d = body.tree[1];
+            expect(d.id).toBe(nodeD.id);
+            expect(d.children.length).toBe(1);
+            let c = d.children[0];
+            expect(c.id).toBe(nodeC.id);
+            done();
+          }
+        );
+
+      })
+    })
+  });
 })
