@@ -426,11 +426,17 @@ describe('TreeEventProcessor', function() {
           nodeId: 'node1',
           key: 'get',
           fields: {
-            contentType: 'application/json',
             enabled: false,
-            queryParams:'?name=value&name=value',
-            requestBody: '',
-            responseBody: '{[{name: \"sample value\"}]'
+            request: {
+              contentType: 'application/json',
+              queryParams:'?name=value&name=value',
+              body: ''
+            },
+            response: {
+              contentType: 'application/json',
+              status: '200',
+              body: '{[{name: \"sample value\"}]'
+            }
           }
         }
       }
@@ -441,11 +447,17 @@ describe('TreeEventProcessor', function() {
       }).then( (tree) => {
         let getData = tree.rootNodes[0].data.get;
         expect(getData).toBeDefined();
-        expect(getData.contentType).toBe(updateDataEvent.data.fields.contentType);
         expect(getData.enabled).toBe(updateDataEvent.data.fields.enabled);
-        expect(getData.responseBody).toEqual(updateDataEvent.data.fields.responseBody);
-        expect(getData.requestBody).toEqual(updateDataEvent.data.fields.requestBody);
-        expect(getData.queryParams).toEqual(updateDataEvent.data.fields.queryParams);
+
+        expect(getData.request.contentType).toBe(updateDataEvent.data.fields.request.contentType);
+        expect(getData.request.queryParams).toEqual(updateDataEvent.data.fields.request.queryParams);
+        expect(getData.request.body).toEqual(updateDataEvent.data.fields.request.body);
+
+        expect(getData.response.contentType).toBe(updateDataEvent.data.fields.response.contentType);
+        expect(getData.response.body).toEqual(updateDataEvent.data.fields.response.body);
+        expect(getData.response.status).toEqual(updateDataEvent.data.fields.response.status);
+
+
       }).catch( e => { fail(e); }).finally(done);
 
     });
@@ -458,9 +470,12 @@ describe('TreeEventProcessor', function() {
           nodeId: 'node1',
           key: 'put',
           fields: {
-            contentType: 'application/json',
-            enabled: false,
-            responseBody: '{[{name: \"sample value\"}]'
+            enabled: true,
+            response: {
+              status: '200',
+              contentType: 'application/json',
+              body: '{[{name: \"sample value\"}]'
+            }
           }
         }
       };
@@ -472,7 +487,9 @@ describe('TreeEventProcessor', function() {
           nodeId: 'node1',
           key: 'put',
           fields: {
-            responseBody: 'new'
+            response: {
+              body: 'new'
+            }
           }
         }
       };
@@ -486,9 +503,9 @@ describe('TreeEventProcessor', function() {
       }).then( (tree) => {
         let putData = tree.rootNodes[0].data.put;
         expect(putData).toBeDefined();
-        expect(putData.contentType).toBe(firstUpdateDataEvent.data.fields.contentType);
+        expect(putData.response.contentType).toBe(firstUpdateDataEvent.data.fields.response.contentType);
         expect(putData.enabled).toBe(firstUpdateDataEvent.data.fields.enabled);
-        expect(putData.responseBody).toEqual(secondUpdateDataEvent.data.fields.responseBody);
+        expect(putData.response.body).toEqual(secondUpdateDataEvent.data.fields.response.body);
       }).catch( e => { fail(e); }).finally(done);
     })
 

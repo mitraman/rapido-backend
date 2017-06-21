@@ -213,20 +213,27 @@ describe('/services/sketches.js ', function() {
       let updateObject = {
         key: 'put',
         fields: {
-          contentType: 'some/crazytype',
           enabled: true,
-          queryParams: '?name=val',
-          requestBody: '{}',
-          responseBody: 'blahblahblah123'
+          request: {
+            contentType: 'some/crazytype',
+            queryParams: '?name=val',
+            body: '{}'
+          },
+          response: {
+            status: '200',
+            contentType: 'some/crazytype',
+            body: 'blahblahblah123'
+          }
         }
       }
 
       sketchService.updateBodyData(this.userId, this.sketchId, this.originalNode.id, updateObject)
       .then( (result) => {
         let putData = result.tree.rootNodes[0].data.put;
-        expect(putData.queryParams).toBe(updateObject.fields.queryParams);
-        expect(putData.requestBody).toBe(updateObject.fields.requestBody);
-        expect(putData.responseBody).toBe(updateObject.fields.responseBody);
+        expect(putData.request.queryParams).toBe(updateObject.fields.request.queryParams);
+        expect(putData.request.body).toBe(updateObject.fields.request.body);
+        expect(putData.response.body).toBe(updateObject.fields.response.body);
+        expect(putData.response.status).toBe(updateObject.fields.response.status);
       }).catch( (error) => {
         fail(error);
       }).finally(done);

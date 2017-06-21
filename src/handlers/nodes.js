@@ -84,25 +84,62 @@ module.exports = {
 		let updatePromises = [];
 
 		let keys = Object.keys(req.body);
+
 		keys.forEach( key => {
 			if( key === 'data' ) {
 					winston.log('debug', '[updateNodePropertiesHandler] populating a data update event')
-					// Parse the response data
-					let dataKeys = Object.keys(req.body.data);
-					dataKeys.forEach( dataKey => {
-						let data = req.body.data[dataKey];
-						winston.log('adebug', '[updateNodePropertiesHandler] req.body.data[key]:', data);
-						let dataFields = {};
-						if( data.contentType ) { dataFields.contentType = data.contentType };
-						if( data.hasOwnProperty('enabled') ) { dataFields.enabled = data.enabled };
-						if( data.queryParams ) { dataFields.queryParams = data.queryParams };
-						if( data.requestBody ) { dataFields.requestBody = data.requestBody };
-						if( data.responseBody ) { dataFields.responseBody = data.responseBody };
-						let responseDataUpdate = {
-							key: dataKey,
-							fields: dataFields
+
+					// The data property should have one or more method objects.
+
+					let methodNames = Object.keys(req.body.data);
+
+					// Only process method objects that we know about.
+					methodNames.forEach( methodName => {
+
+						const validMethodNames = ['get', 'put', 'post', 'delete', 'patch'];
+						if( validMethodNames.indexOf(methodName) < 0 ) {
+							// The method name that was provided is not recognized
+							winston.log('debug', '[updateNodePropertiesHandler] unrecognized method ' + methodName);
+							res.status(400).send(representer.errorMessage('Unrecognized method name ' + methodName));
+							return;
 						}
-						updatePromises.push(sketchService.updateBodyData(userId, sketchId, nodeId, responseDataUpdate));
+
+
+						// Convert the method data into an update object
+						let updateObject = {};
+						updateObject.key = methodName;
+						updateObject.fields = {};
+
+						let dataKeys = Object.keys(req.body.data[methodName]);
+
+						dataKeys.forEach( dataKey => {
+							let data = req.body.data[methodName];
+
+							if( data.hasOwnProperty('enabled') ) { updateObject.fields.enabled = data.enabled };
+							if( data.request ) {
+								updateObject.fields.request = {};
+								// Parse the request data object
+								let requestKeys = Object.keys(data.request);
+								requestKeys.forEach( requestKey => {
+									if( requestKey === 'contentType' ) { updateObject.fields.request.contentType = data.request[requestKey] };
+									if( requestKey === 'queryParams' ) { updateObject.fields.request.queryParams = data.request[requestKey] };
+									if( requestKey === 'body' ) { updateObject.fields.request.body = data.request[requestKey] };
+								})
+
+							}
+							if( data.response ) {
+								// Parse the response data object
+								updateObject.fields.response = {};
+								let responseKeys = Object.keys(data.response);
+								responseKeys.forEach( responseKey => {
+									if( responseKey === 'contentType' ) { updateObject.fields.response.contentType = data.response[responseKey] };
+									if( responseKey === 'status' ) { updateObject.fields.response.status = data.response[responseKey] };
+									if( responseKey === 'body' ) { updateObject.fields.response.body = data.response[responseKey] };
+								})
+							}
+						})
+
+					updatePromises.push(sketchService.updateBodyData(userId, sketchId, nodeId, updateObject));
 					});
 			}else if( key === 'name' ) {
 					winston.log('debug', '[updateNodePropertiesHandler] populating a field update event for the name field');

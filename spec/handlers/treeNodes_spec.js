@@ -161,6 +161,7 @@ describe('handlers/nodes.js', function() {
     })
 
     it( 'should update the response data of a node', function(done) {
+
       request.post(
         {
           url: nodesUrl,
@@ -180,23 +181,31 @@ describe('handlers/nodes.js', function() {
                   data: {
                     'get' : {
                       enabled: true,
-                      contentType: 'application/json',
-                      queryParams: '?name=value',
-                      requestBody: '{ "test": "testing" }',
-                      responseBody: '{ "name": "some_value"}'
+                      request: {
+                        contentType: 'application/json',
+                        queryParams: '?name=value',
+                        body: '{ "test": "testing" }'
+                      },
+                      response: {
+                        status: '200',
+                        contentType: 'application/json',
+                        body: '{ "name": "some_value"}'
+                      }
                     }
                   }
                 }
               }, function( err, res, body) {
-                winston.log('debug', 'body:', body);
                 expect(res.statusCode).toBe(200);
                 let node = body.tree[0];
                 expect(node.data.get).toBeDefined();
                 expect(node.data.get.enabled).toBe(true);
-                expect(node.data.get.contentType).toBe('application/json');
-                expect(node.data.get.queryParams).toBe('?name=value');
-                expect(node.data.get.requestBody).toBe('{ "test": "testing" }');
-                expect(node.data.get.responseBody).toBe('{ "name": "some_value"}');
+                expect(node.data.get.request).toBeDefined();
+                expect(node.data.get.request.contentType).toBe('application/json');
+                expect(node.data.get.request.queryParams).toBe('?name=value');
+                expect(node.data.get.request.body).toBe('{ "test": "testing" }');
+                expect(node.data.get.response).toBeDefined();
+                expect(node.data.get.response.contentType).toBe('application/json');
+                expect(node.data.get.response.body).toBe('{ "name": "some_value"}');
                 done();
               }
             )
@@ -225,10 +234,16 @@ describe('handlers/nodes.js', function() {
                   data: {
                     'get' : {
                       enabled: true,
-                      contentType: 'application/json',
-                      queryParams: '?name=value',
-                      requestBody: '{}',
-                      responseBody: '{ "name": "some_value"}'
+                      request: {
+                        contentType: 'application/json',
+                        queryParams: '?name=value',
+                        body: '{}'
+                      },
+                      response: {
+                        contentType: 'application/json',
+                        body: '{ "name": "some_value"}'
+                      }
+
                     }
                   }
                 }
@@ -239,10 +254,11 @@ describe('handlers/nodes.js', function() {
                 expect(node.name).toBe('new_name');
                 expect(node.data.get).toBeDefined();
                 expect(node.data.get.enabled).toBe(true);
-                expect(node.data.get.contentType).toBe('application/json');
-                expect(node.data.get.queryParams).toBe("?name=value");
-                expect(node.data.get.requestBody).toBe("{}");
-                expect(node.data.get.responseBody).toBe('{ "name": "some_value"}');
+                expect(node.data.get.request.contentType).toBe('application/json');
+                expect(node.data.get.response.contentType).toBe('application/json');
+                expect(node.data.get.request.queryParams).toBe("?name=value");
+                expect(node.data.get.request.body).toBe("{}");
+                expect(node.data.get.response.body).toBe('{ "name": "some_value"}');
                 done();
               }
             )
@@ -308,16 +324,20 @@ describe('handlers/nodes.js', function() {
                   data: {
                     'get' : {
                       enabled: true,
-                      contentType: 'application/json',
-                      responseBody: '{ "name": "some_value"}'
+                      response: {
+                        contentType: 'application/json',
+                        body: '{ "name": "some_value"}'
+                      }
                     },
                     'put' : {
                       enabled: false
                     },
                     'patch' : {
                       enabled: true,
-                      contentType: 'application/json',
-                      responseBody: '{ "name": "some_other_value"}'
+                      response: {
+                        contentType: 'application/json',
+                        body: '{ "name": "some_other_value"}'
+                      }
                     }
                   }
                 }
@@ -327,8 +347,8 @@ describe('handlers/nodes.js', function() {
                 let node = body.tree[0];
                 expect(node.data.get).toBeDefined();
                 expect(node.data.get.enabled).toBe(true);
-                expect(node.data.get.contentType).toBe('application/json');
-                expect(node.data.get.responseBody).toBe('{ "name": "some_value"}');
+                expect(node.data.get.response.contentType).toBe('application/json');
+                expect(node.data.get.response.body).toBe('{ "name": "some_value"}');
                 expect(node.data.put.enabled).toBe(false);
                 expect(node.data.patch.enabled).toBe(true);
                 done();

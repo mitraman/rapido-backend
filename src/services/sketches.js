@@ -164,7 +164,6 @@ Sketches.prototype.updateBodyData = function(userId, sketchId, nodeId, updateObj
         return;
       }
 
-
       // Setup an event handler to listen for processed events
       let processedHandler = function(event) {
         // If we catch the event we are pushing, resolve the promise

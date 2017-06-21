@@ -39,7 +39,8 @@
     "istanbul": "~0.4.5",
     "smtp-server": "~2.0.3",
     "envelope": "~1.0.6",
-    "asciidoctor.js": "1.5.6-preview.1"
+    "asciidoctor.js": "1.5.6-preview.1",
+    "ajv": "~5.1.6"
   },
   "keywords": [],
   "repository": "",

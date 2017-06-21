@@ -138,11 +138,17 @@ TreeEventProcessor.prototype.treenode_updated_data = function(event, tree ) {
 
     // Create the data object if it doesn't already exist
     node.data[dataKey] = {
-      contentType: '',
       enabled: false,
-      queryParams: '',
-      requestBody: '',
-      responseBody: ''
+      request: {
+        contentType: '',
+        queryParams: '',
+        body: ''
+      },
+      response: {
+        contentType: '',
+        status: '200',
+        body: ''
+      }
     };
   }
 
@@ -150,16 +156,39 @@ TreeEventProcessor.prototype.treenode_updated_data = function(event, tree ) {
 
   // Update properties
   Object.keys(event.data.fields).forEach( (fieldKey) => {
-    if( fieldKey === 'contentType' ) {
-      dataObject.contentType = event.data.fields.contentType;
-    }else if( fieldKey === 'enabled' ) {
+    if( fieldKey === 'enabled' ) {
       dataObject.enabled = event.data.fields.enabled;
-    }else if( fieldKey === 'queryParams' ) {
-      dataObject.queryParams = event.data.fields.queryParams;
-    }else if( fieldKey === 'requestBody' ) {
-      dataObject.requestBody = event.data.fields.requestBody;
-    }else if( fieldKey === 'responseBody' ) {
-      dataObject.responseBody = event.data.fields.responseBody;
+    }else if( fieldKey === 'request' ) {
+      // Parse the request fields
+      let request = event.data.fields.request;
+
+      Object.keys(request).forEach( requestFieldKey => {
+        if( requestFieldKey === 'contentType' ) {
+          dataObject.request.contentType = request.contentType;
+        }else if( requestFieldKey === 'queryParams' ) {
+          dataObject.request.queryParams = request.queryParams;
+        }else if( requestFieldKey === 'body' ) {
+          dataObject.request.body = request.body;
+        }else {
+          winston.log('warn', '[TreeEventProcessor.treenode_updated_data] unable to handle update of node data rqeuest property ' + requestFieldKey);
+        }
+      })
+
+    }else if( fieldKey === 'response' ) {
+      // Parse response fields
+      let response = event.data.fields.response;
+
+      Object.keys(response).forEach( responseFieldKey => {
+        if( responseFieldKey === 'contentType' ) {
+          dataObject.response.contentType = response.contentType;
+        }else if( responseFieldKey === 'status' ) {
+          dataObject.response.status = response.status;
+        }else if( responseFieldKey === 'body' ) {
+          dataObject.response.body = response.body;
+        }else {
+          winston.log('warn', '[TreeEventProcessor.treenode_updated_data] unable to handle update of node data response property ' + responseFieldKey);
+        }
+      })
     }else {
       winston.log('warn', '[TreeEventProcessor.treenode_updated_data] unable to handle update of node data property ' + fieldKey);
     }
