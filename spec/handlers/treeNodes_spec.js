@@ -65,7 +65,7 @@ describe('handlers/nodes.js', function() {
       )
     });
 
-    it( 'should create a new node at the root level (/nodes)', function(done) {
+    fit( 'should create a new node at the root level (/nodes)', function(done) {
 
 
       request.post(
@@ -79,6 +79,7 @@ describe('handlers/nodes.js', function() {
             expect(jsonBody.tree).toBeDefined();
             expect(jsonBody.node).toBeDefined();
             expect(jsonBody.node.id).toBeDefined();
+            expect(jsonBody.node.data).toBeDefined();
             done();
         }
       )

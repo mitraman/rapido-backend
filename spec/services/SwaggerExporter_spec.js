@@ -6,10 +6,27 @@ const SwaggerExporter = require('../../src/services/SwaggerExporter.js');
 const Ajv = require('ajv');
 const fs = require('fs');
 
-
-fdescribe('SwaggerExporter', function() {
+describe('SwaggerExporter v2', function() {
 
   let buildNode = function(name, fullpath, data) {
+    if( !data ) {
+      data = {
+        get: {
+          enabled: 'true',
+          request: {
+            contentType: 'application/json',
+            queryParams: '',
+            body: ''
+          },
+          response: {
+            contentType: 'application/json',
+            status: '200',
+            body: ''
+          }
+        }
+      }
+    }
+
     return {
       name: name,
       fullpath: fullpath,
@@ -74,6 +91,123 @@ fdescribe('SwaggerExporter', function() {
 
   })
 
+  it('should set the content type and response status for a simple object', function() {
+    let tree = { rootNodes: [], hash: {}};
+    let node = buildNode('/node', '/node');
+
+    let title = 'test-title'
+    let description = 'project description'
+
+    tree.rootNodes.push(node);
+
+    let doc = this.exporter.exportTree(tree, title, description);
+    expect(this.validate(doc.json)).toBe(true);
+
+    let path = doc.json.paths[node.fullpath];
+    expect(path.get).toBeDefined();
+    expect(path.get.consumes.length).toBe(1);
+    expect(path.get.consumes[0]).toBe(node.data.get.request.contentType);
+    expect(path.get.produces.length).toBe(1);
+    expect(path.get.produces[0]).toBe(node.data.get.response.contentType);
+    expect(Object.keys(path.get.responses).length).toBe(1);
+    let responseObject = path.get.responses['200'];
+    expect(responseObject).toBeDefined();
+  })
+
+  fit('should populate the schema and example properties based on a simple object body', function() {
+    let tree = { rootNodes: [], hash: {}};
+    let node = buildNode('/node', '/node');
+
+    let title = 'test-title'
+    let description = 'project description'
+
+    node.data.get.response.body = '{"test": "value"}';
+    tree.rootNodes.push(node);
+
+    let doc = this.exporter.exportTree(tree, title, description);
+    expect(this.validate(doc.json)).toBe(true);
+
+    let path = doc.json.paths[node.fullpath];
+    let responseObject = path.get.responses['200'];
+    expect(responseObject).toBeDefined();
+    expect(responseObject.examples["application/json"]).toEqual(JSON.parse(node.data.get.response.body));
+    expect(responseObject.schema).toBeDefined();
+    expect(responseObject.schema.type).toBe('object');
+    expect(responseObject.schema.properties["test"]).toBeDefined();
+
+  })
+
+  fit('should set a schema with a type of string when the JSON body is invalid', function() {
+    let tree = { rootNodes: [], hash: {}};
+    let node = buildNode('/node', '/node');
+
+    let title = 'test-title'
+    let description = 'project description'
+
+    node.data.get.response.body = '{bad: "json"}';
+    tree.rootNodes.push(node);
+
+    let doc = this.exporter.exportTree(tree, title, description);
+    expect(this.validate(doc.json)).toBe(true);
+
+    let path = doc.json.paths[node.fullpath];
+    let responseObject = path.get.responses['200'];
+    expect(responseObject.schema).toBeDefined();
+    expect(responseObject.schema.type).toBe('string');
+    expect(responseObject.examples["text/plain"]).toBe(node.data.get.response.body);
+  })
+
+  it('should generate a nested schema', function() {
+    let tree = { rootNodes: [], hash: {}};
+    let node = buildNode('/node', '/node');
+
+    let title = 'test-title'
+    let description = 'project description'
+
+    node.data.get.response.body = '{"name": "rootobject", "child": { "name": "child1", "test": "value", "gc": { "name": "grandchild"}}}';
+    tree.rootNodes.push(node);
+
+    let doc = this.exporter.exportTree(tree, title, description);
+    expect(this.validate(doc.json)).toBe(true);
+
+    let path = doc.json.paths[node.fullpath];
+    let responseObject = path.get.responses['200'];
+    expect(responseObject.schema).toBeDefined();
+    expect(responseObject.schema.type).toBe('object');
+    expect(Object.keys(responseObject.schema.properties).length).toBe(2);
+    let childObject = responseObject.schema.properties['child'];
+    expect(childObject).toBeDefined();
+    expect(childObject.type).toBe('object');
+    expect(Object.keys(childObject.properties).length).toBe(3);
+    let grandchildObject = childObject.properties['gc'];
+    expect(grandchildObject).toBeDefined();
+    expect(grandchildObject.type).toBe('object');
+    expect(grandchildObject.properties['name'].type).toBe('string');
+  })
+
+  fit('should set a schema type of number when a body property contains an integer', function() {
+    let tree = { rootNodes: [], hash: {}};
+    let node = buildNode('/node', '/node');
+
+    let title = 'test-title'
+    let description = 'project description'
+
+    node.data.get.response.body = '{"name": "rootobject", "number": 3992093}';
+    tree.rootNodes.push(node);
+
+    let doc = this.exporter.exportTree(tree, title, description);
+    expect(this.validate(doc.json)).toBe(true);
+
+    let path = doc.json.paths[node.fullpath];
+    let responseObject = path.get.responses['200'];
+    expect(Object.keys(responseObject.schema.properties).length).toBe(2);
+    expect(responseObject.schema.properties['number'].type).toBe('number');
+  })
+
+  it('sould set a schema type of array for a JSON array data type', function() {
+
+  })
+
   xit('should return a yaml representation', function() {
     let tree = { rootNodes: [], hash: {}};
     let title = 'test-title'
@@ -86,28 +220,7 @@ fdescribe('SwaggerExporter', function() {
 
   describe('valid path tests', function() {
 
-    /*
-    let createValidTree = function() {
-      let createNode = function() {
-        node.data[dataKey] = {
-          contentType: '',
-          enabled: false,
-          queryParams: '',
-          requestBody: '',
-          responseBody: ''
-        };
-      }
-      let tree = {
-        rootNodes: [];
-        hash: {};
-      };
-
-
-      tree.rootNodes.push()
-    }
-    */
-
-    it('should return a single path with an empty get response', function() {
+    it('should return a single path with a JSON get response', function() {
       let tree = { rootNodes: [], hash: {}};
 
       let node = {
@@ -116,11 +229,17 @@ fdescribe('SwaggerExporter', function() {
         childNodes: [],
         data: {
           get: {
-            contentType: 'application/json',
             enabled: 'true',
-            queryParams: '',
-            requestBody: '',
-            responseBody: ''
+            request: {
+              contentType: 'application/json',
+              queryParams: '',
+              body: ''
+            },
+            response: {
+              contentType: 'application/json',
+              status: '200',
+              body: '{"test": "value"}'
+            }
           }
         }
       }
@@ -132,8 +251,9 @@ fdescribe('SwaggerExporter', function() {
       expect(Object.keys(doc.json.paths).length).toBe(1);
       let path = doc.json.paths[node.fullpath];
       expect(path).toBeDefined();
-      expect(Object.keys(path).length).toBe(1);
-      expect(path.get).toBeDefined();
+    })
+
+    it('should treat an invalid JSON body as a string', function() {
 
     })
 
@@ -142,11 +262,17 @@ fdescribe('SwaggerExporter', function() {
 
       let node = buildNode('/get-node', '/somepath/get-node', {
         get: {
+          enabled: 'true',
+          request: {
             contentType: 'application/json',
-            enabled: 'true',
             queryParams: '',
-            requestBody: '{"test":"value"}',
-            responseBody: ''
+            body: '{"test":"value"}'
+          },
+          response: {
+            contentType: 'application/json',
+            status: '200',
+            body: ''
+          }
         }
       });
 
@@ -161,34 +287,104 @@ fdescribe('SwaggerExporter', function() {
 
     })
 
-    xit('should return descendent nodes as pathItems', function() {
+    fit('should return descendent nodes as pathItems', function() {
       let tree = { rootNodes: [], hash: {}};
-
-
 
       let root1 = buildNode('/root1', '/root1', {
         get: {
-          contentType: 'application/json',
-          enabled: 'true'
+          enabled: 'true',
+          request: {
+            contentType: 'application/json',
+            queryParams: '',
+            body: ''
+          },
+          response: {
+            contentType: 'application/json',
+            status: '200',
+            body: ''
+          }
         }
-      })
+      });
+
+      let root2 = buildNode('/root2', '/root2');
 
       let a = {
-        name: '/get-node',
-        fullpath: '/somepath/get-node',
+        name: '/a-node',
+        fullpath: '/root1/a-node',
         childNodes: [],
         data: {
           get: {
-            contentType: 'application/json',
             enabled: 'true',
-            queryParams: '',
-            requestBody: '',
-            responseBody: ''
+            request: {
+              contentType: 'application/json',
+              queryParams: '',
+              body: ''
+            },
+            response: {
+              contentType: 'application/json',
+              body: ''
+            }
           }
         }
       }
 
-      tree.rootNodes.push(node);
+      let b = {
+        name: '/b-node',
+        fullpath: '/root1/b-node',
+        childNodes: [],
+        data: {
+          post: {
+            enabled: 'true',
+            request: {
+              contentType: 'application/json',
+              queryParams: '',
+              body: '{"key":"value"}'
+            },
+            response: {
+              status: "201",
+              contentType: 'application/json',
+              body: '{"result": "success"}'
+            }
+          }
+        }
+      }
+
+      let c = {
+        name: '/c-node',
+        fullpath: '/root1/a-node/c-node',
+        childNodes: [],
+        data: {
+          put: {
+            enabled: 'true',
+            request: {
+              contentType: 'application/json',
+              queryParams: '',
+              body: ''
+            },
+            response: {
+              contentType: 'application/json',
+              status: "200",
+              body: ''
+            }
+          }
+        }
+      }
+
+      a.childNodes = [c]
+      root1.childNodes = [a, b];
+
+      tree.rootNodes.push(root1, root2);
+
+      let doc = this.exporter.exportTree(tree, '', '');
+      //console.log(doc);
+      expect(this.validate(doc.json)).toBe(true);
+      expect(Object.keys(doc.json.paths).length).toBe(5);
+      let root1Path = doc.json.paths[root1.fullpath];
+      let root2Path = doc.json.paths[root2.fullpath];
+      expect(root1Path).toBeDefined();
+      expect(root2Path).toBeDefined();
+
+      //console.log(JSON.stringify(doc.json), ' ');
 
     })
 
