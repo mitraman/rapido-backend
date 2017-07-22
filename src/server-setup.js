@@ -47,7 +47,7 @@ const start = function start(serverPort, cb) {
   app.post('/api/sketches/:sketchId/nodes/:nodeId', authentication.authenticateRequest, nodes.createChildNodeHandler);
   app.patch('/api/sketches/:sketchId/nodes/:nodeId', authentication.authenticateRequest, nodes.updateNodePropertiesHandler);
   app.put('/api/sketches/:sketchId/nodes/:nodeId/move', authentication.authenticateRequest, nodes.moveNodeHandler);
-  
+
 
   winston.log('debug', 'finished setting up routes');
   winston.log('debug', serverPort);
@@ -58,6 +58,8 @@ const start = function start(serverPort, cb) {
       return next(err)
     }
 
+    // Set the media type for a problem report
+    res.set('Content-Type', 'application/problem+json');
     if( err.name === 'RapidoError') {
       winston.log('warn', err.stack);
       res.status(err.status).send(representer.convertRapidoError(err, err.title));

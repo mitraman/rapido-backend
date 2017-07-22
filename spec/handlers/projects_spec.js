@@ -169,6 +169,7 @@ describe('handlers/projects.js ', function() {
           }
         },function(err, res, body) {
             expect(err).toBe(null);
+            expect(res.headers['content-type'].indexOf('application/problem+json')).toBe(0);
             expect(res.statusCode).toBe(400);
             expect(body.code).toBe(RapidoErrorCodes.fieldValidationError);
             expect(body.fields[0].field).toBe('name');
