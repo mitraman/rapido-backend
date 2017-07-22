@@ -34,15 +34,6 @@ describe('create new users', function() {
 
   });
 
-  // Should the database reject duplicate user credentials?
-  xit( 'should reject a duplicate user insertion', function(done) {
-    users.create(newUser)
-    .then((result)=>{
-      fail("expected error");
-    }).catch((error)=>{
-      expect(error).not.toBe(null);
-    }).finally(done);
-  });
 });
 
 describe('update users', function() {
