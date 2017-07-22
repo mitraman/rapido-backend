@@ -18,7 +18,7 @@ describe('EventSubscription', function() {
   beforeEach(function(done) {
     spyOn(eventProcessor, "applyEvent").and.callFake(function(event, graph) {
       return new Promise( (resolve,reject) => {
-        resolve();
+        resolve({tree: [], event: null});
       } )
     })
 

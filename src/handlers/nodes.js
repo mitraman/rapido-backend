@@ -2,6 +2,7 @@
 
 const representer = require('../representers/json.js')();
 const winston = require('winston');
+const RapidoError = require('../../src/errors/rapido-error.js')
 const RapidoErrorCodes = require('../../src/errors/codes.js');
 const sketchService = require('../services/sketches.js');
 const uuidV4 = require('uuid/v4');
@@ -64,9 +65,11 @@ module.exports = {
     }).catch( error => {
       winston.log('warn', 'an error occurred while trying to create a child node: ', error);
 			if( error.name === 'RapidoError' ) {
-				res.status(error.status).send(representer.errorMessage(error.message));
+				error.title = 'Node Creation Error';
+				return next(error);
 			}else {
-				res.status(500).send(representer.errorMessage("Unexpected Server Error"));
+				let error = new RapidoError(RapidoErrorCodes.genericError, 'Unexpected error on server', 500, null, 'Node Creation Error');
+				return next(error);
 			}
     })
   },
@@ -100,8 +103,19 @@ module.exports = {
 						if( validMethodNames.indexOf(methodName) < 0 ) {
 							// The method name that was provided is not recognized
 							winston.log('debug', '[updateNodePropertiesHandler] unrecognized method ' + methodName);
-							res.status(400).send(representer.errorMessage('Unrecognized method name ' + methodName));
-							return;
+							let description = "The method key " + methodName + " is not recognized."
+							let error = new RapidoError(
+								RapidoErrorCodes.fieldValidationError,
+								"Invalid Value",
+								400,
+								[{
+									field: 'method',
+									type: 'invlaid',
+									description: description
+								}],
+								"Update Node Error"
+							);
+							next(error);
 						}
 
 
@@ -158,7 +172,15 @@ module.exports = {
 
 		if(updatePromises.length === 0) {
 			winston.log('debug', '[updateNodePropertiesHandler] nothing to update');
-			res.status(400).send(representer.errorMessage('Unable to recognize any fields to update'));
+			let error = new RapidoError(
+				RapidoErrorCodes.fieldValidationError,
+				'The server did not recognize any of the fields to be updated',
+				400,
+				null,
+				'Update Node Error',
+				'Use at least one of: "name", "fullpath", "request.contentType", "request.queryParams", "reuest.body", "response.contentType", "response.status", "response.body"'
+			);
+			next(error);
 		}
 
 		Promise.all(updatePromises).then(results => {
@@ -172,10 +194,18 @@ module.exports = {
 		}).catch( e => {
 			winston.log('debug', '[updateNodePropertiesHandler] error:', e);
 			if(e.name === 'RapidoError') {
-				res.status(e.status).send(representer.errorMessage(e.message));
+				e.title = "Update Node Error";
+				next(e);
 			}else {
 				winston.log('error', 'An unexpected error occurred while trying to update node data:', e);
-				res.status(500).send(representer.errorMessage("An unexpected error occurred"));
+				let error = new RapidoError(
+					RapidoErrorCodes.genericError,
+					'An unexpected error has occurred',
+					500,
+					null,
+					'Update Node Error'
+				);
+				next(error);
 			}
 		})
 
@@ -191,8 +221,18 @@ module.exports = {
 		winston.log('debug', '[moveNodeHandler] nodeId: ', nodeId);
 		let target = req.body.target;
 		if( !target) {
-			res.status(400).send(representer.errorMessage('Required field \'target\' is missing from request body'));
-			return;
+			let error = new RapidoError(
+				RapidoErrorCodes.fieldValidationError,
+				"A required field is missing from the request body message",
+				400,
+				[{
+					field: 'target',
+          type: 'missing',
+          description: 'Missing required field "target"'
+				}],
+				"Move Node Error"
+				);
+			next(error);
 		}
 
 		sketchService.moveNode(userId, sketchId, nodeId, target)
@@ -202,10 +242,17 @@ module.exports = {
     }).catch( e => {
 			winston.log('debug', '[moveNodeHandler] error:', e);
 			if(e.name === 'RapidoError') {
-				res.status(e.status).send(representer.errorMessage(e.message));
+				e.title = 'Move Node Error';
+				next(e);
 			}else {
 				winston.log('error', 'An unexpected error occurred while trying to update node data:', e);
-				res.status(500).send(representer.errorMessage("An unexpected error occurred"));
+				let error = new RapidoError (
+					RapidoErrorCodes.genericError,
+					"An unexpected error occurred",
+					500,
+					null,
+					"Move Node Error");
+				next(error);
 			}
 		})
 

@@ -120,10 +120,10 @@ describe('EventStore ', function() {
       eventData.push({id: i})
     }
 
-  Promise.reduce(eventData, (accumulator, eventInfo) => {
-      return this.es.push(this.userId, this.sketchId, 'pre', { eventId: eventInfo.id, type: 'pre'});
-    }, 0).then( acc => {
-      winston.log('debug', 'Finished firing events');
+    Promise.reduce(eventData, (accumulator, eventInfo) => {
+        return this.es.push(this.userId, this.sketchId, 'pre', { eventId: eventInfo.id, type: 'pre'});
+      }, 0).then( acc => {
+        winston.log('debug', 'Finished firing events');
     })
   })
 

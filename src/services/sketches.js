@@ -102,7 +102,8 @@ Sketches.prototype.addTreeNode = function(userId, sketchId, treeNode, parentId, 
       if(parentId) {
         if(!subscriber.tree.hash[parentId]) {
           let errorMessage = 'Cannot add node to non-existent parent node with ID:' + parentId;
-          reject(new RapidoError(RapidoErrorCodes.invalidField, errorMessage, 400));
+          reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400,
+            [{ field: "nodeId", type: "invalid", description: errorMessage}]));
           //reject('Cannot add node to non-existent parent node with ID:' + parentId);
           return;
         }
@@ -155,12 +156,16 @@ Sketches.prototype.updateBodyData = function(userId, sketchId, nodeId, updateObj
 
       // Validate the request
       if(!subscriber.tree.hash[nodeId]) {
-          let errorMessage = 'Cannot update response data for non-existent node with ID:' + nodeId;
-          reject(new RapidoError(RapidoErrorCodes.invalidField, errorMessage, 400));
+          let errorMessage = 'Cannot update data for non-existent node with ID:' + nodeId;
+          reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400,
+            [{
+              field: 'nodeId',
+              type: 'invalid',
+              description: 'There is no node with this ID in this sketch'}]));
           return;
       }
       if(!updateObject || !updateObject.key ) {
-        reject('Cannot update response data withtout an updateObject argument');
+        reject('Cannot update data withtout an updateObject argument');
         return;
       }
 
@@ -207,7 +212,11 @@ Sketches.prototype.updateNodeDetails = function(userId, sketchId, nodeId, update
       // Validate the request
       if(!subscriber.tree.hash[nodeId]) {
           let errorMessage = 'Cannot update response data for non-existent node with ID:' + nodeId;
-          reject(new RapidoError(RapidoErrorCodes.invalidField, errorMessage, 400));
+          reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400,
+            [{
+              field: 'nodeId',
+              type: 'invalid',
+              description: 'There is no node with this ID in this sketch'}]));
           return;
       }
       if(!updateObject ) {
@@ -259,7 +268,14 @@ Sketches.prototype.moveNode = function(userId, sketchId, sourceNodeId, targetNod
       if(targetNodeId) {
         if(!subscriber.tree.hash[targetNodeId]) {
           let errorMessage = 'Cannot move node to non-existent target node with ID:' + targetNodeId;
-          reject(new RapidoError(RapidoErrorCodes.invalidField, errorMessage, 400));
+          reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400,
+          [
+            {
+              field: "targetNodeId",
+              type: "invalid",
+              description: "The target parent node for this move operation does not exist"
+            }
+          ]));
           //reject('Cannot add node to non-existent parent node with ID:' + parentId);
           return;
         }
@@ -267,14 +283,14 @@ Sketches.prototype.moveNode = function(userId, sketchId, sourceNodeId, targetNod
 
       if(!sourceNodeId ) {
         let errorMessage = 'Cannot move undefined node';
-        reject(new RapidoError(RapidoErrorCodes.invalidField, errorMessage, 400));
+        reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400));
         //reject('Cannot add node to non-existent parent node with ID:' + parentId);
         return;
       }
 
       if( !subscriber.tree.hash[sourceNodeId]  ) {
         let errorMessage = 'Cannot move non-existent node with id: ' + sourceNodeId;
-        reject(new RapidoError(RapidoErrorCodes.invalidField, errorMessage, 400));
+        reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400));
         //reject('Cannot add node to non-existent parent node with ID:' + parentId);
         return;
       }
@@ -300,7 +316,7 @@ Sketches.prototype.moveNode = function(userId, sketchId, sourceNodeId, targetNod
 
       if(isChild(subscriber.tree.hash[sourceNodeId], targetNodeId)) {
         let errorMessage = 'Unable to move node because it would result in a circular tree.';
-        reject(new RapidoError(RapidoErrorCodes.invalidField, errorMessage, 400));
+        reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400));
         //reject('Cannot add node to non-existent parent node with ID:' + parentId);
         return;
       }

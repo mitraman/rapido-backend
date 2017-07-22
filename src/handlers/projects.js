@@ -45,8 +45,14 @@ module.exports = {
 		}).then( (projects) => {
 			winston.log('debug', 'projects.find result:', projects);
 			if( projects.length === 0 ) {
-				//res.status(404).send(representer.errorMessage('Unable to locate the specified project for this user.'))
-				throw new RapidoError(RapidoErrorCodes.projectNotFound, 'Unable to locate the specified project for this user.', 404);
+				let error = new RapidoError(
+					RapidoErrorCodes.projectNotFound,
+					'Unable to locate the specified project for this user',
+					404,
+					null,
+					'Find Projects Error'
+				);
+				throw error;
 			}else {
 				let foundProject = projects[0];
 
@@ -87,10 +93,16 @@ module.exports = {
 		}).catch( (error) => {
 			if( error.name === 'RapidoError' ) {
 				winston.log('debug', 'Caught a RapidoError:', error);
-				res.status(error.status).send(representer.errorMessage(error.message));
+				next(error);
 			} else {
 				winston.log('warn', 'An error occured while retrieving a project: ', error);
-				res.status(500).send('An unexpected error occurred.');
+				//res.status(500).send('An unexpected error occurred.');
+				next(new RapidoError(
+					RapidoErrorCodes.genericError,
+					'An unexpected error occurred.',
+					500,
+					null,
+					'Find Projects Error'));
 			}
 		})
 	},
@@ -112,7 +124,17 @@ module.exports = {
 			}));
 		}).catch( (error) => {
 			winston.log('warn', 'An error occurred while trying to find projects: ', error);
-      res.status(500).send(representer.errorMessage('Unable to retrieve projects'));
+			if( error.name === 'RapidoError' ) {
+				next(error);
+			} else {
+				winson.log('warn', 'Find projects error: ', error);
+				next(new RapidoError(
+					RapidoErrorCodes.genericError,
+					'An unexpected error occurred.',
+					500,
+					null,
+					'Find Projects Error'));
+			}
 		})
 	},
 
@@ -127,18 +149,35 @@ module.exports = {
     let userId = req.credentials.id;
 
     // Make sure that all mandatory properties are present.
+		let fieldErrors = [];
 		if( !name ) {
-			winston.log('debug', 'fullname property is missing.')
-			res.status(400).send(representer.errorMessage("the required property 'fullname' is missing from the request body"))
-			return;
+			fieldErrors.push({
+				field: 'name',
+				type: 'missing',
+				description: 'missing the required property: "name"'
+			})
+			winston.log('debug', 'project name property is missing.')
 		}
 
 		// Make sure that the style property is one of the accepted ENUM values
 		if( style !== 'CRUD'  ) {
 			winston.log('debug', 'Unexpected style property:', style)
-			let errorMessage = "the value '" + style + "' is not allowed.  Use 'CRUD' instead. "
-			res.status(400).send(representer.errorMessage(errorMessage))
-			return;
+			fieldErrors.push({
+				field: 'style',
+				type: 'invalid',
+				description: 'the style property must be: "CRUD"'
+			})
+		}
+
+		if( fieldErrors.length > 0) {
+			let error =  new RapidoError(
+				RapidoErrorCodes.fieldValidationError,
+				'There were problems with the parameters provided for this create project request',
+				400,
+				fieldErrors,
+				'Create Project Error'
+			);
+			next(error);
 		}
 
     // Set default values
@@ -167,7 +206,11 @@ module.exports = {
 			}));
     }).catch( (error) => {
 			winston.log('warn', 'An error occurred while trying to create a new project: ', error);
-      res.status(500).send(representer.errorMessage('Unable to create new project'));
+			next(new RapidoError(
+				RapidoErrorCodes.genericError,
+				'Unable to create new project',
+				500
+			));
     })
 	}
 }

@@ -5,6 +5,7 @@ const config = require('../../src/config.js');
 const winston = require('winston');
 const dataAccessor = require('../../src/db/DataAccessor.js');
 const HandlerSupport = require('./support.js');
+const RapidoErrorCodes = require('../../src/errors/codes.js');
 
 describe('Sketches API', function() {
 
@@ -58,45 +59,6 @@ describe('Sketches API', function() {
 
   describe('POST /sketches', function() {
 
-    it ('should reject a request without a token', function(done) {
-
-      request.post(
-        {
-          url: sketchesUrl,
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          json: {
-            name: name
-          }
-        },function(err, res, body) {
-            expect(err).toBe(null);
-            expect(res.statusCode).toBe(401);
-            done();
-        }
-      )
-    })
-
-    it( 'should reject a request with an invalid JWT', function(done) {
-
-      request.post(
-        {
-          url: sketchesUrl,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIXVCJ9...TJVA95OrM7E20RMHrHDcEfxjoYZgeFONFh7HgQ'
-          },
-          json: {
-            name: name
-          }
-        },function(err, res, body) {
-            expect(err).toBe(null);
-            expect(res.statusCode).toBe(401);
-            done();
-        }
-      )
-    });
-
     it( 'should reject an attempt to create a sketch for a project that is not owned by the user', function(done) {
 
       let invalidSketchesUrl = sketchesUrlTemplate.replace(/{projectsId}/gi, 3200);
@@ -104,7 +66,9 @@ describe('Sketches API', function() {
           url: invalidSketchesUrl,
           headers: headers
       },function(err, res, body) {
+        let jsonBody = JSON.parse(body);
         expect(res.statusCode).toBe(401);
+        expect(jsonBody.code).toBe(RapidoErrorCodes.authorizationError);
         done();
       });
 

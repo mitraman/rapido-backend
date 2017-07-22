@@ -5,6 +5,8 @@ const config = require('../../src/config.js');
 const winston = require('winston');
 const dataAccessor = require('../../src/db/DataAccessor.js');
 const HandlerSupport = require('./support.js');
+const RapidoErrorCodes = require('../../src/errors/codes.js');
+
 
 describe('handlers/projects.js ', function() {
 
@@ -66,18 +68,32 @@ describe('handlers/projects.js ', function() {
   })
 
   beforeEach(function(done) {
+    console.log('^^^^^^^^^^^^^^^^^^^^^^^^^^^ beforeEach start ^^^^^^^^^^^^^^^^^^^^^');
     // Remove database data
     // Remove all of the project entries in the database for our test useer
     const db = dataAccessor.getDb();
 
+    //console.log('deleting from sketches')
     // First delete all of this user's sketches
     db.query("DELETE FROM sketches where userid=" + userid)
     .then( ()=> {
+      //console.log('deleting from projects');
       // Next delete the projects
-    return db.query("DELETE FROM projects WHERE userid = " +  userid)
+      // db.query('SELECT * from sketches').then(function(data) {
+      //   console.log(data);
+      // });
+    //return db.query("DELETE FROM projects WHERE userid = " +  userid)
+      db.query("DELETE FROM projects WHERE userid = " +  userid).then(() => {
+        console.log('finished delete from projects')
+      })
     }).catch( (error) => {
+      console.log('************************************** beforeEach error *******');
+      console.log(error);
       fail(error);
-    }).finally(done)
+    }).finally( () => {
+      console.log('¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬ beforeEach done');
+      done();
+    })
   })
 
   describe('POST /projects', function() {
@@ -159,7 +175,9 @@ describe('handlers/projects.js ', function() {
         },function(err, res, body) {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(400);
-            expect(body.error).toBe('the required property \'fullname\' is missing from the request body');
+            expect(body.code).toBe(RapidoErrorCodes.fieldValidationError);
+            expect(body.fields[0].field).toBe('name');
+            expect(body.fields[0].type).toBe('missing');
             done();
         }
       )
@@ -171,18 +189,22 @@ describe('handlers/projects.js ', function() {
           url: projectsUrl,
           headers: headers,
           json: {
-            name: name,
             description: description,
             style: 'BAD'
           }
         },function(err, res, body) {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(400);
+            expect(body.code).toBe(RapidoErrorCodes.fieldValidationError);
+            expect(body.fields.length).toBe(2);
+            expect(body.fields[1].field).toBe('style');
+            expect(body.fields[1].type).toBe('invalid');
             done();
         }
       )
     })
   })
+
 
   describe('GET /projects', function() {
 
@@ -262,7 +284,8 @@ describe('handlers/projects.js ', function() {
             expect(res.statusCode).toBe(404);
             expect(body).not.toBeNull();
             let jsonBody = JSON.parse(body);
-            expect(jsonBody.error).toBe('Unable to locate the specified project for this user.');
+            expect(jsonBody.code).toBe(RapidoErrorCodes.projectNotFound);
+            expect(jsonBody.detail).toBe('Unable to locate the specified project for this user');
             done();
         })
       })

@@ -6,6 +6,7 @@ const logger = require('morgan');
 const bodyParser = require('body-parser');
 const RapidoError = require('./errors/rapido-error.js');
 const RapidoErrorCodes = require('./errors/codes.js');
+const representer = require('./representers/json.js')();
 const cors = require('cors');
 
 const users = require('./handlers/users.js');
@@ -15,7 +16,6 @@ const echo = require('./handlers/echo.js');
 const authentication = require('./security/authentication.js');
 const middleware = require('./handlers/middleware.js');
 const nodes = require('./handlers/nodes.js');
-
 
 //TODO: Rename this to routesetup or something more meaningful
 
@@ -47,19 +47,26 @@ const start = function start(serverPort, cb) {
   app.post('/api/sketches/:sketchId/nodes/:nodeId', authentication.authenticateRequest, nodes.createChildNodeHandler);
   app.patch('/api/sketches/:sketchId/nodes/:nodeId', authentication.authenticateRequest, nodes.updateNodePropertiesHandler);
   app.put('/api/sketches/:sketchId/nodes/:nodeId/move', authentication.authenticateRequest, nodes.moveNodeHandler);
+  
 
   winston.log('debug', 'finished setting up routes');
   winston.log('debug', serverPort);
 
   // Setup error handlers
   app.use(function (err, req, res, next) {
-    winston.log('error', err.stack);
+    if (res.headersSent) {
+      return next(err)
+    }
+
     if( err.name === 'RapidoError') {
-      res.status(err.status).send(err.message);
+      winston.log('warn', err.stack);
+      res.status(err.status).send(representer.convertRapidoError(err, err.title));
     }else if( err.name === 'SyntaxError') {
-      res.status(400).send('Malformed request body');
+      winston.log('warn', err.stack);
+      res.status(400).send(representer.errorMessage(err.code, 'Malformed request body'));
     }else {
-      res.status(500).send('Something broke!')
+      winston.log('error', err.stack);
+      res.status(500).send(representer.errorMessage(RapidoErrorCodes.genericError, 'Something has gone wrong on the server side'));
     }
   })
 

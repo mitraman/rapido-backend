@@ -2,6 +2,7 @@
 
 const winston = require('winston');
 const RapidoErrorCodes = require('../../src/errors/codes.js');
+const RapidoError = require('../../src/errors/rapido-error.js')
 const jwt = require('jsonwebtoken');
 const representer = require('../representers/json.js')();
 const config = require('../config.js');
@@ -29,10 +30,19 @@ authentication.prototype.authenticateRequest = function(req, res, next) {
 		winston.log('debug', 'Authorization Header:', authHeader);
 		if( !authHeader ) {
 			winston.log('debug', 'Authorization header is missing');
-			res.status(401).send(representer.errorMessage('Forbidden'));
+			//res.status(401).send(representer.errorMessage('Forbidden'));
+			next(new RapidoError(
+				RapidoErrorCodes.authenticationProblem,
+				'HTTP Authorization header is missing',
+				401
+			));
 		}else if( !authHeader.startsWith('Bearer') ) {
 			winston.log('debug', 'Authorization header is not Bearer type');
-			res.status(401).send(representer.errorMessage('Forbidden'));
+			next(new RapidoError(
+				RapidoErrorCodes.authenticationProblem,
+				'HTTP Authorization must be a Bearer token',
+				401
+			));
 		} else {
 			let token = authHeader.substring(('Bearer').length);
 			winston.log('debug', 'bearer token: ',token);
@@ -42,12 +52,15 @@ authentication.prototype.authenticateRequest = function(req, res, next) {
 				let decoded = module.exports.validateJWT(token.trim());
 				// store the decoded value in the request
 				req.credentials = decoded;
+				next();
 			}catch(e) {
 				winston.log('info', 'Token validation failed:', e);
-				res.status(401).send(representer.errorMessage('Forbidden'));
-				return;
+				next(new RapidoError(
+					RapidoErrorCodes.authenticationProblem,
+					'Authentication token validation failed',
+					401
+				))
 			}
-			next();
 		}
 }
 

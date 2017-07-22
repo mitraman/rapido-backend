@@ -90,8 +90,9 @@ EventStore.prototype.push = function (userId, sketchId, eventType, newEvent, tok
 let emitHistoricalEvents = function(emitter, sketchId, startIndex ) {
   //let db = dataAccessor.getDb();
 
-  EventStore.db.manyOrNone('SELECT id, eventtype, eventdata FROM sketchevents WHERE id >= $1 AND sketchid = $2', [startIndex, sketchId])
+  EventStore.db.manyOrNone('SELECT id, eventtype, eventdata FROM sketchevents WHERE id >= $1 AND sketchid = $2 ORDER BY id ASC', [startIndex, sketchId])
   .then( results => {
+    //winston.log('debug', '&&&& results:', results);
     winston.log('debug', '[EventStore.emitHistoricalEvents] number of historical events found:', results.length);
     for( let i = 0; i < results.length; i++ ) {
       winston.log('debug', 'emitting historical event:', results[i]);

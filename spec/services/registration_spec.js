@@ -155,7 +155,9 @@ describe('register new users', function() {
     })
     .catch((error)=> {
       expect(error.name).toBe('RapidoError');
-      expect(error.code).toBe(RapidoErrorCodes.invalidField);
+      expect(error.code).toBe(RapidoErrorCodes.fieldValidationError);
+      expect(error.fieldErrors[0].field).toBe('email');
+      expect(error.fieldErrors[0].type).toBe('invalid');
     })
     .finally(done);
 
@@ -169,7 +171,9 @@ describe('register new users', function() {
     })
     .catch((error)=> {
       expect(error.name).toBe('RapidoError');
-      expect(error.code).toBe(RapidoErrorCodes.invalidField);
+      expect(error.code).toBe(RapidoErrorCodes.fieldValidationError);
+      expect(error.fieldErrors[0].field).toBe('email');
+      expect(error.fieldErrors[0].type).toBe('invalid');
     })
     .finally(done);
   })
@@ -193,7 +197,9 @@ describe('register new users', function() {
     })
     .catch((error)=> {
       expect(error.name).toBe('RapidoError');
-      expect(error.code).toBe(RapidoErrorCodes.invalidField);
+      expect(error.code).toBe(RapidoErrorCodes.fieldValidationError);
+      expect(error.fieldErrors[0].field).toBe('fullname');
+      expect(error.fieldErrors[0].type).toBe('invalid');
       //winston.log('debug', error);
     })
     .finally(done);
@@ -206,7 +212,9 @@ describe('register new users', function() {
     })
     .catch((error)=> {
       expect(error.name).toBe('RapidoError');
-      expect(error.code).toBe(RapidoErrorCodes.invalidField);
+      expect(error.code).toBe(RapidoErrorCodes.fieldValidationError);
+      expect(error.fieldErrors[0].field).toBe('nickname');
+      expect(error.fieldErrors[0].type).toBe('invalid');
     })
     .finally(done);
   })
@@ -218,7 +226,9 @@ describe('register new users', function() {
     })
     .catch((error)=> {
       expect(error.name).toBe('RapidoError');
-      expect(error.code).toBe(RapidoErrorCodes.invalidField);
+      expect(error.code).toBe(RapidoErrorCodes.fieldValidationError);
+      expect(error.fieldErrors[0].field).toBe('password');
+      expect(error.fieldErrors[0].type).toBe('invalid');
     })
     .finally(done);
   })
@@ -232,7 +242,9 @@ describe('register new users', function() {
     })
     .catch((error)=> {
       expect(error.name).toBe('RapidoError');
-      expect(error.code).toBe(RapidoErrorCodes.invalidField);
+      expect(error.code).toBe(RapidoErrorCodes.fieldValidationError);
+      expect(error.fieldErrors[0].field).toBe('password');
+      expect(error.fieldErrors[0].type).toBe('invalid');
     })
     .finally(done);
   })

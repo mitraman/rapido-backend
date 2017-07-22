@@ -63,20 +63,20 @@ describe('TreeEventProcessor', function() {
       */
 
       eventProcessor.applyEvent(treenodeAddedEvent(null, 'a', {}), emptyTree())
-      .then( (tree) => {
-        return eventProcessor.applyEvent(treenodeAddedEvent('a', 'b', {}), tree);
-      }).then( tree => {
-        return eventProcessor.applyEvent(treenodeAddedEvent('a', 'f', {}), tree);
-      }).then( tree => {
-        return eventProcessor.applyEvent(treenodeAddedEvent('b', 'c', {}), tree);
-      }).then( tree => {
-        return eventProcessor.applyEvent(treenodeAddedEvent('b', 'd', {}), tree);
-      }).then( tree => {
-        return eventProcessor.applyEvent(treenodeAddedEvent('d', 'e', {}), tree);
-      }).then( tree => {
-        return eventProcessor.applyEvent(treenodeAddedEvent(null, 'g', {}), tree);
-      }).then( tree => {
-        this.treeForMoveOperations = tree;
+      .then( (result) => {
+        return eventProcessor.applyEvent(treenodeAddedEvent('a', 'b', {}), result.tree);
+      }).then( result => {
+        return eventProcessor.applyEvent(treenodeAddedEvent('a', 'f', {}), result.tree);
+      }).then( result => {
+        return eventProcessor.applyEvent(treenodeAddedEvent('b', 'c', {}), result.tree);
+      }).then( result => {
+        return eventProcessor.applyEvent(treenodeAddedEvent('b', 'd', {}), result.tree);
+      }).then( result => {
+        return eventProcessor.applyEvent(treenodeAddedEvent('d', 'e', {}), result.tree);
+      }).then( result => {
+        return eventProcessor.applyEvent(treenodeAddedEvent(null, 'g', {}), result.tree);
+      }).then( result => {
+        this.treeForMoveOperations = result.tree;
         done();
       })
 
@@ -91,11 +91,11 @@ describe('TreeEventProcessor', function() {
       }
 
       eventProcessor.applyEvent(event, emptyTree())
-      .then( (updatedTree) => {
+      .then( (result) => {
         fail('processor should have rejected this attempt')
       }).catch( e => {
         expect(e).toBeDefined();
-        expect(e.message).toBe('treenode_moved event is missing a required property: data.sourceId');
+        expect(e.message.indexOf('treenode_moved event is missing a required property: data.sourceId')).toBeGreaterThan(0);
       }).finally(done);
     })
 
@@ -115,7 +115,7 @@ describe('TreeEventProcessor', function() {
         fail('processor should have rejected this attempt')
       }).catch( e => {
         expect(e).toBeDefined();
-        expect(e.message).toBe('Unable to move a non-existent node');
+        expect(e.message.indexOf('Unable to move a non-existent node')).toBeGreaterThan(0);
       }).finally(done);
     })
 
@@ -135,7 +135,7 @@ describe('TreeEventProcessor', function() {
         fail('processor should have rejected this attempt')
       }).catch( e => {
         expect(e).toBeDefined();
-        expect(e.message).toBe('Unable to move node to a non-existent target.');
+        expect(e.message.indexOf('Unable to move node to a non-existent target.')).toBeGreaterThan(0);
       }).finally(done);
     })
 
@@ -175,7 +175,8 @@ describe('TreeEventProcessor', function() {
       }
 
       eventProcessor.applyEvent(event, this.treeForMoveOperations)
-      .then( (updatedTree) => {
+      .then( (result) => {
+        let updatedTree = result.tree;
         expect(updatedTree.rootNodes.length).toBe(1);
         expect(updatedTree.hash['f'].children.length).toBe(1);
         let g = updatedTree.hash['f'].children[0];
@@ -199,7 +200,8 @@ describe('TreeEventProcessor', function() {
       }
 
       eventProcessor.applyEvent(event, this.treeForMoveOperations)
-      .then( (updatedTree) => {
+      .then( (result) => {
+        let updatedTree = result.tree;
         // make sure that node e is now a child of f
         expect(updatedTree.hash['f'].children.length).toBe(1);
         expect(updatedTree.hash['f'].children[0].id).toBe('e');
@@ -226,7 +228,8 @@ describe('TreeEventProcessor', function() {
       }
 
       eventProcessor.applyEvent(event, this.treeForMoveOperations)
-      .then( (updatedTree) => {
+      .then( (result) => {
+        let updatedTree = result.tree;
         // make sure that the tree with root node b is now a child of f
         expect(updatedTree.hash['f'].children.length).toBe(1);
         expect(updatedTree.hash['f'].children[0].id).toBe('b');
@@ -261,14 +264,15 @@ describe('TreeEventProcessor', function() {
       }
 
       eventProcessor.applyEvent(event, this.treeForMoveOperations)
-      .then( (updatedTree) => {
+      .then( (result) => {
+        let updatedTree = result.tree;
         // make sure that the rootNode list has been updated
         expect(updatedTree.rootNodes.length).toBe(3);
         let f = updatedTree.rootNodes[2];
         expect(f.id).toBe('f');
 
         // assert that a only has one child left
-        console.log(updatedTree.hash['a']);
+        //console.log(updatedTree.hash['a']);
         expect(updatedTree.hash['a'].children.length).toBe(1);
 
         // f should have a parentId of null
@@ -302,7 +306,8 @@ describe('TreeEventProcessor', function() {
         }
       }
       eventProcessor.applyEvent(event, emptyTree())
-      .then( (updatedTree) => {
+      .then( (result) => {
+        let updatedTree = result.tree;
         expect(updatedTree.rootNodes.length).toBe(1);
         expect(updatedTree.rootNodes[0].id).toBe('test-node');
         done();
@@ -318,11 +323,11 @@ describe('TreeEventProcessor', function() {
       let rootNodeTwo = treenodeAddedEvent(null, nodeTwoId, {});
 
        eventProcessor.applyEvent(rootNodeOne, emptyTree())
-       .then( updatedTree => {
-         return eventProcessor.applyEvent(rootNodeTwo, updatedTree)
-       }).then( tree => {
-         expect(tree.hash[nodeOneId]).toBeDefined();
-         expect(tree.hash[nodeTwoId]).toBeDefined();
+       .then( result => {
+         return eventProcessor.applyEvent(rootNodeTwo, result.tree)
+       }).then( result => {
+         expect(result.tree.hash[nodeOneId]).toBeDefined();
+         expect(result.tree.hash[nodeTwoId]).toBeDefined();
          done();
        })
 
@@ -333,14 +338,14 @@ describe('TreeEventProcessor', function() {
       let childEvent = treenodeAddedEvent('parent-node', 'child-node', {});
 
       eventProcessor.applyEvent(parentEvent, emptyTree())
-      .then( (updatedTree) => {
-        return eventProcessor.applyEvent(childEvent, updatedTree);
-      }).then( tree => {
-        expect(tree).toBeDefined();
-        expect(tree.rootNodes.length).toBe(1);
-        expect(tree.rootNodes[0].children.length).toBe(1);
-        expect(tree.rootNodes[0].id).toBe('parent-node');
-        expect(tree.rootNodes[0].children[0].id).toBe('child-node');
+      .then( (result) => {
+        return eventProcessor.applyEvent(childEvent, result.tree);
+      }).then( result => {
+        expect(result.tree).toBeDefined();
+        expect(result.tree.rootNodes.length).toBe(1);
+        expect(result.tree.rootNodes[0].children.length).toBe(1);
+        expect(result.tree.rootNodes[0].id).toBe('parent-node');
+        expect(result.tree.rootNodes[0].children[0].id).toBe('child-node');
         done();
       }).catch( e => {
         fail(e);
@@ -380,14 +385,14 @@ describe('TreeEventProcessor', function() {
       }
 
       eventProcessor.applyEvent(parentEvent, emptyTree())
-      .then( (updatedTree) => {
-        return eventProcessor.applyEvent(childEvent, updatedTree);
-      }).then( (updatedTree) => {
-        return eventProcessor.applyEvent(secondChildEvent, updatedTree);
-      }).then( (updatedTree) => {
-        return eventProcessor.applyEvent(updateSecondChildEvent, updatedTree);
-      }).then( (tree) => {
-        let secondChildNode = tree.rootNodes[0].children[0].children[0];
+      .then( (result) => {
+        return eventProcessor.applyEvent(childEvent, result.tree);
+      }).then( (result) => {
+        return eventProcessor.applyEvent(secondChildEvent, result.tree);
+      }).then( (result) => {
+        return eventProcessor.applyEvent(updateSecondChildEvent, result.tree);
+      }).then( (result) => {
+        let secondChildNode = result.tree.rootNodes[0].children[0].children[0];
         expect(secondChildNode).toBeDefined();
         expect(secondChildNode.name).toBe('new name');
         expect(secondChildNode.fullpath).toBe(secondChildEvent.data.node.fullpath);
@@ -411,10 +416,10 @@ describe('TreeEventProcessor', function() {
       }
 
       eventProcessor.applyEvent(addEvent, emptyTree())
-      .then( (updatedTree) => {
-        return eventProcessor.applyEvent(updateEvent, updatedTree);
-      }).then( (tree) => {
-        expect(tree.rootNodes[0].fullpath).toBe('newPath');
+      .then( (result) => {
+        return eventProcessor.applyEvent(updateEvent, result.tree);
+      }).then( (result) => {
+        expect(result.tree.rootNodes[0].fullpath).toBe('newPath');
       }).catch( e => { fail(e); }).finally(done);
     })
 
@@ -442,10 +447,10 @@ describe('TreeEventProcessor', function() {
       }
 
       eventProcessor.applyEvent(addEvent, emptyTree())
-      .then( (updatedTree) => {
-        return eventProcessor.applyEvent(updateDataEvent, updatedTree);
-      }).then( (tree) => {
-        let getData = tree.rootNodes[0].data.get;
+      .then( (result) => {
+        return eventProcessor.applyEvent(updateDataEvent, result.tree);
+      }).then( (result) => {
+        let getData = result.tree.rootNodes[0].data.get;
         expect(getData).toBeDefined();
         expect(getData.enabled).toBe(updateDataEvent.data.fields.enabled);
 
@@ -496,12 +501,12 @@ describe('TreeEventProcessor', function() {
 
 
       eventProcessor.applyEvent(addEvent, emptyTree())
-      .then( (updatedTree) => {
-        return eventProcessor.applyEvent(firstUpdateDataEvent, updatedTree);
-      }).then( (updatedTree) => {
-        return eventProcessor.applyEvent(secondUpdateDataEvent, updatedTree);
-      }).then( (tree) => {
-        let putData = tree.rootNodes[0].data.put;
+      .then( (result) => {
+        return eventProcessor.applyEvent(firstUpdateDataEvent, result.tree);
+      }).then( (result) => {
+        return eventProcessor.applyEvent(secondUpdateDataEvent, result.tree);
+      }).then( (result) => {
+        let putData = result.tree.rootNodes[0].data.put;
         expect(putData).toBeDefined();
         expect(putData.response.contentType).toBe(firstUpdateDataEvent.data.fields.response.contentType);
         expect(putData.enabled).toBe(firstUpdateDataEvent.data.fields.enabled);
@@ -527,7 +532,7 @@ describe('TreeEventProcessor', function() {
       }).catch( e => {
         expect(e).toBeDefined();
         expect(e.message).toBeDefined();
-        expect(e.message.startsWith('Unable to update data for non-existent node')).toBe(true);
+        expect(e.message.indexOf('Unable to update data for non-existent node')).toBeGreaterThan(0);
       }).finally(done);
 
     })

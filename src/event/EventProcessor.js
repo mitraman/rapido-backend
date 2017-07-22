@@ -16,15 +16,17 @@ EventProcessor.prototype.applyEvent = function(event, graph) {
     }
 
     if( event.type.startsWith('tree')) {
-      console.log(TreeEventProcessor);
       if( !TreeEventProcessor[event.type]) {
         reject('unable to handle an unknown event type: ' + event.type);
       } else {
         // Apply the function
         try {
           winston.log('debug', '[EventProcessor.applyTreeEvent] processing event.id:', event.id)
-          resolve(TreeEventProcessor[event.type](event, graph));
+          let updatedTree = TreeEventProcessor[event.type](event, graph);
+          resolve({tree: updatedTree, event: event});
         }catch(e) {
+          let errorMessage = '(eventID: ' + event.id + ') ' + e.message;
+          e.message = errorMessage;
           reject(e);
         }
       }
@@ -41,6 +43,7 @@ EventProcessor.prototype.applyEvent = function(event, graph) {
         }
       }
     }else {
+      console.log('unknown event type');
         reject('unable to handle an unknown event type: ' + event.type);
     }
   })

@@ -6,7 +6,8 @@ const winston = require('winston');
 const dataAccessor = require('../../src/db/DataAccessor.js');
 const HandlerSupport = require('./support.js');
 
-describe('/vocab API', function() {
+// TO BE IMPLEMENTED
+xdescribe('/vocab API', function() {
 
   beforeAll( function() {
     this.vocabUrl = '';

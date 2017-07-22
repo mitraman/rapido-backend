@@ -91,27 +91,63 @@ registrationService.register = function(email, password, fullName, nickName, nod
 			nodeMailerTransporter = nodemailer.createTransport(config.nodemailer.options);
 		}
 
+		let fieldErrors = [];
+
 		// Validate and normalize the fields
 		if( !validator.isEmail(email)) {
-			reject( new RapidoError(RapidoErrorCodes.invalidField, "email address is invalid"));
+			fieldErrors.push({
+				field: 'email',
+				type: 'invalid',
+				description: 'email address is invalid'
+			});
+			//reject( new RapidoError(RapidoErrorCodes.invalidField, "email address is invalid"));
 		}
 
 		if( validator.isEmpty(fullName)) {
-			reject( new RapidoError(RapidoErrorCodes.invalidField, "name cannot be blank"));
+			fieldErrors.push({
+				field: 'fullname',
+				type: 'invalid',
+				description: 'fullname cannot be blank'
+			});
+			//reject( new RapidoError(RapidoErrorCodes.invalidField, "name cannot be blank"));
 		}
 
 		if( validator.isEmpty(nickName)) {
-			reject( new RapidoError(RapidoErrorCodes.invalidField, "nick name cannot be blank"));
+			fieldErrors.push({
+				field: 'nickname',
+				type: 'invalid',
+				description: 'nickname cannot be blank'
+			});
+			//reject( new RapidoError(RapidoErrorCodes.invalidField, "nick name cannot be blank"));
 		}
 
 		if( validator.isEmpty(password)) {
-			reject( new RapidoError(RapidoErrorCodes.invalidField, "password cannot be blank"));
+			fieldErrors.push({
+				field: 'password',
+				type: 'invalid',
+				description: 'password cannot be blank'
+			});
+			//reject( new RapidoError(RapidoErrorCodes.invalidField, "password cannot be blank"));
 		}
 
 		if( password.length < 4 ) {
-			reject( new RapidoError(RapidoErrorCodes.invalidField, "password does not meet minimum security requirements"));
+			fieldErrors.push({
+				field: 'password',
+				type: 'invalid',
+				description: 'password length must be greater than four characters'
+			});
 		}
 
+		if( fieldErrors.length > 0 ) {
+			reject( new RapidoError(
+				RapidoErrorCodes.fieldValidationError,
+				"registration field errors",
+				400,
+				fieldErrors,
+				"Registration Error"
+			));
+			return;
+		}
 
 
 		// 1. Check for existing email addresses
@@ -139,7 +175,10 @@ registrationService.register = function(email, password, fullName, nickName, nod
 			if( result.length > 0) {
 				winston.log('debug', 'Existing user found, returning error');
 				// we shouldn't have received a result!  This means the user already exists.
-				throw new RapidoError(RapidoErrorCodes.duplicateUser, "a user with this email address already exists");
+				throw new RapidoError(
+					RapidoErrorCodes.duplicateUser,
+					"a user with this email address already exists",
+					400);
 			}else {
 				return result;
 			}

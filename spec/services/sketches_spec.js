@@ -247,8 +247,9 @@ describe('/services/sketches.js ', function() {
         fail('the update call should have failed');
       }).catch( e => {
         expect(e).toBeDefined();
-        //console.log(e);
-        expect(e.message.startsWith('Cannot update response data for non-existent node')).toBe(true);
+        expect(e.code).toBe(RapidoErrorCodes.fieldValidationError);
+        expect(e.fieldErrors[0].field).toBe('nodeId');
+        expect(e.fieldErrors[0].type).toBe('invalid');
       }).finally(done);
     })
 

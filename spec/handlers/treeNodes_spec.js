@@ -6,6 +6,8 @@ const winston = require('winston');
 const dataAccessor = require('../../src/db/DataAccessor.js');
 const HandlerSupport = require('./support.js');
 const sketchService = require('../../src/services/sketches.js');
+const RapidoErrorCodes = require('../../src/errors/codes.js');
+
 
 describe('handlers/nodes.js', function() {
 
@@ -65,7 +67,7 @@ describe('handlers/nodes.js', function() {
       )
     });
 
-    fit( 'should create a new node at the root level (/nodes)', function(done) {
+    it( 'should create a new node at the root level (/nodes)', function(done) {
 
 
       request.post(
@@ -93,7 +95,7 @@ describe('handlers/nodes.js', function() {
           headers: headers
         },function(err, res, body) {
             expect(res.statusCode).toBe(201);
-            let jsonBody = JSON.parse(body);
+              let jsonBody = JSON.parse(body);
             expect(jsonBody.node.id).toBeDefined();
             let parentNodeId = jsonBody.node.id;
             let nodeUrl = paramaterizedNodeUrl.replace(/:nodeId/gi, parentNodeId);
@@ -122,7 +124,11 @@ describe('handlers/nodes.js', function() {
           url: nodeUrl,
           headers: headers
         }, function( err, res, body) {
+          let jsonBody = JSON.parse(body);
           expect(res.statusCode).toBe(400);
+          expect(jsonBody.code).toBe(RapidoErrorCodes.fieldValidationError);
+          expect(jsonBody.fields[0].field).toBe('nodeId');
+          expect(jsonBody.fields[0].type).toBe('invalid');
           done();
         }
       )
@@ -379,7 +385,14 @@ describe('handlers/nodes.js', function() {
                 }
               }, function( err, res, body) {
                 winston.log('debug', 'body:', body);
+                console.log(body);
                 expect(res.statusCode).toBe(400);
+                expect(body.code).toBe(RapidoErrorCodes.fieldValidationError);
+                expect(body.fields[0]).toEqual({
+                  field: 'nodeId',
+                  type: 'invalid',
+                  description: 'There is no node with this ID in this sketch'
+                })
                 done();
               }
             )
@@ -387,7 +400,11 @@ describe('handlers/nodes.js', function() {
       )
     })
 
-    it( 'should reject a request to change a sketch that is not owned by this user', function(done) {
+    xit( 'should reject a request to change a sketch that is not owned by this user', function(done) {
+
+      fail('not implemented yet.')
+      // Register and create a new user to test the authorization function
+
       request.post(
         {
           url: nodesUrl,
@@ -457,7 +474,11 @@ describe('handlers/nodes.js', function() {
           winston.log('debug', 'body:', body);
           expect(res.statusCode).toBe(400);
           let bodyJSON = JSON.parse(body);
-          expect(bodyJSON.error).toBe('Required field \'target\' is missing from request body');
+          console.log(bodyJSON);
+          expect(bodyJSON.code).toBe(RapidoErrorCodes.fieldValidationError);
+          expect(bodyJSON.fields[0].type).toBe('missing');
+          expect(bodyJSON.fields[0].field).toBe('target');
+          expect(bodyJSON.fields[0].description).toBe('Missing required field "target"');
           done();
         }
       );
@@ -475,8 +496,11 @@ describe('handlers/nodes.js', function() {
           }
         }, function( err, res, body) {
           winston.log('debug', 'body:', body);
+          console.log(body);
           expect(res.statusCode).toBe(400);
-          expect(body.error).toBe('Cannot move node to non-existent target node with ID:some-target')
+          expect(body.code).toBe(RapidoErrorCodes.fieldValidationError);
+          expect(body.fields[0].type).toBe('invalid');
+          expect(body.fields[0].field).toBe('targetNodeId');
           done();
         }
       );

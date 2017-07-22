@@ -8,6 +8,7 @@ const EventEmitter = require('events');
 
 class EventSubscription {
   constructor(sketchId, processor, name) {
+    //console.log('EventSubscription constructor called for sketchId ', sketchId);
     this.sketchId = sketchId;
     this.eventProcessor = processor;
     this.emitter = new EventEmitter();
@@ -43,32 +44,44 @@ class EventSubscription {
     }
 
     winston.log('info', '[EventSubscription.onEvent] adding event to an event queue with length of', this.eventQueue.length);
+
     // add the event to the queue
     this.eventQueue.push(event);
-
+    winston.log('debug', '[EventSubscription.Event] pushed event:', event);
 
     let processEventQueue = function() {
-      winston.log('debug', '[EventSubscription.onEvent] calling treeEventProcessor with tree:', this.tree);
+      winston.log('debug', '[EventSubscription.processEventQueue] calling treeEventProcessor with tree:', this.tree);
 
       let queuedEvent = this.eventQueue.shift();
 
+      winston.log('debug', '[EventSubscription.processEventQueue] picked up event:', queuedEvent);
+      winston.log('debug', '[EventSubscription.processEventQueue] tree.hash before applying event:', this.tree.hash );
+
       // Apply the event
       this.eventProcessor.applyEvent(queuedEvent, this.tree)
-      .then( (updatedTree) => {
-        winston.log('debug', '[EventSubscription.onEvent] event processed succesfully.  tree result:', updatedTree);
+      .then( (result) => {
+        let updatedTree = result.tree;
+        let appliedEvent = result.event;
+        winston.log('debug', '[EventSubscription.processEventQueue] succesfully applied event:', appliedEvent);
+        winston.log('debug', '[EventSubscription.processEventQueue] event processed succesfully.  tree result:', updatedTree);
         // store the state of the tree
         this.tree = updatedTree;
 
         // Update the last event processed for this sketch
         this.lastEventIDProcessed = queuedEvent.id;
-        winston.log('debug', '[EventSubscription.onEvent] ('+this.name+') event_processed event listeners: ', this.emitter.listenerCount('event_processed') );
-        winston.log('debug', '[EventSubscription.onEvent] emitting event_processed event to listeners for event ID ', queuedEvent.id);
+        winston.log('debug', '[EventSubscription.processEventQueue] ('+this.name+') event_processed event listeners: ', this.emitter.listenerCount('event_processed') );
+        winston.log('debug', '[EventSubscription.processEventQueue] emitting event_processed event to listeners for event ID ', queuedEvent.id);
         // Alert any subscribers to our event stream that this event has been completely processed
         this.emitter.emit('event_processed', queuedEvent);
+        winston.log('debug', '[EventSubscription.processEventQueue] emitted');
 
       }).catch( e => {
         // If we hit an error, there isn't much we can do except to log it
-        winston.log('error', '[EventSubscription.onEvent] (event:' + queuedEvent + ') unexpected error:', e);
+        //console.log('Error caught, queuedEvent:', queuedEvent);
+        winston.log('error', '[EventSubscription.processEventQueue] (event:' + queuedEvent + ') unexpected error:', e);
+
+        //TODO: Somehow report an error back to anything that is waiting for this event to be applied
+
       }).finally( () => {
         if( this.eventQueue.length > 0 ) {
           processEventQueue();

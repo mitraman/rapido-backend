@@ -114,7 +114,7 @@ describe('SwaggerExporter v2', function() {
     expect(responseObject).toBeDefined();
   })
 
-  fit('should populate the schema and example properties based on a simple object body', function() {
+  it('should populate the schema and example properties based on a simple object body', function() {
     let tree = { rootNodes: [], hash: {}};
     let node = buildNode('/node', '/node');
 
@@ -137,7 +137,7 @@ describe('SwaggerExporter v2', function() {
 
   })
 
-  fit('should set a schema with a type of string when the JSON body is invalid', function() {
+  it('should set a schema with a type of string when the JSON body is invalid', function() {
     let tree = { rootNodes: [], hash: {}};
     let node = buildNode('/node', '/node');
 
@@ -185,7 +185,7 @@ describe('SwaggerExporter v2', function() {
     expect(grandchildObject.properties['name'].type).toBe('string');
   })
 
-  fit('should set a schema type of number when a body property contains an integer', function() {
+  it('should set a schema type of number when a body property contains an integer', function() {
     let tree = { rootNodes: [], hash: {}};
     let node = buildNode('/node', '/node');
 
@@ -287,7 +287,7 @@ describe('SwaggerExporter v2', function() {
 
     })
 
-    fit('should return descendent nodes as pathItems', function() {
+    it('should return descendent nodes as pathItems', function() {
       let tree = { rootNodes: [], hash: {}};
 
       let root1 = buildNode('/root1', '/root1', {
