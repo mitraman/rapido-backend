@@ -181,11 +181,16 @@ describe('EventStore', function() {
 
     let handlerSpy = jasmine.createSpy('handlerSpy')
 
+    // Subscribe to events
     this.es.subscribe(this.sketchId, handlerSpy);
+
+    // Push a test event and unsubscribe after it is received
     this.es.push(this.userId, this.sketchId, 'test_event', { sketchId: this.sketchId, test: 'subscribed'})
+
     .then( () => {
         return this.es.unsubscribe(this.sketchId, handlerSpy);
     }).then( () => {
+        // This event should not be received
         return this.es.push(this.userId, this.sketchId, 'test_event', { sketchId: this.sketchId, test: 'unsubscribed'});
     }).then( () => {
         expect(handlerSpy.calls.count()).toBe(1);

@@ -68,7 +68,6 @@ describe('handlers/projects.js ', function() {
   })
 
   beforeEach(function(done) {
-    console.log('^^^^^^^^^^^^^^^^^^^^^^^^^^^ beforeEach start ^^^^^^^^^^^^^^^^^^^^^');
     // Remove database data
     // Remove all of the project entries in the database for our test useer
     const db = dataAccessor.getDb();
@@ -84,14 +83,10 @@ describe('handlers/projects.js ', function() {
       // });
     //return db.query("DELETE FROM projects WHERE userid = " +  userid)
       db.query("DELETE FROM projects WHERE userid = " +  userid).then(() => {
-        console.log('finished delete from projects')
       })
     }).catch( (error) => {
-      console.log('************************************** beforeEach error *******');
-      console.log(error);
       fail(error);
     }).finally( () => {
-      console.log('¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬ beforeEach done');
       done();
     })
   })
@@ -291,8 +286,33 @@ describe('handlers/projects.js ', function() {
       })
     })
 
-    xit( 'should return a 404 if the specified project is not owned by this user', function(done) {
-      fail('to be implemented');
+    it( 'should return a 404 if the specified project is not owned by this user', function(done) {
+      // Add a project with our test user
+      let projects = [];
+      addProject(1, projects, 1, function() {
+        // The project was added, now register and login a second user
+        HandlerSupport.registerAndLogin('ProjectOwnershipTest')
+        .then( (result) => {
+          const authValue = 'Bearer ' + result.token;
+          let newHeaders =  {
+              'Content-Type': 'application/json'
+          };
+          newHeaders['Authorization'] = authValue;
+
+          // Try to retrieve the original user's project
+          let projectUrl =  projectUrlTemplate.replace(/{projectId}/gi, projects[0].id);
+
+          request.get({
+            url: projectUrl,
+            headers: newHeaders
+          }, function(err, res, body) {
+            expect(res.statusCode).toBe(404);
+          });
+
+        }).catch( (error) => {
+          fail(error);
+        }).finally(done);
+      })
     })
 
     // Implement this if we need it later on.
