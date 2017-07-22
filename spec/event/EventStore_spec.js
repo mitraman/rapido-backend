@@ -7,51 +7,42 @@ const SketchEventStream = require('../../src/event/SketchEventStream.js');
 const Promise = require('bluebird');
 const winston = require('winston');
 
-describe('EventStore ', function() {
+describe('EventStore', function() {
 
   beforeAll(function() {
-    this.es = new EventStore();
     this.sketchId = 10;
     this.userId = 99;
   })
 
   beforeEach(function(done) {
     dataAccessor.getDb().query('delete from sketchevents').finally(done);
+    this.es = new EventStore();
   })
 
   afterEach(function() {
     this.es.unsubscribeAll(this.sketchId);
   })
 
-  // TODO: Need to solve the problem of mocking the database
-  // right now it doesn't work
-  xit('should store an event', function(done) {
+  it('should store an event', function(done) {
 
     let newEvent = { data: 'blah blah' };
     let eventType = 'test_type';
+    let sketchId = this.sketchId;
+    let userId = this.userId;
 
-    // Stub the database for this test so we don't have to wait for
-    // the event to process
-    this.queryValidator = (query, params) => {
-      console.log('queryValidator called');
-      expect(params[0]).toBe(this.sketchId);
-      done();
-      return new Promise( (resolve,reject) => { resolve(1); })
-    }
-
-
-    spyOn(dataAccessor.getDb(), 'one').and.callFake( (query, params) => {
-      console.log('in it');
+    // Stub the database to test that the correct query is being made
+    this.es.setDataBase({
+      one: function(query, params) {
+        expect(params[0]).toBe(userId);
+        expect(params[1]).toBe(sketchId);
+        expect(params[2]).toBe(eventType);
+        expect(params[3]).toEqual(JSON.stringify(newEvent));
+        done();
+        return new Promise( (resolve,reject) => { resolve(1); })
+      }
     })
 
-    // spyOn(dataAccessor, 'getDb').and.callFake( () => {
-    //   console.log('getDb called');
-    //   return {
-    //     one: this.queryValidator
-    //   }
-    // })
-
-    this.es.push(this.sketchId, eventType, newEvent)
+    this.es.push(this.userId, this.sketchId, eventType, newEvent)
     .then( (queueLength) => {
       expect(queueLength).toBe(1);
     }).catch( (error) => {

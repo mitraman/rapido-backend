@@ -13,6 +13,11 @@ let EventStore = function () {
   EventStore.db = dataAccessor.getDb();
 };
 
+// Useful for test cases, allows a client to replace the database instance that the event store is using
+EventStore.prototype.setDataBase = function(database) {
+  EventStore.db = database;
+}
+
 
 EventStore.processNextEvent = function() {
   winston.log('debug', '[EventStore.processNextEvent] setting isProcessorRunning to true');
