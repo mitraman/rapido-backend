@@ -25,15 +25,19 @@ describe('sketch model', function() {
       verification: 'verificationtoken'
     }).then((result)=>{
       // Save the user ID of the new user
+      let userId = result.id;
       newSketch.userId = result.id;
 
-      // Create a new project for the sketches
-      return projects.create({
-        name: 'project for sketches',
-        description: 'a project description',
-        style: 'CRUD',
-        userId: newSketch.userId
+      // Insert a new project row into the projects table
+      const db = dataAccessor.getDb();
+
+      return db.one({
+        name: "insert-project",
+        text: "INSERT INTO projects(name, userid, style)\
+         VALUES($1, $2, $3) returning id",
+        values: ['sketchServiceTest', userId, 'CRUD']
       });
+
     }).then( (result) => {
       expect(result).not.toBeUndefined();
       newSketch.projectId = result.id;
@@ -47,20 +51,64 @@ describe('sketch model', function() {
     // Delete sketches before each run
     const db = dataAccessor.getDb();
     db.query('DELETE FROM sketches where projectid=' + newSketch.projectId)
-    .then( (result) => {
-      done();
-    })
+    .catch(e => {
+      fail(e);
+    }).finally(done);
   })
 
   it( 'should create a new sketch', function(done) {
+    const db = dataAccessor.getDb();
+
     sketches.create(newSketch)
     .then( (result) => {
-      expect(result).not.toBeUndefined();
-      expect(result.id).not.toBeUndefined();
+      expect(result.sketchIndex).toBe(1);
+      return db.query('SELECT * from sketches where id=' + result.id);
+    }).then( result => {
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBeDefined();
+      expect(result[0].sketchindex).toBe(1);
+      return;
     }).catch( (error) => {
       fail(error);
     }).finally(done);
+
   });
+
+  it('should increment the sketch index for a project when multiple sketches are added', function(done) {
+    const db = dataAccessor.getDb();
+
+    sketches.create(newSketch)
+    .then( (result) => {
+      expect(result.sketchIndex).toBe(1);
+      return sketches.create(newSketch);
+    }).then( result => {
+      expect(result.sketchIndex).toBe(2);
+
+      // Insert a second project into the table
+      return db.one({
+        name: "insert-project",
+        text: "INSERT INTO projects(name, userid, style)\
+         VALUES($1, $2, $3) returning id",
+        values: ['sketchServiceTest', newSketch.userId, 'CRUD']
+      });
+    }).then( result => {
+      // Create a sketch for the new project
+      let secondProjectSketch = {
+        userId: newSketch.userId,
+        projectId: result.id
+      };
+      return sketches.create(secondProjectSketch);
+    }).then( result => {
+      expect( result.sketchIndex).toBe(1);
+      // Create a sketch for the original project
+      return sketches.create(newSketch);
+    }).then( result => {
+      expect( result.sketchIndex).toBe(3);
+    }).catch( (error) => {
+      fail(error);
+    }).finally(done);
+
+  })
 
   it(' should return an empty list of sketches', function(done) {
     sketches.findByProject(newSketch.projectId)

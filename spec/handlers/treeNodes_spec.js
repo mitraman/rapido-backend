@@ -11,48 +11,88 @@ const RapidoErrorCodes = require('../../src/errors/codes.js');
 
 describe('handlers/nodes.js', function() {
 
-  const server_port = config.port;
-  const urlBase = 'http://localhost:' + server_port + '/api';
-  let headers = {
-    'Content-Type': 'application/json'
-  };
 
-  let sketchId = 10;
 
-  let nodesUrl = urlBase + '/sketches/10/nodes';
-  let paramaterizedNodeUrl = urlBase + '/sketches/10/nodes/:nodeId';
-  let token = "";
-  let userid;
+  beforeAll(function(done) {
+    const db = dataAccessor.getDb();
+
+    this.server_port = config.port;
+    this.urlBase = 'http://localhost:' + this.server_port + '/api';
+    this.headers = {
+      'Content-Type': 'application/json'
+    };
+    this.sketchIndex = 1;
+
+    HandlerSupport.registerAndLogin('TreeNodesTest')
+    .then( (result) => {
+      const authValue = 'Bearer ' + result.token;
+      this.headers['Authorization'] = authValue;
+      this.userId = result.userId;
+      // Create a test project
+      return db.query("insert into projects (userid, name) values (" + this.userId + ", 'treeNodesTest') RETURNING id")
+    }).then( result => {
+      this.projectId = result[0].id;
+      return db.query("insert into sketches (userid, projectid, sketchIndex) values ("
+        + this.userId + ", " + this.projectId + ", 1) RETURNING id, sketchIndex");
+    }).then( result => {
+      this.sketchIndex = 1;
+      this.sketchId = result[0].id;
+      this.url = this.urlBase + '/projects/' + this.projectId + '/sketches/' + this.sketchIndex + '/nodes';
+      done();
+    }).catch( (error) => {
+      console.log('ERROR!!!!!!!!!!!!!!!!');
+      console.log(error);
+      fail(error);
+    }).finally(done);
+  });
+
+  beforeEach(function(done) {
+    // remove the event history before each test
+    const db = dataAccessor.getDb();
+    db.query('delete from sketchevents;')
+    .then( () => {
+      // Flush all subscribers
+      return sketchService.reset();
+    }).finally(done);
+  });
 
   describe('POST /nodes/:parentId', function() {
 
-    beforeAll(function(done) {
-      HandlerSupport.registerAndLogin('ProjectsTest')
-      .then( (result) => {
-        const authValue = 'Bearer ' + result.token;
-        headers['Authorization'] = authValue;
-        userid = result.userId;
-        done();
-      }).catch( (error) => {
-        fail(error);
-      })
-    })
-
-    beforeEach(function(done) {
-      // remove the event history before each test
+    it('should reject an operation on a node that is not part of a sketch owned by this user', function(done) {
       const db = dataAccessor.getDb();
-      db.query('delete from sketchevents;')
-      .then( () => {
-        // Flush all subscribers
-        return sketchService.reset();
-      }).finally(done);
+
+      let userId = 0;
+      let projectId = 0;
+
+      // Create a project and sketch with a different user
+      db.one("insert into users (fullname) values ('other user') returning id")
+      .then( result => {
+        userId = result.id;
+        return db.one("insert into projects (userid, name) values (" + userId + ", 'project name') returning id");
+      }).then( result => {
+        projectId = result.id;
+        return db.query("insert into sketches (projectid, userid, sketchIndex) values (" + projectId + ", " + userId + ", 1)");
+      }).then( result => {
+        // Make request for the unauthorized sketch
+        let url = this.urlBase + "/projects/" + projectId + "/sketches/1/nodes";
+        request.post(
+          {
+            url: url,
+            headers: this.headers,
+            json: {}
+          }, function( err, res, body) {
+            expect(res.statusCode).toBe(404);
+            done();
+          }
+        );
+      })
     })
 
     it( 'should reject a request with an invalid JWT', function(done) {
 
       request.post(
         {
-          url: nodesUrl,
+          url: this.url,
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIXVCJ9...TJVA95OrM7E20RMHrHDcEfxjoYZgeFONFh7HgQ'
@@ -67,62 +107,81 @@ describe('handlers/nodes.js', function() {
       )
     });
 
-    it( 'should create a new node at the root level (/nodes)', function(done) {
-
+    it('should return a 404 if a sketch does not exist', function(done) {
+      let url = this.urlBase + '/projects/' + this.projectId + '/sketches/12/nodes';
 
       request.post(
         {
-          url: nodesUrl,
-          headers: headers,
+          url: url,
+          headers: this.headers,
         },function(err, res, body) {
-            expect(err).toBe(null);
-            expect(res.statusCode).toBe(201);
-            let jsonBody = JSON.parse(body);
-            expect(jsonBody.tree).toBeDefined();
-            expect(jsonBody.node).toBeDefined();
-            expect(jsonBody.node.id).toBeDefined();
-            expect(jsonBody.node.data).toBeDefined();
-            done();
+          console.log(body);
+          let jsonBody = JSON.parse(body);
+          expect(err).toBe(null);
+          expect(res.statusCode).toBe(404);
+          expect(jsonBody.code).toBe(RapidoErrorCodes.sketchNotFound);
+          done();
+        }
+      )
+    })
+
+    it( 'should create a new node at the root level (/nodes)', function(done) {
+
+      request.post(
+        {
+          url: this.url,
+          headers: this.headers,
+        },function(err, res, body) {
+          expect(err).toBe(null);
+          expect(res.statusCode).toBe(201);
+          let jsonBody = JSON.parse(body);
+          expect(jsonBody.tree).toBeDefined();
+          expect(jsonBody.node).toBeDefined();
+          expect(jsonBody.node.id).toBeDefined();
+          expect(jsonBody.node.data).toBeDefined();
+          done();
         }
       )
     })
 
     it( 'should create a new child node', function(done) {
 
+      let thisSpec = this;
+
       request.post(
         {
-          url: nodesUrl,
-          headers: headers
+          url: this.url,
+          headers: this.headers
         },function(err, res, body) {
-            expect(res.statusCode).toBe(201);
+          expect(res.statusCode).toBe(201);
+          let jsonBody = JSON.parse(body);
+          expect(jsonBody.node.id).toBeDefined();
+          let parentNodeId = jsonBody.node.id;
+
+          let nodeUrl = thisSpec.url + '/' + parentNodeId;
+          request.post(
+            {
+              url: nodeUrl,
+              headers: thisSpec.headers
+            }, function( err, res, body) {
+              expect(res.statusCode).toBe(201);
               let jsonBody = JSON.parse(body);
-            expect(jsonBody.node.id).toBeDefined();
-            let parentNodeId = jsonBody.node.id;
-            let nodeUrl = paramaterizedNodeUrl.replace(/:nodeId/gi, parentNodeId);
-            request.post(
-              {
-                url: nodeUrl,
-                headers: headers
-              }, function( err, res, body) {
-                expect(res.statusCode).toBe(201);
-                let jsonBody = JSON.parse(body);
-                expect(jsonBody.node.id).toBeDefined();
-                expect(jsonBody.tree).toBeDefined();
-                done();
-              }
-            )
+              expect(jsonBody.node.id).toBeDefined();
+              expect(jsonBody.tree).toBeDefined();
+              done();
+            }
+          )
         }
       )
     })
 
     it( 'should reject an attempt to create a child for a node that does not exist', function(done) {
 
-      let parentNodeId = 'bad-id';
-      let nodeUrl = paramaterizedNodeUrl.replace(/:nodeId/gi, parentNodeId);
+      let url = this.url + '/bad-id';
       request.post(
         {
-          url: nodeUrl,
-          headers: headers
+          url: url,
+          headers: this.headers
         }, function( err, res, body) {
           let jsonBody = JSON.parse(body);
           expect(res.statusCode).toBe(400);
@@ -135,21 +194,23 @@ describe('handlers/nodes.js', function() {
     })
 
     it('should update the name and path of a node', function(done) {
+      let thisSpec = this;
+
       request.post(
         {
-          url: nodesUrl,
-          headers: headers
+          url: this.url,
+          headers: this.headers
         },function(err, res, body) {
             expect(res.statusCode).toBe(201);
             let jsonBody = JSON.parse(body);
             expect(jsonBody.node.id).toBeDefined();
             let nodeId = jsonBody.node.id;
-            let nodeUrl = paramaterizedNodeUrl.replace(/:nodeId/gi, nodeId);
+            let nodeUrl = thisSpec.url + "/" + nodeId;
             request(
               {
                 method: 'PATCH',
                 url: nodeUrl,
-                headers: headers,
+                headers: thisSpec.headers,
                 json: {
                   name: 'newname',
                   fullpath: '/newname'
@@ -169,21 +230,23 @@ describe('handlers/nodes.js', function() {
 
     it( 'should update the response data of a node', function(done) {
 
+      let thisSpec = this;
+
       request.post(
         {
-          url: nodesUrl,
-          headers: headers
+          url: this.url,
+          headers: this.headers
         },function(err, res, body) {
             expect(res.statusCode).toBe(201);
             let jsonBody = JSON.parse(body);
             expect(jsonBody.node.id).toBeDefined();
             let nodeId = jsonBody.node.id;
-            let nodeUrl = paramaterizedNodeUrl.replace(/:nodeId/gi, nodeId);
+            let nodeUrl = thisSpec.url + "/" + nodeId;
             request(
               {
                 method: 'PATCH',
                 url: nodeUrl,
-                headers: headers,
+                headers: thisSpec.headers,
                 json: {
                   data: {
                     'get' : {
@@ -221,21 +284,23 @@ describe('handlers/nodes.js', function() {
     })
 
     it('should update both the response data and fields for a node', function(done) {
+      let thisSpec = this;
+
       request.post(
         {
-          url: nodesUrl,
-          headers: headers
+          url: this.url,
+          headers: this.headers
         },function(err, res, body) {
             expect(res.statusCode).toBe(201);
             let jsonBody = JSON.parse(body);
             expect(jsonBody.node.id).toBeDefined();
             let nodeId = jsonBody.node.id;
-            let nodeUrl = paramaterizedNodeUrl.replace(/:nodeId/gi, nodeId);
+            let nodeUrl = thisSpec.url + "/" + nodeId;
             request(
               {
                 method: 'PATCH',
                 url: nodeUrl,
-                headers: headers,
+                headers: thisSpec.headers,
                 json: {
                   name: 'new_name',
                   data: {
@@ -274,21 +339,23 @@ describe('handlers/nodes.js', function() {
     })
 
     it('should udpate the enabled status of a node', function(done) {
+      let thisSpec = this;
+
       request.post(
         {
-          url: nodesUrl,
-          headers: headers
+          url: this.url,
+          headers: this.headers
         },function(err, res, body) {
             expect(res.statusCode).toBe(201);
             let jsonBody = JSON.parse(body);
             expect(jsonBody.node.id).toBeDefined();
             let nodeId = jsonBody.node.id;
-            let nodeUrl = paramaterizedNodeUrl.replace(/:nodeId/gi, nodeId);
+            let nodeUrl = thisSpec.url + "/" + nodeId;
             request(
               {
                 method: 'PATCH',
                 url: nodeUrl,
-                headers: headers,
+                headers: thisSpec.headers,
                 json: {
                   name: 'new_name',
                   data: {
@@ -312,21 +379,23 @@ describe('handlers/nodes.js', function() {
     })
 
     it('should update three response data keys for a node', function(done) {
+      let thisSpec = this;
+
       request.post(
         {
-          url: nodesUrl,
-          headers: headers
+          url: this.url,
+          headers: this.headers
         },function(err, res, body) {
             expect(res.statusCode).toBe(201);
             let jsonBody = JSON.parse(body);
             expect(jsonBody.node.id).toBeDefined();
             let nodeId = jsonBody.node.id;
-            let nodeUrl = paramaterizedNodeUrl.replace(/:nodeId/gi, nodeId);
+            let nodeUrl = thisSpec.url + "/" + nodeId;
             request(
               {
                 method: 'PATCH',
                 url: nodeUrl,
-                headers: headers,
+                headers: thisSpec.headers,
                 json: {
                   data: {
                     'get' : {
@@ -367,25 +436,25 @@ describe('handlers/nodes.js', function() {
 
     it('should reject an attempt to update a node that does not exist', function(done) {
       //console.log(nodesUrl);
+      let thisSpec = this;
       request.post(
         {
-          url: nodesUrl,
-          headers: headers
+          url: this.url,
+          headers: this.headers
         },function(err, res, body) {
             expect(res.statusCode).toBe(201);
-            let nodeUrl = paramaterizedNodeUrl.replace(/:nodeId/gi, 'bad-node-id');
+            let nodeUrl = thisSpec.url + '/bad-node-id';
             request(
               {
                 method: 'PATCH',
                 url: nodeUrl,
-                headers: headers,
+                headers: thisSpec.headers,
                 json: {
                   name: 'newname',
                   fullpath: '/newname'
                 }
               }, function( err, res, body) {
                 winston.log('debug', 'body:', body);
-                console.log(body);
                 expect(res.statusCode).toBe(400);
                 expect(body.code).toBe(RapidoErrorCodes.fieldValidationError);
                 expect(body.fields[0]).toEqual({
@@ -399,82 +468,27 @@ describe('handlers/nodes.js', function() {
         }
       )
     })
-
-    xit( 'should reject a request to change a sketch that is not owned by this user', function(done) {
-
-      fail('not implemented yet.')
-      // Register and create a new user to test the authorization function
-
-      request.post(
-        {
-          url: nodesUrl,
-          headers: headers
-        },function(err, res, body) {
-            expect(res.statusCode).toBe(201);
-            let jsonBody = JSON.parse(body);
-            expect(jsonBody.node.id).toBeDefined();
-            let nodeId = jsonBody.node.id;
-            let nodeUrl = paramaterizedNodeUrl.replace(/:nodeId/gi, nodeId);
-            request(
-              {
-                method: 'PATCH',
-                url: nodeUrl,
-                headers: headers,
-                json: {
-                  name: 'newname',
-                  fullpath: '/newname'
-                }
-              }, function( err, res, body) {
-                winston.log('debug', 'body:', body);
-                expect(res.statusCode).toBe(200);
-                let updatedNode = body.tree[0];
-                expect(updatedNode.name).toBe('newname');
-                expect(updatedNode.fullpath).toBe('/newname');
-                done();
-              }
-            )
-        }
-      )
-    })
   })
 
   describe('PUT /nodes/:nodeId/move', function() {
 
     beforeAll(function(done) {
-      this.paramaterizedNodeMoveUrl = paramaterizedNodeUrl + '/move';
-      HandlerSupport.registerAndLogin('ProjectsTest')
-      .then( (result) => {
-        const authValue = 'Bearer ' + result.token;
-        headers['Authorization'] = authValue;
-        userid = result.userId;
-        done();
-      }).catch( (error) => {
-        fail(error);
-      })
-    })
-
-    beforeEach(function(done) {
-      // remove the event history before each test
-      const db = dataAccessor.getDb();
-      db.query('delete from sketchevents;')
-      .then( () => {
-        // Flush all subscribers
-        return sketchService.reset();
-      }).finally(done);
+      this.moveUrl = this.urlBase + '/projects/' + this.projectId + '/sketches/' + this.sketchIndex + '/nodes/:nodeId/move'  ;
+      done();
     })
 
     it('should reject a request that does not designate a target', function(done) {
       const nodeId = 'badid';
-      let nodeMoveUrl = this.paramaterizedNodeMoveUrl.replace(/:nodeId/gi, nodeId);
+      let nodeMoveUrl = this.moveUrl.replace(/:nodeId/gi, nodeId);
       request.put(
         {
           url: nodeMoveUrl,
-          headers: headers
+          headers: this.headers
         }, function( err, res, body) {
           winston.log('debug', 'body:', body);
           expect(res.statusCode).toBe(400);
           let bodyJSON = JSON.parse(body);
-          console.log(bodyJSON);
+          //console.log(bodyJSON);
           expect(bodyJSON.code).toBe(RapidoErrorCodes.fieldValidationError);
           expect(bodyJSON.fields[0].type).toBe('missing');
           expect(bodyJSON.fields[0].field).toBe('target');
@@ -486,17 +500,16 @@ describe('handlers/nodes.js', function() {
 
     it(' should reject a request to move a node that does not exist', function(done) {
       const nodeId = 'badid';
-      let nodeMoveUrl = this.paramaterizedNodeMoveUrl.replace(/:nodeId/gi, nodeId);
+      let nodeMoveUrl = this.moveUrl.replace(/:nodeId/gi, nodeId);
       request.put(
         {
           url: nodeMoveUrl,
-          headers: headers,
+          headers: this.headers,
           json: {
             target: 'some-target'
           }
         }, function( err, res, body) {
           winston.log('debug', 'body:', body);
-          console.log(body);
           expect(res.statusCode).toBe(400);
           expect(body.code).toBe(RapidoErrorCodes.fieldValidationError);
           expect(body.fields[0].type).toBe('invalid');
@@ -521,7 +534,8 @@ describe('handlers/nodes.js', function() {
       let nodeD = createEmptyNode('d', '/d');
 
       //TODO: this test module needs to be cleaned up so that it uses 'this'
-      let userId = userid;
+      let userId = this.userId;
+      let sketchId = this.sketchId;
 
       sketchService.addTreeNode(userId, sketchId, nodeA)
       .then( result => {
@@ -537,11 +551,11 @@ describe('handlers/nodes.js', function() {
         return nodeD.id = result.nodeId;
       }).then( result => {
         const nodeId = nodeC.id;
-        let nodeMoveUrl = this.paramaterizedNodeMoveUrl.replace(/:nodeId/gi, nodeId);
+        let nodeMoveUrl = this.moveUrl.replace(/:nodeId/gi, nodeId);
         request.put(
           {
             url: nodeMoveUrl,
-            headers: headers,
+            headers: this.headers,
             json: {
               target: nodeD.id
             }

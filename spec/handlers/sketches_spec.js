@@ -57,6 +57,15 @@ describe('Sketches API', function() {
     })
   });
 
+  beforeEach(function(done) {
+    // Delete sketch data
+    const db = dataAccessor.getDb();
+    db.query('DELETE FROM sketches')
+    .catch(e => {
+      fail(e);
+    }).finally(done);
+  })
+
   describe('POST /sketches', function() {
 
     it( 'should reject an attempt to create a sketch for a project that is not owned by the user', function(done) {
@@ -83,10 +92,42 @@ describe('Sketches API', function() {
             name: name
           }
         },function(err, res, body) {
+          expect(err).toBe(null);
+          expect(res.statusCode).toBe(201);
+          expect(body.index).toBe(1);
+          expect(body.createdAt).toBeDefined();
+          done();
+        }
+      )
+    })
+
+    it( 'should generate a serial id for sketches', function(done) {
+      request.post(
+        {
+          url: sketchesUrl,
+          headers: headers,
+          json: {
+            name: name
+          }
+        },function(err, res, body) {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(201);
+            expect(body.index).toBe(1);
             expect(body.createdAt).not.toBeUndefined();
-            done();
+            request.post(
+              {
+                url: sketchesUrl,
+                headers: headers,
+                json: {
+                  name: name
+                }
+              },function( err, res, body) {
+              expect(err).toBe(null);
+              expect(res.statusCode).toBe(201);
+              expect(body.index).toBe(2);
+              expect(body.createdAt).not.toBeUndefined();
+              done();
+            })
         }
       )
     })

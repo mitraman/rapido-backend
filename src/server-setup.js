@@ -43,10 +43,11 @@ const start = function start(serverPort, cb) {
   app.get('/api/projects', authentication.authenticateRequest, projects.findProjectsHandler);
   app.get('/api/projects/:projectId', authentication.authenticateRequest, projects.findProjectHandler);
   app.post('/api/projects/:projectId/sketches', authentication.authenticateRequest, sketches.createSketchHandler);
-  app.post('/api/sketches/:sketchId/nodes', authentication.authenticateRequest, nodes.createRootNodeHandler);
-  app.post('/api/sketches/:sketchId/nodes/:nodeId', authentication.authenticateRequest, nodes.createChildNodeHandler);
-  app.patch('/api/sketches/:sketchId/nodes/:nodeId', authentication.authenticateRequest, nodes.updateNodePropertiesHandler);
-  app.put('/api/sketches/:sketchId/nodes/:nodeId/move', authentication.authenticateRequest, nodes.moveNodeHandler);
+  app.post('/api/projects/:projectId/sketches/:sketchIndex/nodes', authentication.authenticateRequest, nodes.createNodeHandler);
+  app.post('/api/projects/:projectId/sketches/:sketchIndex/nodes/:nodeId', authentication.authenticateRequest, nodes.createNodeHandler);
+  app.patch('/api/projects/:projectId/sketches/:sketchIndex/nodes/:nodeId', authentication.authenticateRequest, nodes.updateNodePropertiesHandler);
+  app.put('/api/projects/:projectId/sketches/:sketchIndex/nodes/:nodeId/move', authentication.authenticateRequest, nodes.moveNodeHandler);
+  app.get('/api/projects/:projectId/sketches/:sketchIndex/export', authentication.authenticateRequest, sketches.exportSketchHandler);
 
 
   winston.log('debug', 'finished setting up routes');

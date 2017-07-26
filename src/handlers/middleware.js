@@ -26,7 +26,10 @@ module.exports = {
 
     // Reject the message if the client does not accept JSON responses
     if( !req.accepts('application/json') ) {
-      throw new RapidoError(RapidoErrorCodes.unsupportedAcceptType, 'The content type ' + req.get('Accept') + ' specified in the HTTP accept header is not supported.', 406);
+      // Ignore if the exporter is being called
+      if(req.url.indexOf('/export') < 0){
+        throw new RapidoError(RapidoErrorCodes.unsupportedAcceptType, 'The content type ' + req.get('Accept') + ' specified in the HTTP accept header is not supported.', 406);
+      }
     }
 
     next();

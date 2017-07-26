@@ -8,12 +8,25 @@ const sketches = function() {};
 
 sketches.create = function( sketch ) {
   const db = dataAccessor.getDb();
-  return db.one({
-    name: "create-sketch",
-    text: "INSERT INTO sketches(projectid, userid) VALUES($1, $2) returning id, createdat",
-    values: [sketch.projectId, sketch.userId]
-  });
 
+  return new Promise( (resolve, reject) => {
+
+    // Insert a new sketch and generate a new incremental sketchindex
+    db.one({
+      name: "create-sketch",
+      text: "INSERT INTO sketches (userid, projectid, sketchindex)"
+       + " VALUES ($1, $2, ( select coalesce( (max(sketchindex) + 1), '1') from sketches where projectid=$2 )) RETURNING id, sketchindex, createdat;",
+      values: [sketch.userId, sketch.projectId]
+    }).then( result => {
+      resolve({
+        id: result.id,
+        sketchIndex: result.sketchindex,
+        createdAt : result.createdat
+      });
+    }).catch(e => {
+      reject(e);
+    })
+  });
 }
 
 sketches.findByProject = function (projectId) {
@@ -40,5 +53,23 @@ sketches.findByProject = function (projectId) {
     });
   });
 }
+
+// Utility function to retrieve a sketch ID based on the primary key
+sketches.findBySketchIndex = function(projectId, sketchIndex, userId) {
+	const db = dataAccessor.getDb();
+
+	return new Promise( (resolve, reject) => {
+		db.one({
+			name: "get-sketchid",
+			text: "SELECT id FROM sketches where sketchindex = $1 and projectid = $2 and userid = $3",
+			values: [sketchIndex, projectId, userId]
+		}).then( result => {
+			resolve(result.id);
+		}).catch( e => {
+			reject(new RapidoError(RapidoErrorCodes.sketchNotFound, 'This sketch index does not exist for this project', 404, null, 'Sketch Node Error'));
+		})
+	});
+}
+
 
 module.exports = sketches;

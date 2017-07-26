@@ -8,6 +8,7 @@ module.exports = {
   unsupportedAcceptType: 'UNSUPPORTED_ACCEPTTYPE',
   POSTwithNoBody: 'POST_WITH_NO_BODY',
   projectNotFound: 'PROJECT_NOT_FOUND',
+  sketchNotFound: 'SKETCH_NOT_FOUND',
   fieldValidationError: 'FIELD_VALIDATION_ERROR',
   invalidLoginCredentials: 'INVALID_LOGIN_CREDENTIALS',
   authenticationProblem: 'INVALID_AUTHENTICATION_TOKEN',
