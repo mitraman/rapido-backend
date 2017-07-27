@@ -343,7 +343,7 @@ describe('handlers/projects.js ', function() {
             expect(jsonBody.project.sketches.length).toBe(1);
 
             let sketch = jsonBody.project.sketches[0];
-            expect(sketch.id).toBeDefined();
+            expect(sketch.id).toBe(1);
             expect(sketch.tree).toBeDefined();
             expect(sketch.createdAt).toBeDefined();
             expect(jsonBody.project.vocabulary).toEqual({});

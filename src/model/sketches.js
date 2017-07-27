@@ -42,6 +42,7 @@ sketches.findByProject = function (projectId) {
       for( let i = 0; i < result.length; i++ ) {
         sketches.push({
           id: result[i].id,
+          index: result[i].sketchindex,
           projectId: result[i].projectid,
           createdAt: result[i].createdat,
           modifiedAt: result[i].modifiedat,
