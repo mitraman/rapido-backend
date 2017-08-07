@@ -55,7 +55,7 @@ describe('handlers/exporter.js ', function() {
 
   })
 
-  it('should reject an attempt to export a sketch in a project that does not exist', function(done){
+  it('should reject an attempt to export a sketch in a project for a sketch that does not exist', function(done){
     let thisSpec = this;
     let badSketchUrl = this.urlBase + '/projects/' + this.projectId + '/sketches/21/export';
 
@@ -129,7 +129,7 @@ describe('handlers/exporter.js ', function() {
     })
 
     it('should export an OAI 2 document in JSON based on the media type', function(done) {
-
+      //console.log(this.openAPIUrl);
       let thisSpec = this;
       let testHeaders = this.headers;
       testHeaders['Accept'] = 'application/json';
@@ -140,6 +140,7 @@ describe('handlers/exporter.js ', function() {
           headers: testHeaders
         },function(err, res, body)  {
           expect(res.statusCode).toBe(200);
+          //console.log(body);
           let jsonBody = JSON.parse(body);
           expect(jsonBody).toBeDefined();
           expect(thisSpec.validate(jsonBody)).toBe(true);
