@@ -22,6 +22,7 @@ describe('handlers/exporter.js ', function() {
     // Register and login a test user
     HandlerSupport.registerAndLogin('ExporterTest')
     .then( (result) => {
+      console.log('result is:' + result);
       const authValue = 'Bearer ' + result.token;
       this.headers['Authorization'] = authValue;
       this.userId = result.userId;
@@ -29,6 +30,7 @@ describe('handlers/exporter.js ', function() {
       // Create a test project
       return db.query("insert into projects (userid, name) values (" + this.userId + ", 'treeNodesTest') RETURNING id")
     }).then( result => {
+      console.log(result);
       this.projectId = result[0].id;
       return db.query("insert into sketches (userid, projectid, sketchIndex) values ("
         + this.userId + ", " + this.projectId + ", 1) RETURNING id, sketchIndex");
@@ -37,6 +39,7 @@ describe('handlers/exporter.js ', function() {
       this.sketchId = result[0].id;
       this.exporterUrl = this.urlBase + '/projects/' + this.projectId + '/sketches/' + this.sketchIndex + '/export';
     }).catch( (error) => {
+      console.log('something went wrong! ' + error);
       fail(error);
     }).finally(done);
   })
@@ -61,6 +64,7 @@ describe('handlers/exporter.js ', function() {
         url: badSketchUrl,
         headers: this.headers
       },function(err, res, body)  {
+        console.log(body);
         let jsonBody = JSON.parse(body);
         expect(res.statusCode).toBe(404);
         expect(jsonBody.code).toBe(RapidoErrorCodes.sketchNotFound);
@@ -143,11 +147,8 @@ describe('handlers/exporter.js ', function() {
         });
     });
 
-    xit('should export an OAI 2 document in YAML based on the media type', function(done) {
+    it('should export an OAI 2 document in YAML based on the media type', function(done) {
 
-      fail('to be implemented');
-
-      // NOTE: YAML doesn't have a registered media type, but we are going to make one up
       let thisSpec = this;
       let testHeaders = this.headers;
       testHeaders['Accept'] = 'application/yaml';
@@ -158,7 +159,7 @@ describe('handlers/exporter.js ', function() {
           headers: testHeaders
         },function(err, res, body)  {
           //TODO: validate that this is a YAML document
-          console.log(body);
+          //console.log(body);
           expect(res.statusCode).toBe(200);
           done();
         });

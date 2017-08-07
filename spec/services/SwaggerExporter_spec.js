@@ -30,7 +30,7 @@ describe('SwaggerExporter v2', function() {
     return {
       name: name,
       fullpath: fullpath,
-      childNodes: [],
+      children: [],
       data: data
     }
   };
@@ -204,18 +204,105 @@ describe('SwaggerExporter v2', function() {
     expect(responseObject.schema.properties['number'].type).toBe('number');
   })
 
-  it('sould set a schema type of array for a JSON array data type', function() {
+  xit('sould set a schema type of array for a JSON array data type', function() {
 
   })
 
-  xit('should return a yaml representation', function() {
+  it('should return a yaml representation', function() {
     let tree = { rootNodes: [], hash: {}};
     let title = 'test-title'
     let description = 'project description'
 
+    let node = {
+      name: '/get-node',
+      fullpath: '/somepath/get-node',
+      children: [],
+      data: {
+        get: {
+          enabled: 'true',
+          request: {
+            contentType: 'application/json',
+            queryParams: '',
+            body: ''
+          },
+          response: {
+            contentType: 'application/json',
+            status: '200',
+            body: '{"test": "value"}'
+          }
+        }
+      }
+    }
+
+    tree.rootNodes.push(node);
+
+    // Conver the yaml back to JSON so we can validate it
+    let yaml2json = function(yamlDoc) {
+      let jsonObject = {};
+      let currentIndentLevel = 0;
+      let objectStack = [];
+      objectStack.push({ name: null, obj: {}});
+
+      // Read until new line
+      let yamlLines = yamlDoc.split('\n');
+      yamlLines.forEach(yamlLine => {
+        // Check the indent level
+        let lineIndent = yamlLine.search(/\S|$/);
+
+        if(yamlLine.trim().length !== 0) {
+          // If the indent level is less than the current level, pop the parent object
+          if( lineIndent < currentIndentLevel) {
+            let childObject = objectStack.pop();
+            objectStack[objectStack.length-1].obj[childObject.name.trim()] = childObject.obj;
+          }
+
+          currentIndentLevel = lineIndent;
+
+          // parse each line
+          let yamlTokens = yamlLine.split(':');
+
+          // if there is no value, this is an object
+          if( yamlTokens.length > 1 && yamlTokens[1].trim().length === 0) {
+            // add the parent object to the object stack
+            objectStack.push({ name: yamlTokens[0], obj: {} });
+
+          }else {
+            // Add these properties to the last object in the stack
+            let key = yamlTokens[0].trim();
+            if( key.startsWith('-') ) {
+              // This is an array item
+              if( !Array.isArray(objectStack[objectStack.length-1]) ) {
+                objectStack[objectStack.length-1].obj = [];
+              }
+              objectStack[objectStack.length-1].obj.push(key);
+            }else {
+              let val = yamlTokens[1].trim();
+              objectStack[objectStack.length-1].obj[key] = val;
+            }
+
+          }
+        }
+      })
+
+      // Pop all the remaining child objects from the stack
+      let stackLength = objectStack.length;
+      for( let i = 0; i < stackLength-1; i++ ) {
+        let childObject = objectStack.pop();
+        let name = childObject.name.trim();
+        objectStack[objectStack.length-1].obj[name] = childObject.obj;
+
+      }
+      jsonObject = objectStack.pop().obj;
+      return jsonObject;
+    }
+
     let swaggerDoc = this.exporter.exportTree(tree, title, description);
     expect(swaggerDoc.yaml).toBeDefined();
-    fail('to be implemented');
+    let convertedYaml = yaml2json(swaggerDoc.yaml);
+    let path = convertedYaml.paths[node.fullpath];
+    expect(path).toBeDefined();
+    expect(path.get).toBeDefined();
+    expect(path.get.produces.length).toBe(1);
   })
 
   describe('valid path tests', function() {
@@ -226,7 +313,7 @@ describe('SwaggerExporter v2', function() {
       let node = {
         name: '/get-node',
         fullpath: '/somepath/get-node',
-        childNodes: [],
+        children: [],
         data: {
           get: {
             enabled: 'true',
@@ -253,7 +340,7 @@ describe('SwaggerExporter v2', function() {
       expect(path).toBeDefined();
     })
 
-    it('should treat an invalid JSON body as a string', function() {
+    xit('should treat an invalid JSON body as a string', function() {
 
     })
 
@@ -311,7 +398,7 @@ describe('SwaggerExporter v2', function() {
       let a = {
         name: '/a-node',
         fullpath: '/root1/a-node',
-        childNodes: [],
+        children: [],
         data: {
           get: {
             enabled: 'true',
@@ -331,7 +418,7 @@ describe('SwaggerExporter v2', function() {
       let b = {
         name: '/b-node',
         fullpath: '/root1/b-node',
-        childNodes: [],
+        children: [],
         data: {
           post: {
             enabled: 'true',
@@ -352,7 +439,7 @@ describe('SwaggerExporter v2', function() {
       let c = {
         name: '/c-node',
         fullpath: '/root1/a-node/c-node',
-        childNodes: [],
+        children: [],
         data: {
           put: {
             enabled: 'true',
@@ -370,13 +457,12 @@ describe('SwaggerExporter v2', function() {
         }
       }
 
-      a.childNodes = [c]
-      root1.childNodes = [a, b];
+      a.children = [c]
+      root1.children = [a, b];
 
       tree.rootNodes.push(root1, root2);
 
       let doc = this.exporter.exportTree(tree, '', '');
-      //console.log(doc);
       expect(this.validate(doc.json)).toBe(true);
       expect(Object.keys(doc.json.paths).length).toBe(5);
       let root1Path = doc.json.paths[root1.fullpath];

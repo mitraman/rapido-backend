@@ -169,6 +169,7 @@ describe('handlers/projects.js ', function() {
           }
         },function(err, res, body) {
             expect(err).toBe(null);
+            //console.log(body);
             expect(res.headers['content-type'].indexOf('application/problem+json')).toBe(0);
             expect(res.statusCode).toBe(400);
             expect(body.code).toBe(RapidoErrorCodes.fieldValidationError);
@@ -343,7 +344,7 @@ describe('handlers/projects.js ', function() {
             expect(jsonBody.project.sketches.length).toBe(1);
 
             let sketch = jsonBody.project.sketches[0];
-            expect(sketch.id).toBe(1);
+            expect(sketch.index).toBe(1);
             expect(sketch.tree).toBeDefined();
             expect(sketch.createdAt).toBeDefined();
             expect(jsonBody.project.vocabulary).toEqual({});

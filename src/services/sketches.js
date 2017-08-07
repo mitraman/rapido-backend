@@ -22,6 +22,7 @@ let Sketches = function () {
 Sketches.getSubscription = function(sketchId, label) {
   return new Promise( (resolve, reject) => {
     // Retrieve a subscriber object (the tree cache is available from the subscriber)
+    winston.log('debug', '[Sketches.getSubscription] sketchId is: ', sketchId);
     Sketches.cache.get(sketchId)
     .then( subscriber => {
       // if we don't already have a subscriber, create and store one

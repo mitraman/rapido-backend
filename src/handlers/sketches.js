@@ -41,8 +41,8 @@ const sketchModel = require('../model/sketches.js');
 module.exports = {
 
 	exportSketchHandler: function(req, res, next) {
-		winston.log('debug', 'exportSketchHandler called.');
-		winston.log('debug', req.body);
+		winston.log('debug', '[sketches.js] exportSketchHandler called.');
+		//winston.log('debug', req.body);
 
 	  let userId = req.credentials.id;
     let projectId = req.params.projectId;
@@ -70,15 +70,18 @@ module.exports = {
 							'Export Sketch Error')
 					);
 				}else if(exportFormat === 'oai2') {
+					winston.log('debug', '[sketches.js] performing OAI2 export');
 					// Open API 2.0 export
 					let exporter = new oai2Exporter();
-					let swaggerDoc = exporter.exportTree(tree)
+					let swaggerDoc = exporter.exportTree(tree, 'rapido export');
 
 					// Use the accept header to determine what to send back
 					if( req.accepts('yaml')) {
+						winston.log('debug', '[sketches.js] returning YAML document');
 						res.status(200).send(swaggerDoc.yaml);
 					}else {
 						// Default to JSON
+						winston.log('debug', '[sketches.js] returning JSON document:' + swaggerDoc.json);
 						res.status(200).send(swaggerDoc.json);
 					}
 

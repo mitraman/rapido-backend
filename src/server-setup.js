@@ -53,8 +53,13 @@ const start = function start(serverPort, cb) {
   winston.log('debug', 'finished setting up routes');
   winston.log('debug', serverPort);
 
+  // app._router.stack.forEach(route => {
+  //   console.log(route);
+  // });
+
   // Setup error handlers
   app.use(function (err, req, res, next) {
+    //console.log('!!!!!!!!!!!!!!!!!! IN ERROR HANDLER');
     if (res.headersSent) {
       return next(err)
     }
@@ -75,7 +80,7 @@ const start = function start(serverPort, cb) {
 
   // Start the server
   const server = app.listen(serverPort, () => {
-    //winston.log('debug', '%s listening at %s', app.name, app.url);
+    // winston.log('debug', '%s listening at %s', app.name, app.url);
     // Return the server to a callback function if one has been specified
     // TODO: turn this into a Promise
     if (cb) {

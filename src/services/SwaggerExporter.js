@@ -24,7 +24,44 @@ let generateSchema = function(json) {
   return schema;
 }
 
+let objectToYaml = function(jsonObject, depth) {
+  winston.log('debug', '[SwaggerExporter] objectToYaml called with: ', jsonObject);
+  let yamlDoc = '';
+  if( !depth ) {
+    depth = 0;
+  }
+
+  Object.keys(jsonObject).forEach(key => {
+    winston.log('debug', '[SwaggerExporter] objectToYaml processing key: ', key);
+    let indent = '';
+    for( let i = 0; i < depth; i++ ) {
+      indent += '  ';
+    }
+    let jsonVal = jsonObject[key];
+    if(typeof jsonVal === 'number') {
+      yamlDoc += indent + key +  ': ' + jsonVal + '\n';
+    }else if( typeof jsonVal === 'boolean') {
+      yamlDoc += indent + key +  ': ' + jsonVal + '\n';
+    }else if( typeof jsonVal === 'string') {
+      yamlDoc += indent + key +  ': ""' + jsonVal + '""\n';
+    }else if( typeof jsonVal === 'object' ) {
+      if( Array.isArray(jsonVal)) {
+        // Write the values as a hyphenated list
+        yamlDoc += indent + key + ':\n';
+        jsonVal.forEach(item => {
+          yamlDoc += indent + '  - ' + item + '\n';
+        })
+      } else {
+        yamlDoc += indent + key + ':\n';
+        yamlDoc += objectToYaml( jsonVal, depth+1 );
+      }
+    }
+  })
+  return yamlDoc;
+}
+
 let convertNodeToPathItem = function(node, pathsObject) {
+  winston.log('debug', '[SwaggerExporter] convertNodeToPathItem called for node: ', node);
   const validMethods = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'];
   let pathItem = {};
   Object.keys(node.data).forEach( (key) => {
@@ -63,8 +100,6 @@ let convertNodeToPathItem = function(node, pathsObject) {
 
         }
       }
-
-
       pathItem[key] = responseData;
     }
   });
@@ -73,14 +108,18 @@ let convertNodeToPathItem = function(node, pathsObject) {
   pathsObject[node.fullpath] = pathItem;
 
   // Process any children of this node recursively
-  node.childNodes.forEach(child => {
-    convertNodeToPathItem(child, pathsObject);
-  })
+  if( node.children) {
+    node.children.forEach(child => {
+      convertNodeToPathItem(child, pathsObject);
+    })
+  }
 
   //return pathItem;
 }
 
 SwaggerExporter.prototype.exportTree = function(tree, title, description) {
+
+  winston.log('debug', '[SwaggerExporter] exportTree called.');
   let swaggerDoc = {json: {}, yaml: ''};
 
   let info = {
@@ -94,11 +133,14 @@ SwaggerExporter.prototype.exportTree = function(tree, title, description) {
 
   }
 
+  winston.log('debug', '[SwaggerExporter] parsing root nodes');
   tree.rootNodes.forEach( rootNode => {
+    winston.log('debug', '[SwaggerExporter] converting root: ', rootNode);
     let pathInfo = convertNodeToPathItem(rootNode, paths);
     //paths[rootNode.fullpath] = pathInfo;
   })
 
+  winston.log('debug', '[SwaggerExporter] paths:', paths);
 
 
   swaggerDoc.json = {
@@ -106,6 +148,12 @@ SwaggerExporter.prototype.exportTree = function(tree, title, description) {
     info: info,
     paths: paths
   }
+
+  winston.log('debug', '[SwaggerExporter] jsondoc:', swaggerDoc.json);
+
+  swaggerDoc.yaml = objectToYaml(swaggerDoc.json);
+
+  winston.log('debug', '[SwaggerExporter] returning swaggerdoc: ', swaggerDoc);
 
   return swaggerDoc;
 }

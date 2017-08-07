@@ -7,6 +7,9 @@
  const Promise = require('bluebird');
  const request = require("request");
  const config = require('../../src/config.js');
+ const dataAccessor = require('../../src/db/DataAccessor.js');
+ const bcrypt = require('bcrypt-nodejs');
+ const authentication = require('../../src/security/authentication.js')
 
  const server_port = config.port;
  const urlBase = 'http://localhost:' + server_port + '/api';
@@ -17,7 +20,39 @@
  };
 
 
- let registerAndLogin = function(testName) {
+ let registerAndGenerate = function(email, password) {
+   const db = dataAccessor.getDb();
+
+   return new Promise( (resolve, reject) => {
+     // Encrypt the password
+     bcrypt.hash(password, null, null, (err, encryptedPassword) => {
+       if( err ) {
+         reject(err);
+       }else {
+
+         db.one('insert into USERS (email, password) VALUES ($1, $2) returning id',
+        [email, encryptedPassword])
+         .then( result => {
+           let token = generateLoginToken(result.id, email);
+           resolve({
+             userId: result.id,
+             token: token
+           })
+         }).catch( e => {
+           reject(e);
+         })
+       }
+     })
+   });
+ }
+
+ let generateLoginToken = function(id, email) {
+   let jwtToken = authentication.generateJWT({id: id , email: email});
+   return jwtToken;
+ }
+
+ // Deprecated, switched to working directly with the database instead
+ let _registerAndLogin = function(testName) {
   return new Promise( function(resolve, reject) {
 
     const max = 32767;
@@ -43,7 +78,7 @@
           reject(err);
           return;
         } if( res.statusCode != 200 ) {
-          reject("Unexpected response for registration of user");
+          reject("Unexpected response for registration of user: " + body);
           return;
         }
         // save the user ID
@@ -74,5 +109,5 @@
 
 
 module.exports = {
-  registerAndLogin: registerAndLogin
+  registerAndLogin: registerAndGenerate
 }

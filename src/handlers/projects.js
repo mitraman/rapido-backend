@@ -24,7 +24,8 @@ let transformProject = function(projectModel) {
 
 let transformSketch = function(sketchModel) {
 	return {
-		id: sketchModel.index,
+		id: sketchModel.id,
+		index: sketchModel.index,
 		projectId: sketchModel.projectId,
 		createdAt: sketchModel.createdAt,
 		modifiedAt: sketchModel.modifiedAt,
@@ -79,7 +80,7 @@ module.exports = {
 			sketchModels.forEach( sketchModel => {
 				sketches.push(transformSketch(sketchModel));
 			})
-			
+
 			let getTreePromises = [];
 
 			// Tree data comes from the sketch service.
@@ -89,6 +90,7 @@ module.exports = {
 				winston.log('debug', '[handler/projects.findByProject] retrieving tree data for sketch ', sketches[i].id);
 				let sketch = {
 					id: sketches[i].id,
+					index: sketches[i].index,
 					createdAt: sketches[i].createdAt
 				};
 				responseBody.project.sketches.push(sketch);
