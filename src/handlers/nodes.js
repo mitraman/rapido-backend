@@ -21,6 +21,29 @@ module.exports = {
         fullpath: '',
         data: {}
     }
+
+		//TODO: if we support different types of porjects, the default data should
+		// depend on the project type
+		let generateMethodData = function(data, methodName, statusCode) {
+			data[methodName] = {
+				request: {
+					contentType: 'application/json',
+					queryParams: '',
+					body: '{\n}'
+				},
+				response: {
+					contentType: 'application/json',
+					status: statusCode,
+					body: '{\n}'
+				}
+			}
+		}
+		generateMethodData(newNode.data, 'get', '200');
+		generateMethodData(newNode.data, 'put', '200');
+		generateMethodData(newNode.data, 'post', '201');
+		generateMethodData(newNode.data, 'delete', '204');
+		generateMethodData(newNode.data, 'patch', '200');
+
     let userId = req.credentials.id;
 		let sketchIndex = req.params.sketchIndex;
 		let projectId = req.params.projectId;

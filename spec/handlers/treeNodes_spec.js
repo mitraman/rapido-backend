@@ -144,6 +144,43 @@ describe('handlers/nodes.js', function() {
       )
     })
 
+    it( 'should create a new node with default values for body data for a CRUD project', function(done) {
+      let validateMethodObject = function(methodName, statusCodeExpected, dataObject) {
+
+        let methodData = dataObject[methodName];
+        expect(methodData).toBeDefined();
+        expect(methodData.request).toBeDefined();
+        expect(methodData.request.contentType).toBe('application/json');
+        expect(methodData.request.queryParams).toBe('');
+        expect(methodData.request.body).toBe('{\n}');
+
+        expect(methodData.response).toBeDefined();
+        expect(methodData.response.contentType).toBe('application/json');
+        expect(methodData.response.status).toBe(statusCodeExpected);
+        expect(methodData.response.body).toBe('{\n}');
+      }
+
+      request.post(
+        {
+          url: this.url,
+          headers: this.headers,
+        },function(err, res, body) {
+          expect(err).toBe(null);
+          expect(res.statusCode).toBe(201);
+          let jsonBody = JSON.parse(body);
+          expect(jsonBody.node.data).toBeDefined();
+
+          validateMethodObject('get', '200', jsonBody.node.data);
+          validateMethodObject('put', '200', jsonBody.node.data);
+          validateMethodObject('post', '201', jsonBody.node.data);
+          validateMethodObject('patch', '200', jsonBody.node.data);
+          validateMethodObject('delete', '204', jsonBody.node.data);
+
+          done();
+        }
+      )
+    })
+
     it( 'should create a new child node', function(done) {
 
       let thisSpec = this;
