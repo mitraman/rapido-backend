@@ -26,6 +26,7 @@ module.exports = {
 		// depend on the project type
 		let generateMethodData = function(data, methodName, statusCode) {
 			data[methodName] = {
+				enabled: false,
 				request: {
 					contentType: 'application/json',
 					queryParams: '',

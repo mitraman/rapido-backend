@@ -115,7 +115,7 @@ describe('handlers/nodes.js', function() {
           url: url,
           headers: this.headers,
         },function(err, res, body) {
-          console.log(body);
+          //console.log(body);
           let jsonBody = JSON.parse(body);
           expect(err).toBe(null);
           expect(res.statusCode).toBe(404);
@@ -144,11 +144,12 @@ describe('handlers/nodes.js', function() {
       )
     })
 
-    it( 'should create a new node with default values for body data for a CRUD project', function(done) {
+    fit( 'should create a new node with default values for body data for a CRUD project', function(done) {
       let validateMethodObject = function(methodName, statusCodeExpected, dataObject) {
 
         let methodData = dataObject[methodName];
         expect(methodData).toBeDefined();
+        expect(methodData.enabled).toBe(false);
         expect(methodData.request).toBeDefined();
         expect(methodData.request.contentType).toBe('application/json');
         expect(methodData.request.queryParams).toBe('');
