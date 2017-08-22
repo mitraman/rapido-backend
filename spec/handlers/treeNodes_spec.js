@@ -7,6 +7,7 @@ const dataAccessor = require('../../src/db/DataAccessor.js');
 const HandlerSupport = require('./support.js');
 const sketchService = require('../../src/services/sketches.js');
 const RapidoErrorCodes = require('../../src/errors/codes.js');
+const Promise = require('bluebird');
 
 
 describe('handlers/nodes.js', function() {
@@ -144,8 +145,8 @@ describe('handlers/nodes.js', function() {
       )
     })
 
-    fit( 'should create a new node with default values for body data for a CRUD project', function(done) {
-      let validateMethodObject = function(methodName, statusCodeExpected, dataObject) {
+    it( 'should create a new node with default values for body data for a CRUD project', function(done) {
+      let validateMethodObject = function(methodName, statusCodeExpected, requestBody, responseBody, dataObject) {
 
         let methodData = dataObject[methodName];
         expect(methodData).toBeDefined();
@@ -153,12 +154,12 @@ describe('handlers/nodes.js', function() {
         expect(methodData.request).toBeDefined();
         expect(methodData.request.contentType).toBe('application/json');
         expect(methodData.request.queryParams).toBe('');
-        expect(methodData.request.body).toBe('{\n}');
+        expect(methodData.request.body).toBe(requestBody);
 
         expect(methodData.response).toBeDefined();
         expect(methodData.response.contentType).toBe('application/json');
         expect(methodData.response.status).toBe(statusCodeExpected);
-        expect(methodData.response.body).toBe('{\n}');
+        expect(methodData.response.body).toBe(responseBody);
       }
 
       request.post(
@@ -171,11 +172,11 @@ describe('handlers/nodes.js', function() {
           let jsonBody = JSON.parse(body);
           expect(jsonBody.node.data).toBeDefined();
 
-          validateMethodObject('get', '200', jsonBody.node.data);
-          validateMethodObject('put', '200', jsonBody.node.data);
-          validateMethodObject('post', '201', jsonBody.node.data);
-          validateMethodObject('patch', '200', jsonBody.node.data);
-          validateMethodObject('delete', '204', jsonBody.node.data);
+          validateMethodObject('get', '200', '', '{\n}', jsonBody.node.data);
+          validateMethodObject('put', '200', '{\n}', '{\n}', jsonBody.node.data);
+          validateMethodObject('post', '201', '{\n}', '{\n}', jsonBody.node.data);
+          validateMethodObject('patch', '200', '{\n}', '{\n}', jsonBody.node.data);
+          validateMethodObject('delete', '204', '', '', jsonBody.node.data);
 
           done();
         }
@@ -508,6 +509,144 @@ describe('handlers/nodes.js', function() {
     })
   })
 
+  describe('DELETE/nodes/:nodeId', function() {
+
+    let nodeExists = function(nodeId, nodes) {
+      for( let i = 0; i < nodes.length; i ++ ) {
+        let node = nodes[i];
+        if( nodeExists(nodeId, node.children)) {
+          return true;
+        }
+        if( node.id === nodeId ) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    beforeAll(function(done) {
+      this.deleteUrl = this.urlBase + '/projects/' + this.projectId + '/sketches/' + this.sketchIndex + '/nodes/:nodeId'  ;
+      done();
+    })
+
+    beforeEach(function(done) {
+      //NOTE: The sketchevents table is cleared by the parent beforeEach statement
+
+
+      let createEmptyNode = function(name, fullpath) {
+        return {
+          name: name,
+          fullpath: fullpath
+        }
+      }
+
+      // The tree for deletion test will look like this:
+      //  C
+      //             ┌ E
+      //  A - B - D -│
+      //             └ F - G
+
+      let nodeA = createEmptyNode('a', '/a');
+      let nodeB = createEmptyNode('b', '/a/b');
+      let nodeC = createEmptyNode('c', '/a/c');
+      let nodeD = createEmptyNode('d', '/a/b/d');
+      let nodeE = createEmptyNode('e', '/a/b/d/e');
+      let nodeF = createEmptyNode('f', '/a/b/d/f');
+      let nodeG = createEmptyNode('g', '/a/b/d/f/g');
+
+      this.deleteNodes = {
+        nodeA: nodeA,
+        nodeB: nodeB,
+        nodeC: nodeC,
+        nodeD: nodeD,
+        nodeE: nodeE,
+        nodeF: nodeF,
+        nodeG: nodeG
+      }
+
+      let userId = this.userId;
+      let sketchId = this.sketchId;
+
+      // Build the test tree
+      sketchService.addTreeNode(userId, sketchId, nodeA)
+      .then( (result) => {
+        nodeA.id = result.nodeId;
+        return sketchService.addTreeNode(userId, sketchId, nodeC);
+      }).then( result => {
+        nodeC.id = result.nodeId;
+        return sketchService.addTreeNode(userId, sketchId, nodeB, nodeA.id);
+      }).then( result => {
+        nodeB.id = result.nodeId;
+        return sketchService.addTreeNode(userId, sketchId, nodeD, nodeB.id);
+      }).then( result => {
+        nodeD.id = result.nodeId;
+        return sketchService.addTreeNode(userId, sketchId, nodeE, nodeD.id);
+      }).then( result => {
+        nodeE.id = result.nodeId;
+        return sketchService.addTreeNode(userId, sketchId, nodeF, nodeD.id);
+      }).then( result => {
+        nodeF.id = result.nodeId;
+        return sketchService.addTreeNode(userId, sketchId, nodeG, nodeF.id);
+      }).then( result => {
+        nodeG.id = result.nodeId;
+      }).catch(e => {
+        fail(e);
+      }).finally(done);
+    })
+
+    it('should reject a request to delete a node that does not exist', function(done) {
+      let url = this.deleteUrl.replace(/:nodeId/gi, 'bad-id');
+      request.delete(
+        {
+          url: url,
+          headers: this.headers
+        }, function( err, res, body) {
+          winston.log('debug', 'body:', body);
+          expect(res.statusCode).toBe(404);
+          done();
+        }
+      );
+    });
+
+    it('should delete a node and all its children', function(done) {
+      let thisSpec = this;
+      let nodeId = this.deleteNodes.nodeA.id;
+      let url = this.deleteUrl.replace(/:nodeId/gi, nodeId);
+      let projectUrl = this.urlBase + '/projects/' + this.projectId;
+
+      let headers = this.headers;
+
+      request.delete(
+        {
+          url: url,
+          headers: this.headers
+        }, function( err, res, body) {
+          winston.log('debug', 'body:', body);
+          //TODO: Should the delete call return the number of nodes deleted?
+          expect(res.statusCode).toBe(204);
+
+          // Make sure that the deleted node does not exist in the tree
+          request.get({
+            url: projectUrl,
+            headers: headers
+          }, function( err, res, body) {
+            let jsonBody = JSON.parse(body);
+            let tree = jsonBody.project.sketches[0].tree;
+            expect(nodeExists(nodeId, tree)).toBe(false);
+            expect(nodeExists(thisSpec.deleteNodes.nodeB.id, tree)).toBe(false);
+            expect(nodeExists(thisSpec.deleteNodes.nodeD.id, tree)).toBe(false);
+            expect(nodeExists(thisSpec.deleteNodes.nodeE.id, tree)).toBe(false);
+            expect(nodeExists(thisSpec.deleteNodes.nodeF.id, tree)).toBe(false);
+            expect(nodeExists(thisSpec.deleteNodes.nodeG.id, tree)).toBe(false);
+            done();
+          });
+        }
+      );
+
+    });
+
+  })
+
   describe('PUT /nodes/:nodeId/move', function() {
 
     beforeAll(function(done) {
@@ -571,7 +710,6 @@ describe('handlers/nodes.js', function() {
       let nodeC = createEmptyNode('c', '/c');
       let nodeD = createEmptyNode('d', '/d');
 
-      //TODO: this test module needs to be cleaned up so that it uses 'this'
       let userId = this.userId;
       let sketchId = this.sketchId;
 

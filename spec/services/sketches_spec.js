@@ -358,6 +358,63 @@ describe('/services/sketches.js ', function() {
     });
   })
 
+  describe('remove node', function() {
+
+    beforeEach(function(done){
+      this.nodeA = createEmptyNode('a', '/a');
+      this.nodeB = createEmptyNode('b', '/b');
+      this.nodeC = createEmptyNode('c', '/c');
+      this.nodeD = createEmptyNode('d', '/d');
+
+      // Generate a tree
+      sketchService.addTreeNode(this.userId, this.sketchId, this.nodeA)
+      .then( result => {
+        this.nodeA.id = result.nodeId;
+        return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeB, this.nodeA.id);
+      }).then( result => {
+        this.nodeB.id = result.nodeId;
+        return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeC, this.nodeB.id);
+      }).then( result => {
+        this.nodeC.id = result.nodeId;
+        return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeD);
+      }).then( result => {
+        this.nodeD.id = result.nodeId;
+      }).finally(done);
+
+    })
+
+    it('should reject an atempt to remove a node when the node id is not defined', function(done) {
+      sketchService.removeNode(this.userId, this.sketchId)
+      .then( () => {
+        fail('this call should have failed');
+      }).catch( e => {
+        expect(e).toBeDefined();
+        expect(e.name).toBe('RapidoError');
+        expect(e.message.startsWith('Cannot remove undefined node')).toBe(true);
+      }).finally(done);
+    })
+
+    it('should reject an attempt to remove a non-existent node', function(done) {
+      sketchService.removeNode(this.userId, this.sketchId, 'bad-id' )
+      .then( () => {
+        fail('this call should have failed');
+      }).catch( e => {
+        expect(e).toBeDefined();
+        expect(e.message.startsWith('Unable to delete non-existent node with id:')).toBe(true);
+      }).finally(done);
+    })
+
+    it('should apply a remove node event', function(done) {
+      sketchService.removeNode(this.userId, this.sketchId, this.nodeB.id)
+      .then(() => {
+        return sketchService.getTree( this.sketchId )
+      }).then( result => {
+        expect(result.tree.hash[this.nodeB.id]).toBeUndefined();
+      }).catch( e=> {fail(e)}).then(done)
+    });
+  })
+
+
   describe('general tests', function() {
 
     it('should populate three sketch cache without conflict', function(done) {

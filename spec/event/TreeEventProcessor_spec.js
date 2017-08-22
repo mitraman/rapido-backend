@@ -23,7 +23,8 @@ let treenodeAddedEvent = function(parentId, id, responseData) {
 let emptyTree = function() {
   return {
     hash: {},
-    rootNodes: []
+    rootNodes: [],
+    deletedNodes: {}
   };
 };
 
@@ -47,6 +48,174 @@ describe('TreeEventProcessor', function() {
         done();
       })
     })
+
+  })
+
+  describe('treenode_deleted_processor', function() {
+
+    let findNode = function(nodeList, nodeId) {
+      for( var i = 0; i < nodeList.length; i++ ) {
+        let node = nodeList[i];
+        if( findNode(node.children, nodeId) ) {
+          return true;
+        }
+        if( nodeId === node.id) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    beforeEach(function(done) {
+      // Setup a tree for test operations:
+      /*
+                --> c
+      a -> b ->
+                --> d --> e
+        -> f
+      g
+      */
+
+      eventProcessor.applyEvent(treenodeAddedEvent(null, 'a', {}), emptyTree())
+      .then( (result) => {
+        return eventProcessor.applyEvent(treenodeAddedEvent('a', 'b', {}), result.tree);
+      }).then( result => {
+        return eventProcessor.applyEvent(treenodeAddedEvent('a', 'f', {}), result.tree);
+      }).then( result => {
+        return eventProcessor.applyEvent(treenodeAddedEvent('b', 'c', {}), result.tree);
+      }).then( result => {
+        return eventProcessor.applyEvent(treenodeAddedEvent('b', 'd', {}), result.tree);
+      }).then( result => {
+        return eventProcessor.applyEvent(treenodeAddedEvent('d', 'e', {}), result.tree);
+      }).then( result => {
+        return eventProcessor.applyEvent(treenodeAddedEvent(null, 'g', {}), result.tree);
+      }).then( result => {
+        this.treeForDeleteOperations = result.tree;
+        done();
+      })
+    });
+
+    it('should reject a treenode_deleted event that is missing a nodeId property', function(done) {
+      let event = {
+        type: 'treenode_deleted',
+        data: {
+        }
+      }
+
+      eventProcessor.applyEvent(event, this.treeForDeleteOperations)
+      .then( (result) => {
+        fail('unexpected success');
+      }).catch( e => {
+        expect(e).toBeDefined();
+        expect(e.message.indexOf('treenode_deleted event is missing a required property: data.nodeId')).toBeGreaterThan(0);
+      }).finally(done);
+
+    })
+
+    it('should reject a treenode_deleted event that targets a non-existent node', function(done) {
+      let event = {
+        type: 'treenode_deleted',
+        data: {
+          nodeId: 'non-existent'
+        }
+      }
+
+      eventProcessor.applyEvent(event, this.treeForDeleteOperations)
+      .then( (result) => {
+        fail('unexpected success');
+      }).catch( e => {
+        expect(e).toBeDefined();
+        expect(e.message.indexOf('Unable to delete a non-existent node')).toBeGreaterThan(0);
+      }).finally(done);
+    })
+
+    it('should delete a tree node that has no children', function(done) {
+      let event = {
+        type: 'treenode_deleted',
+        data: {
+          nodeId: 'e'
+        }
+      }
+
+      eventProcessor.applyEvent(event, this.treeForDeleteOperations)
+      .then( (result) => {
+        let updatedTree = result.tree;
+        expect(updatedTree.rootNodes.length).toBe(2);
+        expect(findNode(updatedTree.rootNodes, 'e')).toBe(false);
+        expect(updatedTree.hash['e']).not.toBeDefined();
+      }).catch( e => {
+        fail(e);
+      }).finally(done);
+    })
+
+    it('should add a deleted node to the deleted collection of a tree ', function(done) {
+      let event = {
+        type: 'treenode_deleted',
+        data: {
+          nodeId: 'e'
+        }
+      }
+
+      eventProcessor.applyEvent(event, this.treeForDeleteOperations)
+      .then( (result) => {
+        let updatedTree = result.tree;
+        expect(updatedTree.deletedNodes['e']).toBeDefined();
+      }).catch( e => {
+        fail(e);
+      }).finally(done);
+    })
+
+    it('should remove a subtree if the target node has children', function(done) {
+      let event = {
+        type: 'treenode_deleted',
+        data: {
+          nodeId: 'b'
+        }
+      }
+
+      eventProcessor.applyEvent(event, this.treeForDeleteOperations)
+      .then( (result) => {
+        let updatedTree = result.tree;
+        expect(findNode(updatedTree.rootNodes, 'b')).toBe(false);
+        expect(updatedTree.hash['b']).not.toBeDefined();
+        expect(findNode(updatedTree.rootNodes, 'c')).toBe(false);
+        expect(updatedTree.hash['c']).not.toBeDefined();
+        expect(findNode(updatedTree.rootNodes, 'd')).toBe(false);
+        expect(updatedTree.hash['d']).not.toBeDefined();
+        expect(findNode(updatedTree.rootNodes, 'e')).toBe(false);
+        expect(updatedTree.hash['e']).not.toBeDefined();
+      }).catch( e => {
+        fail(e);
+      }).finally(done);
+    });
+
+    it('should remove a root node', function(done) {
+      let event = {
+        type: 'treenode_deleted',
+        data: {
+          nodeId: 'a'
+        }
+      }
+
+      eventProcessor.applyEvent(event, this.treeForDeleteOperations)
+      .then( (result) => {
+        let updatedTree = result.tree;
+        expect(updatedTree.rootNodes.length).toBe(1);
+        expect(updatedTree.rootNodes[0].id).not.toBe('a');
+        expect(findNode(updatedTree.rootNodes, 'b')).toBe(false);
+        expect(updatedTree.hash['b']).not.toBeDefined();
+        expect(findNode(updatedTree.rootNodes, 'c')).toBe(false);
+        expect(updatedTree.hash['c']).not.toBeDefined();
+        expect(findNode(updatedTree.rootNodes, 'd')).toBe(false);
+        expect(updatedTree.hash['d']).not.toBeDefined();
+        expect(findNode(updatedTree.rootNodes, 'e')).toBe(false);
+        expect(updatedTree.hash['e']).not.toBeDefined();
+        expect(findNode(updatedTree.rootNodes, 'f')).toBe(false);
+        expect(updatedTree.hash['f']).not.toBeDefined();
+      }).catch( e => {
+        fail(e);
+      }).finally(done);
+    });
 
   })
 
@@ -79,8 +248,7 @@ describe('TreeEventProcessor', function() {
         this.treeForMoveOperations = result.tree;
         done();
       })
-
-    })
+    });
 
     it('should reject a treenode_moved event that is missing a sourceId property', function(done) {
       let event = {
@@ -282,10 +450,6 @@ describe('TreeEventProcessor', function() {
       }).finally(done);
 
     })
-  })
-
-  describe('treenode_deleted processor', function() {
-
   })
 
   describe('treenode_added processor', function() {

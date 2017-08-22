@@ -350,6 +350,59 @@ Sketches.prototype.moveNode = function(userId, sketchId, sourceNodeId, targetNod
   });
 }
 
+Sketches.prototype.removeNode = function(userId, sketchId, nodeId, label) {
+  return new Promise( (resolve, reject) => {
+    // Generate a temporary token to identify the event that we are pushing
+    const token = uuidV4();
+
+    // Retrieve a subscriber object (the tree cache is available from the subscriber)
+    Sketches.getSubscription(sketchId, label)
+    .then( subscriber =>  {
+      winston.log('debug', '[Sketches.removeNode] subscriber:', subscriber);
+      // Validate parameters
+      
+      if(!nodeId ) {
+        let errorMessage = 'Cannot remove undefined node';
+        reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400));
+        //reject('Cannot add node to non-existent parent node with ID:' + parentId);
+        return;
+      }
+
+      if( !subscriber.tree.hash[nodeId]  ) {
+        let errorMessage = 'Unable to delete non-existent node with id: ' + nodeId;
+        reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 404));
+        //reject('Cannot add node to non-existent parent node with ID:' + parentId);
+        return;
+      }
+
+      // Setup an event handler to listen for processed events
+      let processedHandler = function(event) {
+        // If we catch the event we are pushing, resolve the promise
+        winston.log('[Sketches.removeNode] processed event caught:', event);
+        if( event.token === token) {
+          //now that we know the event has been processed, stop listening
+          subscriber.stream().removeListener('event_processed', processedHandler);
+          resolve({
+            tree: subscriber.tree
+          });
+        }
+      }
+      subscriber.stream().on('event_processed', processedHandler);
+
+      winston.log('debug', '[Sketches.removeNode] recording tree node move event');
+      // Record the tree move addition event
+      return Sketches.es.push(userId, sketchId,
+        'treenode_deleted',
+        {
+          nodeId: nodeId
+        }, token);
+    }).catch( e => {
+      reject(e);
+    })
+
+  });
+}
+
 
 Sketches.prototype.reset = function() {
   // Used for unit testing, unsubscribes and flushe all subscribers in the cache

@@ -24,26 +24,26 @@ module.exports = {
 
 		//TODO: if we support different types of porjects, the default data should
 		// depend on the project type
-		let generateMethodData = function(data, methodName, statusCode) {
+		let generateMethodData = function(data, methodName, statusCode, requestBody, responseBody) {
 			data[methodName] = {
 				enabled: false,
 				request: {
 					contentType: 'application/json',
 					queryParams: '',
-					body: '{\n}'
+					body: requestBody
 				},
 				response: {
 					contentType: 'application/json',
 					status: statusCode,
-					body: '{\n}'
+					body: responseBody
 				}
 			}
 		}
-		generateMethodData(newNode.data, 'get', '200');
-		generateMethodData(newNode.data, 'put', '200');
-		generateMethodData(newNode.data, 'post', '201');
-		generateMethodData(newNode.data, 'delete', '204');
-		generateMethodData(newNode.data, 'patch', '200');
+		generateMethodData(newNode.data, 'get', '200', '', '{\n}');
+		generateMethodData(newNode.data, 'put', '200', '{\n}', '{\n}');
+		generateMethodData(newNode.data, 'post', '201', '{\n}', '{\n}');
+		generateMethodData(newNode.data, 'delete', '204', '', '');
+		generateMethodData(newNode.data, 'patch', '200', '{\n}', '{\n}');
 
     let userId = req.credentials.id;
 		let sketchIndex = req.params.sketchIndex;
@@ -217,6 +217,41 @@ module.exports = {
 			next(e);
 		});
   },
+
+	deleteNodeHandler: function(req, res, next) {
+		winston.log('debug', '[deleteNodeHandler] handling request');
+
+		let projectId = req.params.projectId;
+		let userId = req.credentials.id;
+		let sketchIndex = req.params.sketchIndex;
+		let nodeId = req.params.nodeId;
+
+		// Delete the node by creating a new event
+		winston.log('debug', '[deleteNodeHandler] nodeId:', nodeId);
+
+		sketchModel.findBySketchIndex(projectId, sketchIndex, userId)
+		.then( sketchId => {
+			return sketchService.removeNode(userId, sketchId, nodeId);
+		}).then( result => {
+			winston.log('debug', '[deleteNodeHandler] result of removeNode: ', result);
+			res.status(204).send();
+	  }).catch( e => {
+			winston.log('debug', '[deleteNodeHandler] error:', e);
+			if(e.name === 'RapidoError') {
+				e.title = 'Delete Node Error';
+				next(e);
+			}else {
+				winston.log('error', 'An unexpected error occurred while trying to delete a node:', e);
+				let error = new RapidoError (
+					RapidoErrorCodes.genericError,
+					"An unexpected error occurred",
+					500,
+					null,
+					"Delete Node Error");
+				next(error);
+			}
+		});
+	},
 
 	moveNodeHandler: function(req, res, next) {
 		winston.log('debug', '[moveNodeHandler] handling request');

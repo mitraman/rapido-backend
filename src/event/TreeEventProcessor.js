@@ -6,6 +6,60 @@ const Promise = require('bluebird');
 let TreeEventProcessor = function () {
 };
 
+TreeEventProcessor.prototype.treenode_deleted = function(event, tree) {
+  winston.log('debug', '[TreeEventProcessor.treenode_deleted] applying treenode_deleted event: ', event);
+  if( !event.data ) {
+    throw new Error('event is missing data property');
+  }
+
+  if( !event.data.nodeId ) {
+    throw new Error('treenode_deleted event is missing a required property: data.nodeId');
+  }
+
+  // Make sure the the node exists in the tree
+  let node = tree.hash[event.data.nodeId];
+  if( !node ) {
+    throw new Error('Unable to delete a non-existent node');
+  }
+
+  winston.log('debug', '[TreeEventProcessor.treenode_deleted] deleting node ' + event.data.nodeId);
+
+  // Remove the source node from its parent's child list
+  let parentNode = tree.hash[node.parentId];
+  let childList = null;
+  if( !parentNode ) {
+    // This is a rootNode, so manipulate the rootNodes array
+    childList = tree.rootNodes;
+  } else {
+    childList = parentNode.children;
+
+  }
+  for( let i = 0; i < childList.length; i++ ) {
+    let child = childList[i];
+
+    if( child.id === node.id ) {
+      childList.splice(i, 1);
+      break;
+    }
+  }
+
+  // Remove the subtree from the in-memory hash
+  let removeNodeFromHash = function(node) {
+    node.children.forEach(child => {
+      removeNodeFromHash(child);
+    })
+    delete tree.hash[node.id];
+  }
+  removeNodeFromHash(node);
+
+  // Store the node in a deleted nodes property so it can be undone easily
+  tree.deletedNodes[node.id] = node;
+
+
+
+  return tree;
+
+}
 
 TreeEventProcessor.prototype.treenode_moved = function(event, tree) {
   winston.log('debug', '[TreeEventProcessor.treenode_moved] applying treenode_moved event: ', event);
