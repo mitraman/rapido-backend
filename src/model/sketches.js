@@ -55,13 +55,37 @@ sketches.findByProject = function (projectId) {
   });
 }
 
+sketches.findById = function(sketchId) {
+  const db = dataAccessor.getDb();
+
+  return new Promise( (resolve, reject) => {
+		db.one({
+			name: "get-sketch-by-id",
+			text: "SELECT * FROM sketches where id = $1",
+			values: [sketchId]
+		}).then( result => {
+			resolve({
+        id: result.id,
+        index: result.sketchindex,
+        projectId: result.projectid,
+        createdAt: result.createdat,
+        modifiedAt: result.modifiedat,
+        tree: result.treedata
+      });
+		}).catch( e => {
+      reject(new RapidoError(RapidoErrorCodes.sketchNotFound, 'Unable to find the requested sketch', 404, null, 'Sketch Node Error'));
+		})
+	});
+
+}
+
 // Utility function to retrieve a sketch ID based on the primary key
 sketches.findBySketchIndex = function(projectId, sketchIndex, userId) {
 	const db = dataAccessor.getDb();
 
 	return new Promise( (resolve, reject) => {
 		db.one({
-			name: "get-sketchid",
+			name: "get-sketch-by-index",
 			text: "SELECT id FROM sketches where sketchindex = $1 and projectid = $2 and userid = $3",
 			values: [sketchIndex, projectId, userId]
 		}).then( result => {

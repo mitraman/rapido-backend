@@ -14,6 +14,43 @@ const newSketch = {
 
 describe('sketch model', function() {
 
+  let addSketches = function (numSketches, index, finished, results) {
+    if( !results ) {
+      results = [];
+    }
+
+    if( index >= numSketches ) {
+      finished(results);
+      return;
+    }
+
+    sketches.create({
+      userId: newSketch.userId,
+      projectId: newSketch.projectId
+    }).then( (result) => {
+      results.push(result);
+      addSketches(numSketches, index+1, finished, results);
+    }).catch( (error) => {
+      fail(error);
+    })
+  }
+
+  //Recursive iterator to validate sketches.
+  let validateSketches = function( sketches, done, index ) {
+    if( !index ) {
+      index = 0;
+    }else if( index === (sketches.length) ) {
+      done();
+      return;
+    }
+    let sketch = sketches[index];
+
+    expect(sketch.projectId).toBe(newSketch.projectId);
+
+    validateSketches(sketches, done, index+1);
+  }
+
+
   beforeAll(function(done) {
     // Create a user to use for operations
     users.create({
@@ -110,6 +147,34 @@ describe('sketch model', function() {
 
   })
 
+  it('should throw an error if a sketch is not found by ID', function(done) {
+    addSketches(5, 0, (results) => {
+      let sketchId = 'bad-sketch'
+
+      sketches.findById(sketchId)
+      .then( (result)=> {
+        fail('should have thrown an error');
+      }).catch( (error) => {
+        expect(error).toBeDefined();
+      }).finally(done);
+    })
+  })
+
+  it( 'should find a sketch by ID', function(done) {
+    addSketches(5, 0, (results) => {
+      // Find the fourth sketch that was added
+      let sketchId = results[3].id;
+
+      sketches.findById(sketchId)
+      .then( (result)=> {
+          expect(result).toBeDefined;
+      }).catch( (error) => {
+        fail(error);
+      }).finally(done);
+    })
+  })
+
+
   it(' should return an empty list of sketches', function(done) {
     sketches.findByProject(newSketch.projectId)
     .then( (result)=> {
@@ -120,43 +185,15 @@ describe('sketch model', function() {
     }).finally(done);
   });
 
+
   it( 'should find a list of sketches for a project', function (done) {
 
     // Add a few sketches
     const numSketches = 8;
 
-    let addSketches = function (index, finished) {
-      if( index >= numSketches ) {
-        finished();
-        return;
-      }
-      sketches.create({
-        userId: newSketch.userId,
-        projectId: newSketch.projectId
-      }).then( (result) => {
-        addSketches(index+1, finished);
-      }).catch( (error) => {
-        fail(error);
-      })
-    }
-
-    //Recursive iterator to validate sketches.
-    let validateSketches = function( sketches, done, index ) {
-      if( !index ) {
-        index = 0;
-      }else if( index === (sketches.length) ) {
-        done();
-        return;
-      }
-      let sketch = sketches[index];
-
-      expect(sketch.projectId).toBe(newSketch.projectId);
-
-      validateSketches(sketches, done, index+1);
-    }
 
     // ** MAIN
-    addSketches(0, () => {
+    addSketches(numSketches, 0, () => {
       sketches.findByProject(newSketch.projectId)
       .then( (result)=> {
           expect(result).not.toBeUndefined;

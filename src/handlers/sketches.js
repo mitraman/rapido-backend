@@ -107,6 +107,59 @@ module.exports = {
 		})
 	},
 
+	retrieveSketchHandler: function(req, res, next) {
+		winston.log('debug', 'retrieveSketchHandler called.');
+		winston.log('debug', req.body);
+
+
+		let sketchId = req.params.sketchId;
+		winston.log('debug', 'retrieving sketch by ID:', sketchId);
+
+		let sketch = {};
+
+		sketches.findById(sketchId)
+		.then( result => {
+			let userId = req.credentials.id;
+			sketch.id = result.id;
+
+			// Make sure that the user is authorized to access this sketch
+			// For now, only the user who owns the project can look at a sketch
+			return projects.find({id: result.projectId})
+		}).then( result => {
+			let userId = req.credentials.id;
+			if( result[0].userid != userId ) {
+				throw new RapidoError(
+					RapidoErrorCodes.sketchNotFound,
+					'Unable to find sketch or user is not authorized to access sketch',
+					404
+				);
+			}
+
+			return sketchService.getTree(sketch.id);
+		}).then( result => {
+			sketch.tree = result.tree.rootNodes;
+			res.status(200).send(representer.responseMessage({
+				sketch: sketch
+			}));
+		}).catch( e => {
+			if(e.name === 'RapidoError') {
+				if( e.code === RapidoErrorCodes.sketchNotFound ) {
+					e.message = 'Unable to find sketch or user is not authorized to access sketch';
+				}
+				next(e);
+			}else {
+				next(new RapidoError(
+					RapidoErrorCodes.genericError,
+					'An error occurred while trying to create the Sketch object',
+					500
+				))
+			}
+		})
+
+
+
+	},
+
 	createSketchHandler: function(req, res, next) {
 		winston.log('debug', 'createSketchHandler called.');
 		winston.log('debug', req.body);

@@ -21,6 +21,7 @@ describe('Sketches API', function() {
 
   let token = "";
   let userid;
+  let projectId;
 
   // Project details
   const name = "project 1";
@@ -47,7 +48,7 @@ describe('Sketches API', function() {
         },function(err, res, body) {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(201);
-
+            projectId = body.id;
             sketchesUrl = sketchesUrlTemplate.replace(/{projectsId}/gi, body.id);
             done();
         }
@@ -64,6 +65,75 @@ describe('Sketches API', function() {
     .catch(e => {
       fail(e);
     }).finally(done);
+  })
+
+  describe('GET /sketches/:id', function() {
+
+    let getSketchId;
+
+    beforeEach(done => {
+      // Create a test sketch
+      const db = dataAccessor.getDb();
+      db.query('INSERT into sketches (userid, projectid, sketchindex) VALUES ($1, $2, $3) RETURNING id',
+      [userid, projectId, 1])
+      .then(result => {
+        getSketchId = result[0].id;
+      }).catch(e => {
+        console.log('ERROR:', e);
+      }).finally(done);
+    });
+
+    it('should retrieve a sketch by ID', function(done) {
+      let sketchId = getSketchId;
+      let sketchUrl = urlBase + '/sketch/' + sketchId;
+      request.get({
+          url: sketchUrl,
+          headers: headers
+      },function(err, res, body) {
+        let jsonBody = JSON.parse(body);
+        expect(res.statusCode).toBe(200);
+        expect(jsonBody.sketch).toBeDefined();
+        expect(jsonBody.sketch.id).toBeDefined();
+        expect(jsonBody.sketch.id).toBe(sketchId);
+        expect(jsonBody.sketch.tree).toBeDefined();
+        done();
+      });
+
+    })
+
+    it('should return a 404 if a sketch is not found', function(done) {
+      let sketchUrl = urlBase + '/sketch/' + 'bad-id';
+      request.get({
+          url: sketchUrl,
+          headers: headers
+      },function(err, res, body) {
+        let jsonBody = JSON.parse(body);
+        expect(res.statusCode).toBe(404);
+        done();
+      });
+    });
+
+    it('should return a 404 if a sketch is not visible to this user', function(done) {
+      let sketchId = getSketchId;
+      let sketchUrl = urlBase + '/sketch/' + sketchId;
+
+      HandlerSupport.registerAndLogin('ProjectsTest-baduser-getsketch')
+      .then( (result) => {
+        const authValue = 'Bearer ' + result.token;
+        let invalidHeaders = {'Authorization':  authValue};
+        //newUserid = result.userId;
+
+        request.get({
+            url: sketchUrl,
+            headers: invalidHeaders
+        },function(err, res, body) {
+          let jsonBody = JSON.parse(body);
+          expect(res.statusCode).toBe(404);
+          done();
+        });
+      });
+    });
+
   })
 
   describe('POST /sketches', function() {
