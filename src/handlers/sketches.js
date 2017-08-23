@@ -137,9 +137,7 @@ module.exports = {
 
 			return sketchService.getTree(sketch.id);
 		}).then( result => {
-			sketch.tree = {
-				rootNodes: result.tree.rootNodes
-			};
+			sketch.tree = result.tree.rootNodes;
 			res.status(200).send(representer.responseMessage({
 				sketch: sketch
 			}));
