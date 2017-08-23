@@ -157,15 +157,28 @@ TreeEventProcessor.prototype.treenode_updated_fields = function(event, tree) {
     throw new Error('unable to locate node to be udated.');
   }
 
-  //TODO: remove fullpath as a property.  fullpath should be constructed
-  // based on the tree data, not persisted
-
   // Iterate through the properties and update
   Object.keys(event.data.fields).forEach((fieldKey)=> {
     if(fieldKey === 'name') {
       node.name = event.data.fields.name;
-    }else if( fieldKey === 'fullpath') {
-      node.fullpath = event.data.fields.fullpath;
+
+      // Update the fullpath of this node
+      let parentPath = '';
+      if( node.parentId ) {
+        let parentNode = tree.hash[node.parentId];
+        parentPath = parentNode.fullpath;
+      }
+      node.fullpath = parentPath + '/' + node.name;
+
+      // Update all of the descendant nodes with the new path
+      let updateChildPaths = function(node) {
+        node.children.forEach(child => {
+          child.fullpath = node.fullpath + '/' + child.name;
+          updateChildPaths(child);
+        })
+      }
+      updateChildPaths(node);
+
     }else {
       winston.log('warn', 'unable to handle update of field property ' + fieldKey);
     }

@@ -99,14 +99,21 @@ Sketches.prototype.addTreeNode = function(userId, sketchId, treeNode, parentId, 
     .then( subscriber =>  {
       winston.log('debug', '[Sketches.addTreeNode] subscriber:', subscriber);
 
+      // Default value for fullPath
+      let fullPath = '/' + treeNode.name;
+
       // Validate the request
       if(parentId) {
-        if(!subscriber.tree.hash[parentId]) {
+        let parentNode = subscriber.tree.hash[parentId];
+
+        if(!parentNode) {
           let errorMessage = 'Cannot add node to non-existent parent node with ID:' + parentId;
           reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400,
             [{ field: "nodeId", type: "invalid", description: errorMessage}]));
           //reject('Cannot add node to non-existent parent node with ID:' + parentId);
           return;
+        }else {
+          fullPath = parentNode.fullpath + '/' + treeNode.name;
         }
       }
 
@@ -134,7 +141,7 @@ Sketches.prototype.addTreeNode = function(userId, sketchId, treeNode, parentId, 
           node: {
             id: nodeId,
             name: treeNode.name,
-            fullpath: treeNode.fullpath,
+            fullpath: fullPath,
             data : treeNode.data,
             children: []
           }
@@ -360,7 +367,7 @@ Sketches.prototype.removeNode = function(userId, sketchId, nodeId, label) {
     .then( subscriber =>  {
       winston.log('debug', '[Sketches.removeNode] subscriber:', subscriber);
       // Validate parameters
-      
+
       if(!nodeId ) {
         let errorMessage = 'Cannot remove undefined node';
         reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400));

@@ -537,11 +537,14 @@ describe('TreeEventProcessor', function() {
     it('should update the name of an existing node', function(done) {
       let parentEvent = treenodeAddedEvent(null, 'parent-node', {});
       let childEvent = treenodeAddedEvent('parent-node', 'child-node', {});
-      let secondChildEvent = treenodeAddedEvent('child-node', 'second-child', {});
-      const updateSecondChildEvent = {
+      let gc1Event = treenodeAddedEvent('child-node', 'grandchild1', {});
+      let gc2Event = treenodeAddedEvent('child-node', 'grandchild2', {});
+      let ggcEvent = treenodeAddedEvent('grandchild2', 'great-grandchild', {});
+
+      const updateChildEvent = {
           type: 'treenode_updated_fields',
           data: {
-            nodeId: 'second-child',
+            nodeId: 'child-node',
             fields: {
               name: 'new name'
             }
@@ -552,40 +555,29 @@ describe('TreeEventProcessor', function() {
       .then( (result) => {
         return eventProcessor.applyEvent(childEvent, result.tree);
       }).then( (result) => {
-        return eventProcessor.applyEvent(secondChildEvent, result.tree);
+        return eventProcessor.applyEvent(gc1Event, result.tree);
       }).then( (result) => {
-        return eventProcessor.applyEvent(updateSecondChildEvent, result.tree);
+        return eventProcessor.applyEvent(gc2Event, result.tree);
       }).then( (result) => {
-        let secondChildNode = result.tree.rootNodes[0].children[0].children[0];
-        expect(secondChildNode).toBeDefined();
-        expect(secondChildNode.name).toBe('new name');
-        expect(secondChildNode.fullpath).toBe(secondChildEvent.data.node.fullpath);
+        return eventProcessor.applyEvent(ggcEvent, result.tree);
+      }).then( result => {
+        return eventProcessor.applyEvent(updateChildEvent, result.tree);
+      }).then( (result) => {
+        let childNode = result.tree.rootNodes[0].children[0];
+        let gc1Node = result.tree.rootNodes[0].children[0].children[0];
+        let gc2Node = result.tree.rootNodes[0].children[0].children[1];
+        let ggcNode = result.tree.rootNodes[0].children[0].children[1].children[0];
+        expect(childNode.name).toBe('new name');
+        expect(childNode.fullpath).toBe('/parent-node/new name');
+        expect(gc1Node.fullpath).toBe('/parent-node/new name/grandchild1');
+        expect(gc2Node.fullpath).toBe('/parent-node/new name/grandchild2');
+        expect(ggcNode.fullpath).toBe('/parent-node/new name/grandchild2/great-grandchild');
       }).catch( e=> {
         fail(e);
       }).finally( ()=> {
         done();
       })
     });
-
-    it('should update the fullpath of an existing node', function(done) {
-      let addEvent = treenodeAddedEvent(null, 'node1', {});
-      const updateEvent = {
-          type: 'treenode_updated_fields',
-          data: {
-            nodeId: 'node1',
-            fields: {
-              fullpath: 'newPath'
-            }
-          }
-      }
-
-      eventProcessor.applyEvent(addEvent, emptyTree())
-      .then( (result) => {
-        return eventProcessor.applyEvent(updateEvent, result.tree);
-      }).then( (result) => {
-        expect(result.tree.rootNodes[0].fullpath).toBe('newPath');
-      }).catch( e => { fail(e); }).finally(done);
-    })
 
     it('should add a get data object of an existing node', function(done) {
       let addEvent = treenodeAddedEvent(null, 'node1', {});

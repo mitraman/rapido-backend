@@ -44,8 +44,7 @@ describe('/services/sketches.js ', function() {
 
   let createEmptyNode = function(name, fullpath) {
     return {
-      name: name,
-      fullpath: fullpath
+      name: name
     }
   }
 
@@ -54,7 +53,7 @@ describe('/services/sketches.js ', function() {
 
     it('should add a root node to a sketch tree', function(done) {
       winston.log('info', 'should add a root node to a sketch tree');
-      let newNode = createEmptyNode('root_test', '/api/root_test');
+      let newNode = createEmptyNode('root_test');
 
       sketchService.addTreeNode(this.userId, this.sketchId, newNode, null, 'test1')
       .then( (result) => {
@@ -68,10 +67,33 @@ describe('/services/sketches.js ', function() {
       }).finally(done)
     });
 
+    it('should create a root node with the expected properties', function(done) {
+      let name = 'name-test';
+      let path = '/name-test';
+      let newNode = {
+        name: 'name-test',
+        data: {}
+      }
+
+      sketchService.addTreeNode(this.userId, this.sketchId, newNode, null, 'test1')
+      .then( (result) => {
+        expect(result).toBeDefined();
+        let node = result.tree.hash[result.nodeId];
+        //console.log(node);
+        expect(node.id).toBe(result.nodeId);
+        expect(node.name).toBe(name);
+        expect(node.fullpath).toBe('/' + name);
+        expect(node.children).toEqual([]);
+        expect(node.data).toEqual({})
+      }).catch( e => {
+        fail(e);
+      }).finally(done)
+    })
+
     it('should add a child node to an existing node', function(done) {
       winston.log('info', 'should add a child node to an existing node');
-      let parentNode = createEmptyNode('parent', '/parent');
-      let childNode = createEmptyNode('child', '/child');
+      let parentNode = createEmptyNode('parent');
+      let childNode = createEmptyNode('child');
       sketchService.addTreeNode(this.userId, this.sketchId, parentNode, null, 'add_child_test(parent)')
       .then( result => {
         expect(result.nodeId).toBeDefined();
@@ -88,8 +110,28 @@ describe('/services/sketches.js ', function() {
       })
     })
 
+    it('should set the correct path properties for a child node', function(done){
+      winston.log('info', 'should add a child node to an existing node');
+      let parentNode = createEmptyNode('parent');
+      let childNode = createEmptyNode('child');
+      let gcNode = createEmptyNode('gc');
+      sketchService.addTreeNode(this.userId, this.sketchId, parentNode, null, 'add_child_test(parent)')
+      .then( result => {
+        let parentNodeId = result.nodeId;
+        return sketchService.addTreeNode(this.userId, this.sketchId, childNode, parentNodeId, 'add_child_test(child)');
+      }).then( result => {
+        let childNodeId = result.nodeId;
+        return sketchService.addTreeNode(this.userId, this.sketchId, gcNode, childNodeId, 'add_child_test(gc)');
+      }).then( result => {
+        let node = result.tree.hash[result.nodeId];
+        expect(node.name).toBe(gcNode.name);
+        expect(node.fullpath).toBe('/' + parentNode.name + '/' + childNode.name + '/' + gcNode.name);
+        done();
+      })
+    });
+
     it('should reject an attempt to add a child to a parent that does not exist', function(done) {
-      let childNode = createEmptyNode('child', '/child');
+      let childNode = createEmptyNode('child');
       let badParentNodeId = 99;
 
       sketchService.addTreeNode(this.userId, this.sketchId, childNode, badParentNodeId, 'add_bad_child')
@@ -208,6 +250,22 @@ describe('/services/sketches.js ', function() {
       }).finally(done);
     })
 
+    it('should update the fullpath of the target node and all descendants on a name change', function(done) {
+      const updateObject = {
+        nodeId: this.originalNode.id,
+        fields: {
+          name: 'newName'
+        }
+      }
+
+      sketchService.updateNodeDetails(this.userId, this.sketchId, this.originalNode.id, updateObject)
+      .then( result => {
+        expect(result.tree.rootNodes[0].fullpath).not.toBe(this.originalNode.fullpath);
+        expect(result.tree.rootNodes[0].fullpath).toBe('/newName');
+        expect(result.tree.rootNodes[0].children[0].fullpath).toBe('/newName/' + this.originalChildNode.name);
+      }).catch( e => { fail(e); }).finally(done);
+    })
+
     it('should update the message data of an existing CRUD node', function(done) {
 
       let updateObject = {
@@ -258,24 +316,23 @@ describe('/services/sketches.js ', function() {
       const updateObject = {
         nodeId: this.originalNode.id,
         fields: {
-          fullpath: 'newPath'
+          name: 'newName'
         }
       }
 
-      // First add a root node
       sketchService.updateNodeDetails(this.userId, this.sketchId, this.originalNode.id, updateObject)
       .then( result => {
-        expect(result.tree.rootNodes[0].fullpath).not.toBe(this.originalNode.fullpath);
-        expect(result.tree.rootNodes[0].fullpath).toBe('newPath');
+        expect(result.tree.rootNodes[0].name).not.toBe(this.originalNode.name);
+        expect(result.tree.rootNodes[0].name).toBe('newName');
       }).catch( e => { fail(e); }).finally(done);
     })
 
     it('should apply update events sequentially', function(done) {
       let childNode = createEmptyNode('child', '/child');
 
-      const updateObject = { nodeId: this.originalNode.id, fields: { fullpath: '1' } };
-      const updateObject2 = { nodeId: this.originalNode.id, fields: { fullpath: '2' } };
-      const updateObject3 = { nodeId: this.originalNode.id, fields: { fullpath: '3' } };
+      const updateObject = { nodeId: this.originalNode.id, fields: { name: '1' } };
+      const updateObject2 = { nodeId: this.originalNode.id, fields: { name: '2' } };
+      const updateObject3 = { nodeId: this.originalNode.id, fields: { name: '3' } };
 
       sketchService.updateNodeDetails(this.userId, this.sketchId, this.originalNode.id, updateObject)
       sketchService.updateNodeDetails(this.userId, this.sketchId, this.originalNode.id, updateObject2)
@@ -284,7 +341,7 @@ describe('/services/sketches.js ', function() {
         winston.log('debug', 'Trying to get tree');
         return sketchService.getTree( this.sketchId )
       }).then( result => {
-        expect(result.tree.rootNodes[0].fullpath).toBe(updateObject3.fields.fullpath);
+        expect(result.tree.rootNodes[0].name).toBe(updateObject3.fields.name);
       }).catch( e=> {fail(e)}).then(done)
     })
   })
@@ -292,10 +349,10 @@ describe('/services/sketches.js ', function() {
   describe('move node', function() {
 
     beforeEach(function(done){
-      this.nodeA = createEmptyNode('a', '/a');
-      this.nodeB = createEmptyNode('b', '/b');
-      this.nodeC = createEmptyNode('c', '/c');
-      this.nodeD = createEmptyNode('d', '/d');
+      this.nodeA = createEmptyNode('a');
+      this.nodeB = createEmptyNode('b');
+      this.nodeC = createEmptyNode('c');
+      this.nodeD = createEmptyNode('d');
 
       // Generate a tree
       sketchService.addTreeNode(this.userId, this.sketchId, this.nodeA)
