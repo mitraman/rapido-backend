@@ -1,7 +1,13 @@
 "use strict";
 
 const winston = require('winston');
-winston.level = 'debug';
+
+if( process.env.RAPIDO_LOGLEVEL ) {
+  winston.level = process.env.RAPIDO_LOGLEVEL;
+  console.log('starting with loglevel:', process.env.RAPIDO_LOGLEVEL);
+}else {
+  winston.level = 'debug';
+}
 
 const config = require('./config.js');
 winston.log('debug', 'loading configuration from rapido.json');
