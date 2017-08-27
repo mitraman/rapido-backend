@@ -10,51 +10,116 @@ var SwaggerExporter = function () {
 };
 
 
+// Converts a json thing into a JSON Schema using dynamic typing
 let generateSchema = function(json) {
+  winston.log('debug', '[SwaggerExporter] generating schema for: ', json);
   let schema = {};
   if( typeof json === 'object') {
-    schema.type = 'object';
-    schema.properties = {};
-    Object.keys(json).forEach(property => {
-      schema.properties[property] = generateSchema(json[property]);
-    })
+    if( Array.isArray(json)) {
+      winston.log('debug', '[SwaggerExporter] generateSchema - this is an array');
+      schema.type = 'array';
+      let items = [];
+      json.forEach(item => {
+        items.push(generateSchema(item));
+      })
+
+      // If the items are all of the same type, they can be merged into a single type
+      let lastType;
+      let lastProps = {};
+      let identicalTypes = true;
+
+      for( let i = 0; i < items.length && identicalTypes === true; i++ ) {
+        if( items[i].type === 'object' ) {
+          // Don't bother, it gets too complicated.  Maybe in the future we can merge identical nested objects
+          identicalTypes = false;
+        }else if(!lastType) {
+          lastType = items[i].type;
+        }else if( items[i].type != lastType ) {
+          identicalTypes = false
+        }else {
+          lastType = items[i].type
+        }
+      }
+
+      if( identicalTypes ) {
+        schema.items = items[0];
+      }else {
+        schema.items = items;
+      }
+
+    }else {
+      winston.log('debug', '[SwaggerExporter] generateSchema - this is an object');
+      schema.type = 'object';
+      schema.properties = {};
+      Object.keys(json).forEach(property => {
+        schema.properties[property] = generateSchema(json[property]);
+      })
+    }
   }else {
+    winston.log('debug', '[SwaggerExporter] generateSchema - this is a primitive type:',typeof json);
     schema.type = typeof json;
   }
   return schema;
 }
 
-let objectToYaml = function(jsonObject, depth) {
+let objectToYaml = function(jsonObject, depth, sequenceItem) {
   winston.log('debug', '[SwaggerExporter] objectToYaml called with: ', jsonObject);
   let yamlDoc = '';
   if( !depth ) {
     depth = 0;
   }
 
-  Object.keys(jsonObject).forEach(key => {
+  Object.keys(jsonObject).forEach((key, index) => {
     winston.log('debug', '[SwaggerExporter] objectToYaml processing key: ', key);
     let indent = '';
+
+
     for( let i = 0; i < depth; i++ ) {
       indent += '  ';
     }
+
+    if( sequenceItem ) {
+        if( index === 0 ) {
+          indent += '- ';
+        }else {
+          indent += '  ';
+        }
+    }
+
     let jsonVal = jsonObject[key];
-    if(typeof jsonVal === 'number') {
-      yamlDoc += indent + key +  ': ' + jsonVal + '\n';
-    }else if( typeof jsonVal === 'boolean') {
-      yamlDoc += indent + key +  ': ' + jsonVal + '\n';
-    }else if( typeof jsonVal === 'string') {
-      yamlDoc += indent + key +  ': ""' + jsonVal + '""\n';
+    // the swagger property is a special case - in YAML it has to be a quoted string value
+    if(key === 'swagger') {
+      yamlDoc += indent + key + ': "' + jsonVal + '"\n';
+    }else if( key === 'application/json') {
+        // Just dump the JSON object directly
+        yamlDoc += indent + key + ': ' + JSON.stringify(jsonVal) + '\n';
     }else if( typeof jsonVal === 'object' ) {
       if( Array.isArray(jsonVal)) {
+        winston.log('debug', '[SwaggerExporter] ' + key + ' is an array');
         // Write the values as a hyphenated list
-        yamlDoc += indent + key + ':\n';
-        jsonVal.forEach(item => {
-          yamlDoc += indent + '  - ' + item + '\n';
-        })
+        // Only conver the array if it has values
+        if( jsonVal.length > 0 ) {
+          yamlDoc += indent + key + ':\n';
+          jsonVal.forEach(item => {
+            if( typeof item === 'object' ) {
+              yamlDoc += objectToYaml(item, depth+1, true);
+            }else {
+              yamlDoc += indent + '  - ' + item + '\n';
+            }
+          })
+        }
       } else {
+        winston.log('debug', '[SwaggerExporter] ' + key + ' is an object');
         yamlDoc += indent + key + ':\n';
-        yamlDoc += objectToYaml( jsonVal, depth+1 );
+        if( sequenceItem ) {
+          yamlDoc += objectToYaml( jsonVal, depth+2 );
+        }else {
+          yamlDoc += objectToYaml( jsonVal, depth+1 );
+        }
+
       }
+    }else {
+      yamlDoc += indent + key +  ': ' + jsonVal + '\n';
     }
   })
   return yamlDoc;
@@ -64,18 +129,180 @@ let convertNodeToPathItem = function(node, pathsObject) {
   winston.log('debug', '[SwaggerExporter] convertNodeToPathItem called for node: ', node);
   const validMethods = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'];
   let pathItem = {};
+  let parameterizedPath = '';
+  let pathParameterObjects = [];
+
+  if( (node.fullpath.indexOf('/:') >= 0) || (node.fullpath.indexOf('/{') >= 0)) {
+    // Find all the tokenized path segments and create parameters for them
+    // /root/:segment/blah/:something/blah
+
+    winston.log('debug', 'path contains parameters');
+    let path = node.fullpath;
+    while(path.indexOf('/:') >= 0 || path.indexOf('/{') >= 0 ) {
+
+      winston.log('debug', '[SwaggerExporter] this path contains parameters: ', path);
+
+      let segment;
+      let parameter = {
+        name: '',
+        in: 'path',
+        type: 'string',
+        required: true,
+      };
+
+      // Determine which token to process (/: or /{})
+      let startIndex = path.indexOf('/:');
+      let curlyStartIndex = path.indexOf('/{');
+      let processedCurly = false;
+
+      if( curlyStartIndex >= 0 && (curlyStartIndex < startIndex || startIndex < 0) ) {
+        // Make sure there is an end brace
+        let curlyEndIndex = path.indexOf('}', curlyStartIndex);
+        if(curlyEndIndex >= 0) {
+          console.log('curlyEndIndex:', curlyEndIndex);
+          // Make sure the end brace occurs before the next path segment
+          let nextPathSeparator = path.indexOf('/', curlyStartIndex+2);
+          console.log('nextPathSeparator:', nextPathSeparator);
+          if( nextPathSeparator >= 0 && nextPathSeparator > curlyEndIndex ) {
+            winston.log('debug', 'processing curly brace segment ');
+            processedCurly = true;
+            // Store the path segment and continue processing
+            segment = path.slice(curlyStartIndex, curlyEndIndex);
+            parameter.name = segment.slice(2);
+            pathParameterObjects.push(parameter);
+
+            parameterizedPath += path.slice(0, curlyEndIndex+1);
+            winston.log('debug', 'parametrizedPath is ', parameterizedPath);
+            path = path.slice(curlyEndIndex+1);
+          }else if( nextPathSeparator >= 0 && nextPathSeparator < curlyEndIndex) {
+            // The curly brace is not closed before the next path segment starts
+            // In this case we just treat it as a normal path segment and continute processing.
+
+            // Condition 1: there is only a single opening curly brace: /{badToken/notokens
+            // Condition 2: there is a curly brace and other tokens: /{badToken/:goodToken/{goodToken}
+            winston.log('debug', '[SwaggerExporter] found invalid curly token in:', path);
+            parameterizedPath += path.slice(0, nextPathSeparator);
+            winston.log('debug', 'parametrizedPath is ', parameterizedPath);
+            path = path.slice(nextPathSeparator);
+            processedCurly = true;
+          }else {
+            // This is the last path segment so just copy it over
+            winston.log('debug', '[SwaggerExporter] this is the last path segment');
+            processedCurly = true;
+            segment = path.slice(curlyStartIndex);
+            parameter.name = segment.slice(2,segment.length-1);
+            pathParameterObjects.push(parameter);
+
+            parameterizedPath += path;
+            winston.log('debug', 'parametrizedPath is ', parameterizedPath);
+            path = '';
+            processedCurly = true;
+          }
+        }
+      }
+
+      if( !processedCurly ) {
+
+        winston.log('debug', '[SwaggerExporter] parametrized path segment uses a ":" token');
+        let endIndex = path.indexOf('/', startIndex+2);
+        if( endIndex > 0) {
+          winston.log('debug', '[SwaggerExporter] found the end of this path segment');
+          segment = path.slice(startIndex, endIndex)
+        } else {
+          winston.log('debug', '[SwaggerExporter] this is the last segment in the path');
+          segment = path.slice(startIndex);
+        }
+
+        winston.log('debug', 'parametrized path segment is ', segment);
+        parameter.name = segment.slice(2);
+        pathParameterObjects.push(parameter);
+
+        // Convert the fullpath of the node to use the "{}" syntax for dynamic segments in OAPI 2
+        parameterizedPath += path.slice(0, startIndex) + '/{' + parameter.name + '}';
+        winston.log('debug', 'parametrizedPath is ', parameterizedPath);
+
+        // Get the path ready for further processing
+        if( endIndex >= 0) {
+          path = path.slice(endIndex);
+        }else {
+          path = '';
+        }
+        winston.log('debug', 'checking rest of path for paramterized segments:', path);
+      }
+    }
+
+    // If there is any path left, stick it onto the end of the parameterizedPath
+    parameterizedPath += path;
+  }
+
   Object.keys(node.data).forEach( (key) => {
+    console.log('******');
+    console.log(node.data);
     if( validMethods.indexOf(key) < 0 ) {
       // this is not a valid key
       winston.log('warn', 'unable to convert response method ' + key + ' into OpenAPI Spec');
-    }else {
-      let responseData = {};
-      let nodeResponseData = node.data[key];
+    }else if(node.data[key].enabled){
+      let operation = {};
+      let nodeData = node.data[key];
 
-      responseData.description = "auto generated by Rapido";
-      responseData.produces = [nodeResponseData.response.contentType];
-      responseData.consumes = [nodeResponseData.request.contentType];
-      responseData.responses = {
+      operation.description = "auto generated by Rapido";
+      operation.produces = [nodeData.response.contentType];
+      operation.consumes = [nodeData.request.contentType];
+
+      //TODO: Don't use parameters if they are empty
+      operation.parameters = [];
+
+      if(pathParameterObjects.length > 0) {
+        pathParameterObjects.forEach(parameterObject => {
+          operation.parameters.push(parameterObject);
+        })
+      }
+
+      if( nodeData.request.queryParams.trim().length > 0) {
+        // Parse thq query parameter and create a parameter object for eqch query name
+        let queryString = nodeData.request.queryParams.trim();
+
+        if(queryString.startsWith('?')) {
+          queryString = queryString.slice(1);
+        }
+
+        let queryStringTokens = queryString.split('&');
+        queryStringTokens.forEach(query => {
+          // Make all query values of type string for now
+          let parameter = {
+            name: '',
+            in: 'query',
+            type: 'string'
+          };
+
+          parameter.name = query.split('=')[0];
+          operation.parameters.push(parameter);
+        })
+      }
+
+      // If there is a request body defined, create a schema for it
+      if( nodeData.request.body.trim().length > 0) {
+        let requestBodyParameter = {
+          name: 'request body',
+          in: 'body',
+          schema: {}
+        };
+        // Try to parse the string into a JSON object
+        try {
+          let jsonBody = JSON.parse(nodeData.request.body);
+          requestBodyParameter.schema = generateSchema(jsonBody);
+        }catch( e ) {
+          if( e instanceof SyntaxError) {
+            // This is not legal JSON, so treat it as a string
+            winston.log('debug', '[SwaggerExporter] unable to parse JSON request body data:', e);
+            requestBodyParameter.schema.type = 'string';
+            requestBodyParameter.schema.description = 'Rapido was unable to parse the JSON request body from this sketch node'
+          }
+        }
+        operation.parameters.push(requestBodyParameter);
+      }
+
+      operation.responses = {
         "200" : {
           "description": "auto generated by Rapido",
           "examples": {
@@ -87,25 +314,34 @@ let convertNodeToPathItem = function(node, pathsObject) {
 
       // Try to parse the string into a JSON object
       try {
-        let jsonBody = JSON.parse(nodeResponseData.response.body);
-        responseData.responses['200'].examples[nodeResponseData.response.contentType] =
+        let jsonBody = JSON.parse(nodeData.response.body);
+        operation.responses['200'].examples[nodeData.response.contentType] =
           jsonBody;
-        responseData.responses['200'].schema = generateSchema(jsonBody);
+        operation.responses['200'].schema = generateSchema(jsonBody);
       }catch( e ) {
         if( e instanceof SyntaxError) {
           // This is not legal JSON, so treat it as a string
-          responseData.responses['200'].examples['text/plain'] =
-            nodeResponseData.response.body;
-          responseData.responses['200'].schema = generateSchema(nodeResponseData.response.body);
+          winston.log('debug', '[SwaggerExporter] unable to parse JSON body data:', e);
+          operation.responses['200'].examples['text/plain'] =
+            nodeData.response.body;
+          operation.responses['200'].schema = generateSchema(nodeData.response.body);
 
         }
       }
-      pathItem[key] = responseData;
+      pathItem[key] = operation;
+    }else {
+      winston.log('[SwaggerExporter] skipping disabled method: ', key)
     }
+
   });
 
   // Add this item to the paths object
-  pathsObject[node.fullpath] = pathItem;
+  if( pathParameterObjects.length > 0 ) {
+    pathsObject[parameterizedPath] = pathItem;
+  }else if( Object.keys(pathItem).length > 0 ){
+    //Only create a paths object if there are operations to Store
+    pathsObject[node.fullpath] = pathItem;
+  }
 
   // Process any children of this node recursively
   if( node.children) {
