@@ -114,7 +114,7 @@ module.exports = {
 									400,
 									[{
 										field: 'method',
-										type: 'invlaid',
+										type: 'invalid',
 										description: description
 									}],
 									"Update Node Error"
@@ -191,7 +191,7 @@ module.exports = {
 				return sketchService.getTree(sketchId)
 			}).then( result => {
 				winston.log('debug', '[updateNodePropertiesHandler] returning response message');
-				res.status(200).send(representer.responseMessage({ tree: result.tree.rootNodes}));
+				res.status(200).send(representer.responseMessage({ node: result.tree.hash[nodeId], rootNode: result.tree.rootNode}));
 				// res.status(200).send(representer.responseMessage({
 				// 	tree: result.tree.treeNodes
 				// }))
@@ -285,7 +285,7 @@ module.exports = {
 			return sketchService.moveNode(userId, sketchId, nodeId, target);
 		}).then( result => {
 			winston.log('debug', '[moveNodeHandler] result of moveNode: ', result);
-			res.status(200).send(representer.responseMessage({ tree: result.tree.rootNodes}));
+			res.status(200).send(representer.responseMessage({ rootNode: result.tree.rootNode}));
 	  }).catch( e => {
 			winston.log('debug', '[moveNodeHandler] error:', e);
 			if(e.name === 'RapidoError') {

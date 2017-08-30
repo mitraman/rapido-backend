@@ -72,10 +72,13 @@ describe('handlers/projects.js ', function() {
     // Remove all of the project entries in the database for our test useer
     const db = dataAccessor.getDb();
 
-    //console.log('deleting from sketches')
-    // First delete all of this user's sketches
-    db.query("DELETE FROM sketches where userid=" + userid)
-    .then( ()=> {
+    // Delete all sketchevents
+    db.query('DELETE FROM sketchevents;')
+    .then( result => {
+      //console.log('deleting from sketches')
+      // delete all of this user's sketches
+      db.query("DELETE FROM sketches where userid=" + userid)
+    }).then( ()=> {
       //console.log('deleting from projects');
       // Next delete the projects
       // db.query('SELECT * from sketches').then(function(data) {

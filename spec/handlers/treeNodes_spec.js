@@ -52,8 +52,28 @@ describe('handlers/nodes.js', function() {
     const db = dataAccessor.getDb();
     db.query('delete from sketchevents;')
     .then( () => {
+
+      let jsonEventData = JSON.stringify({
+       rootNode: {
+         id: 'root-node',
+         name: '/',
+         responseData : {},
+         children: []
+       }
+      });
+      return db.query('insert into sketchevents ( sketchid, userid, eventtype, eventdata) values ($1, $2, $3, $4)',
+      [this.sketchId, this.userId, 'treenode_defineroot', jsonEventData]);
+
+      //return sketchService.createRootNode(this.userId, this.sketchId, { name: '/'});
+    }).then( result => {
+      return db.query('select * from sketchevents where sketchid=$1', [this.sketchId]);
+    }).then( result => {
       // Flush all subscribers
       return sketchService.reset();
+    }).then( result => {
+      // Need to do a get tree to get the historical events to be applied
+      // this should be fixed in the future.
+      return sketchService.getTree(this.sketchId);
     }).finally(done);
   });
 
@@ -93,7 +113,7 @@ describe('handlers/nodes.js', function() {
 
       request.post(
         {
-          url: this.url,
+          url: this.url + '/root-node',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIXVCJ9...TJVA95OrM7E20RMHrHDcEfxjoYZgeFONFh7HgQ'
@@ -108,12 +128,14 @@ describe('handlers/nodes.js', function() {
       )
     });
 
+
+/*
     it('should return a 404 if a sketch does not exist', function(done) {
       let url = this.urlBase + '/projects/' + this.projectId + '/sketches/12/nodes';
 
       request.post(
         {
-          url: url,
+          url: url + '/root-node',
           headers: this.headers,
         },function(err, res, body) {
           //console.log(body);
@@ -125,25 +147,7 @@ describe('handlers/nodes.js', function() {
         }
       )
     })
-
-    it( 'should create a new node at the root level (/nodes)', function(done) {
-
-      request.post(
-        {
-          url: this.url,
-          headers: this.headers,
-        },function(err, res, body) {
-          expect(err).toBe(null);
-          expect(res.statusCode).toBe(201);
-          let jsonBody = JSON.parse(body);
-          expect(jsonBody.tree).toBeDefined();
-          expect(jsonBody.node).toBeDefined();
-          expect(jsonBody.node.id).toBeDefined();
-          expect(jsonBody.node.data).toBeDefined();
-          done();
-        }
-      )
-    })
+*/
 
     it( 'should create a new node with default values for body data for a CRUD project', function(done) {
       let validateMethodObject = function(methodName, statusCodeExpected, requestBody, responseBody, dataObject) {
@@ -162,14 +166,18 @@ describe('handlers/nodes.js', function() {
         expect(methodData.response.body).toBe(responseBody);
       }
 
+      let url = this.url + '/root-node';
+
       request.post(
         {
-          url: this.url,
+          url: url,
           headers: this.headers,
         },function(err, res, body) {
+          //console.log(body);
           expect(err).toBe(null);
           expect(res.statusCode).toBe(201);
           let jsonBody = JSON.parse(body);
+          //console.log(jsonBody);
           expect(jsonBody.node.data).toBeDefined();
 
           validateMethodObject('get', '200', '', '{\n}', jsonBody.node.data);
@@ -183,38 +191,7 @@ describe('handlers/nodes.js', function() {
       )
     })
 
-    it( 'should create a new child node', function(done) {
-
-      let thisSpec = this;
-
-      request.post(
-        {
-          url: this.url,
-          headers: this.headers
-        },function(err, res, body) {
-          expect(res.statusCode).toBe(201);
-          let jsonBody = JSON.parse(body);
-          expect(jsonBody.node.id).toBeDefined();
-          let parentNodeId = jsonBody.node.id;
-
-          let nodeUrl = thisSpec.url + '/' + parentNodeId;
-          request.post(
-            {
-              url: nodeUrl,
-              headers: thisSpec.headers
-            }, function( err, res, body) {
-              expect(res.statusCode).toBe(201);
-              let jsonBody = JSON.parse(body);
-              expect(jsonBody.node.id).toBeDefined();
-              expect(jsonBody.tree).toBeDefined();
-              done();
-            }
-          )
-        }
-      )
-    })
-
-    it( 'should reject an attempt to create a child for a node that does not exist', function(done) {
+    it( 'should reject an attempt to create a node with non-existent parent', function(done) {
 
       let url = this.url + '/bad-id';
       request.post(
@@ -237,7 +214,7 @@ describe('handlers/nodes.js', function() {
 
       request.post(
         {
-          url: this.url,
+          url: this.url + '/root-node',
           headers: this.headers
         },function(err, res, body) {
             expect(res.statusCode).toBe(201);
@@ -257,7 +234,8 @@ describe('handlers/nodes.js', function() {
               }, function( err, res, body) {
                 winston.log('debug', 'body:', body);
                 expect(res.statusCode).toBe(200);
-                let updatedNode = body.tree[0];
+                let updatedNode = body.node;
+                expect(body.rootNode.children[0].id).toBe(nodeId)
                 expect(updatedNode.name).toBe('newname');
                 expect(updatedNode.fullpath).toBe('/newname');
                 done();
@@ -273,7 +251,7 @@ describe('handlers/nodes.js', function() {
 
       request.post(
         {
-          url: this.url,
+          url: this.url + '/root-node',
           headers: this.headers
         },function(err, res, body) {
             expect(res.statusCode).toBe(201);
@@ -305,7 +283,7 @@ describe('handlers/nodes.js', function() {
                 }
               }, function( err, res, body) {
                 expect(res.statusCode).toBe(200);
-                let node = body.tree[0];
+                let node = body.node;
                 expect(node.data.get).toBeDefined();
                 expect(node.data.get.enabled).toBe(true);
                 expect(node.data.get.request).toBeDefined();
@@ -327,7 +305,7 @@ describe('handlers/nodes.js', function() {
 
       request.post(
         {
-          url: this.url,
+          url: this.url + '/root-node',
           headers: this.headers
         },function(err, res, body) {
             expect(res.statusCode).toBe(201);
@@ -361,7 +339,7 @@ describe('handlers/nodes.js', function() {
               }, function( err, res, body) {
                 winston.log('debug', 'body:', body);
                 expect(res.statusCode).toBe(200);
-                let node = body.tree[0];
+                let node = body.node;
                 expect(node.name).toBe('new_name');
                 expect(node.data.get).toBeDefined();
                 expect(node.data.get.enabled).toBe(true);
@@ -382,7 +360,7 @@ describe('handlers/nodes.js', function() {
 
       request.post(
         {
-          url: this.url,
+          url: this.url + '/root-node',
           headers: this.headers
         },function(err, res, body) {
             expect(res.statusCode).toBe(201);
@@ -406,7 +384,7 @@ describe('handlers/nodes.js', function() {
               }, function( err, res, body) {
                 winston.log('debug', 'body:', body);
                 expect(res.statusCode).toBe(200);
-                let node = body.tree[0];
+                let node = body.node;
                 expect(node.name).toBe('new_name');
                 expect(node.data.get).toBeDefined();
                 expect(node.data.get.enabled).toBe(false);
@@ -422,7 +400,7 @@ describe('handlers/nodes.js', function() {
 
       request.post(
         {
-          url: this.url,
+          url: this.url + '/root-node',
           headers: this.headers
         },function(err, res, body) {
             expect(res.statusCode).toBe(201);
@@ -459,7 +437,7 @@ describe('handlers/nodes.js', function() {
               }, function( err, res, body) {
                 //winston.log('debug', 'body:', body);
                 expect(res.statusCode).toBe(200);
-                let node = body.tree[0];
+                let node = body.node;
                 expect(node.data.get).toBeDefined();
                 expect(node.data.get.enabled).toBe(true);
                 expect(node.data.get.response.contentType).toBe('application/json');
@@ -478,7 +456,7 @@ describe('handlers/nodes.js', function() {
       let thisSpec = this;
       request.post(
         {
-          url: this.url,
+          url: this.url + '/root-node',
           headers: this.headers
         },function(err, res, body) {
             expect(res.statusCode).toBe(201);
@@ -568,10 +546,10 @@ describe('handlers/nodes.js', function() {
       let sketchId = this.sketchId;
 
       // Build the test tree
-      sketchService.addTreeNode(userId, sketchId, nodeA)
+      sketchService.addTreeNode(userId, sketchId, nodeA, 'root-node')
       .then( (result) => {
         nodeA.id = result.nodeId;
-        return sketchService.addTreeNode(userId, sketchId, nodeC);
+        return sketchService.addTreeNode(userId, sketchId, nodeC, 'root-node');
       }).then( result => {
         nodeC.id = result.nodeId;
         return sketchService.addTreeNode(userId, sketchId, nodeB, nodeA.id);
@@ -690,7 +668,7 @@ describe('handlers/nodes.js', function() {
           expect(res.statusCode).toBe(400);
           expect(body.code).toBe(RapidoErrorCodes.fieldValidationError);
           expect(body.fields[0].type).toBe('invalid');
-          expect(body.fields[0].field).toBe('targetNodeId');
+          expect(body.fields[0].field).toBe('sourceNodeId');
           done();
         }
       );
@@ -713,7 +691,7 @@ describe('handlers/nodes.js', function() {
       let userId = this.userId;
       let sketchId = this.sketchId;
 
-      sketchService.addTreeNode(userId, sketchId, nodeA)
+      sketchService.addTreeNode(userId, sketchId, nodeA, 'root-node')
       .then( result => {
         nodeA.id = result.nodeId;
         return sketchService.addTreeNode(userId, sketchId, nodeB, nodeA.id);
@@ -722,7 +700,7 @@ describe('handlers/nodes.js', function() {
         return sketchService.addTreeNode(userId, sketchId, nodeC, nodeB.id);
       }).then( result => {
         nodeC.id = result.nodeId;
-        return sketchService.addTreeNode(userId, sketchId, nodeD);
+        return sketchService.addTreeNode(userId, sketchId, nodeD, 'root-node');
       }).then( result => {
         return nodeD.id = result.nodeId;
       }).then( result => {
@@ -738,13 +716,12 @@ describe('handlers/nodes.js', function() {
           }, function( err, res, body) {
             winston.log('debug', 'body:', body);
             expect(res.statusCode).toBe(200);
-            expect(body.tree).toBeDefined();
-            let a = body.tree[0];
+            let a = body.rootNode.children[0];
             expect(a.id).toBe(nodeA.id);
             let b = a.children[0];
             expect(b.id).toBe(nodeB.id);
             expect(b.children.length).toBe(0);
-            let d = body.tree[1];
+            let d = body.rootNode.children[1];
             expect(d.id).toBe(nodeD.id);
             expect(d.children.length).toBe(1);
             let c = d.children[0];

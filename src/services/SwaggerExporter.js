@@ -127,6 +127,7 @@ let objectToYaml = function(jsonObject, depth, sequenceItem) {
 
 let convertNodeToPathItem = function(node, pathsObject) {
   winston.log('debug', '[SwaggerExporter] convertNodeToPathItem called for node: ', node);
+  
   const validMethods = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'];
   let pathItem = {};
   let parameterizedPath = '';
@@ -370,11 +371,16 @@ SwaggerExporter.prototype.exportTree = function(tree, title, description) {
   }
 
   winston.log('debug', '[SwaggerExporter] parsing root nodes');
+  /*
   tree.rootNodes.forEach( rootNode => {
     winston.log('debug', '[SwaggerExporter] converting root: ', rootNode);
     let pathInfo = convertNodeToPathItem(rootNode, paths);
     //paths[rootNode.fullpath] = pathInfo;
   })
+  */
+  if( tree.rootNode) {
+    convertNodeToPathItem(tree.rootNode, paths);
+  }
 
   winston.log('debug', '[SwaggerExporter] paths:', paths);
 

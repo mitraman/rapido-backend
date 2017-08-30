@@ -95,6 +95,8 @@ EventStore.prototype.push = function (userId, sketchId, eventType, newEvent, tok
 let emitHistoricalEvents = function(emitter, sketchId, startIndex ) {
   //let db = dataAccessor.getDb();
 
+  winston.log('debug', '[EventStore.emitHistoricalEvents] checking for historical records');
+
   EventStore.db.manyOrNone('SELECT id, eventtype, eventdata FROM sketchevents WHERE id >= $1 AND sketchid = $2 ORDER BY id ASC', [startIndex, sketchId])
   .then( results => {
     //winston.log('debug', '&&&& results:', results);
@@ -151,7 +153,7 @@ EventStore.prototype.getLastEventID = function( sketchId ) {
 
 EventStore.prototype.subscribe = function(sketchId, listener, startIndex) {
   winston.log('debug', '[EventStore.subscribe] adding listener for sketch ID:', sketchId);
-
+  winston.log('debug', '[EventStore.subscribe] startIndex:', startIndex);
   //EventStore.eventEmitter.on(sketchId, event => listener);
   EventStore.eventEmitter.on(sketchId, listener);
 

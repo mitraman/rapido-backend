@@ -73,7 +73,9 @@ describe('EventSubscription', function() {
 
   })
 
-  it('should store the state of a tree after applying a treenode_added event', function(done) {
+  //TODO: Move this is an integration test
+  /*
+  fit('should store the state of a tree after applying a treenode_added event', function(done) {
     let eventHandler = new EventSubscription(this.sketchId, eventProcessor);
     let nodeId = 'a1';
 
@@ -84,13 +86,14 @@ describe('EventSubscription', function() {
     processStream.on('event_processed', function(processEvent) {
       expect(processEvent.id).toBe(1);
       expect(eventHandler.tree.hash[nodeId]).toBeDefined();
-      expect(eventHandler.tree.rootNodes.length).toBe(1);
-      expect(eventHandler.tree.rootNodes[0].name).toBe('tree_state_test');
+      expect(eventHandler.tree.rootNode.children.length).toBe(1);
+      expect(eventHandler.tree.rootNode.children[0].name).toBe('tree_state_test');
       done();
     })
 
-    eventHandler.onEvent({id: 1, data: { node: {id: nodeId, name: 'tree_state_test', fullpath: '/testing'} },  type: 'treenode_added'});
+    eventHandler.onEvent({id: 1, data: { parentId: '', node: {id: nodeId, name: 'tree_state_test', fullpath: '/testing'} },  type: 'treenode_added'});
   })
+  */
 
   it('should process events emitted by the EventStore module', function(done) {
     let subscriber = new EventSubscription(this.sketchId, eventProcessor);

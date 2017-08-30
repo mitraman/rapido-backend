@@ -52,20 +52,20 @@ authentication.prototype.authenticateRequest = function(req, res, next) {
 			try {
 				let decoded = module.exports.validateJWT(token.trim());
 
-				console.log('make sure that this user exists');
+				//console.log('make sure that this user exists');
 				// Make sure that this user exists
 				if( !decoded.id ) {
-					console.log('no id field');
+					//console.log('no id field');
 					next(new RapidoError(
 						RapidoErrorCodes.authenticationProblem,
 						'Bearer token is missing a required field',
 						401
 					));
 				}else {
-					console.log('looking for users...');
+					//console.log('looking for users...');
 					userModel.find({id: decoded.id})
 					.then( result => {
-						console.log('result:', result);
+						//console.log('result:', result);
 						if( result.length < 1) {
 							next(new RapidoError(
 								RapidoErrorCodes.userNotFound,

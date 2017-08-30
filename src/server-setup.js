@@ -44,7 +44,7 @@ const start = function start(serverPort, cb) {
   app.get('/api/projects', authentication.authenticateRequest, projects.findProjectsHandler);
   app.get('/api/projects/:projectId', authentication.authenticateRequest, projects.findProjectHandler);
   app.post('/api/projects/:projectId/sketches', authentication.authenticateRequest, sketches.createSketchHandler);
-  app.post('/api/projects/:projectId/sketches/:sketchIndex/nodes', authentication.authenticateRequest, nodes.createNodeHandler);
+  //app.post('/api/projects/:projectId/sketches/:sketchIndex/nodes', authentication.authenticateRequest, nodes.createNodeHandler);
   app.post('/api/projects/:projectId/sketches/:sketchIndex/nodes/:nodeId', authentication.authenticateRequest, nodes.createNodeHandler);
   app.patch('/api/projects/:projectId/sketches/:sketchIndex/nodes/:nodeId', authentication.authenticateRequest, nodes.updateNodePropertiesHandler);
   app.delete('/api/projects/:projectId/sketches/:sketchIndex/nodes/:nodeId', authentication.authenticateRequest, nodes.deleteNodeHandler);

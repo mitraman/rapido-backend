@@ -21,6 +21,9 @@ TreeEventProcessor.prototype.treenode_deleted = function(event, tree) {
   if( !node ) {
     throw new Error('Unable to delete a non-existent node');
   }
+  if( node.type === 'root' ) {
+    throw new Error('treenode_deleted events cannot be applied to root nodes.');
+  }
 
   winston.log('debug', '[TreeEventProcessor.treenode_deleted] deleting node ' + event.data.nodeId);
 
@@ -69,13 +72,18 @@ TreeEventProcessor.prototype.treenode_moved = function(event, tree) {
   if( !event.data.sourceId ) {
     throw new Error('treenode_moved event is missing a required property: data.sourceId');
   }
+  if( !event.data.targetId ) {
+    throw new Error('treenode_moved event is missing a required property: data.targetId');
+  }
 
-  // Make sure the the target id exists in the tree
+  // Make sure the the source node exists in the tree
   let sourceNode = tree.hash[event.data.sourceId];
   if( !sourceNode ) {
     throw new Error('Unable to move a non-existent node');
   }
-
+  if( sourceNode.type === 'root') {
+    throw new Error('treenode_moved event cannot be applied to a root node');
+  }
   // Make sure that the target id exists in the tree
   if( event.data.targetId && !tree.hash[event.data.targetId] ) {
     throw new Error('Unable to move node to a non-existent target.');
@@ -86,13 +94,8 @@ TreeEventProcessor.prototype.treenode_moved = function(event, tree) {
   // Remove the source node from its parent's child list
   let parentNode = tree.hash[sourceNode.parentId];
   let childList = null;
-  if( !parentNode ) {
-    // This is a rootNode, so manipulate the rootNodes array
-    childList = tree.rootNodes;
-  } else {
-    childList = parentNode.children;
+  childList = parentNode.children;
 
-  }
   for( let i = 0; i < childList.length; i++ ) {
     let child = childList[i];
 
@@ -102,13 +105,7 @@ TreeEventProcessor.prototype.treenode_moved = function(event, tree) {
     }
   }
 
-  if( !event.data.targetId ) {
-    // We are moving this node to the root
-    tree.rootNodes.push(sourceNode);
-  } else {
-    // Add the source node to its new target
-    tree.hash[event.data.targetId].children.push(sourceNode);
-  }
+  tree.hash[event.data.targetId].children.push(sourceNode);
 
   // Update the parentId property of the node
   sourceNode.parentId = event.data.targetId;
@@ -117,6 +114,41 @@ TreeEventProcessor.prototype.treenode_moved = function(event, tree) {
 
 }
 
+// Defines the root node for this tree
+// May be called at any time, but will replace the existing root with the
+// new root and all of its children
+TreeEventProcessor.prototype.treenode_defineroot = function(event, tree) {
+  winston.log('debug', '[TreeEventProcessor.treenode_defineroot] applying treenode_defineroot event: ', event);
+  if( !event.data ) {
+    throw new Error('event is missing data property');
+  }
+  if( !event.data.rootNode ) {
+    throw new Error('event is missing data.rootNode property');
+  }
+
+  let rootNode = event.data.rootNode;
+  if(!rootNode.id) {
+    throw new Error('root node is missing required property: id');
+  }
+
+  winston.log('debug', '[TreeEventProcessor.treenode_defineroot] Root node to be added is:', rootNode);
+
+  rootNode.type = 'root';
+  tree.rootNode = rootNode;
+  tree.hash[rootNode.id] = rootNode;
+
+  return tree;
+}
+
+// Adds a node as a child of an existing parent node
+// event.data:
+// {
+//   parentId: ID of parent node
+//   node: {
+//     id: id of node to be added
+//     _other attributes_
+//   }
+// } 
 TreeEventProcessor.prototype.treenode_added = function(event, tree) {
   winston.log('debug', '[TreeEventProcessor.treenode_added] applying treenode_added event: ', event);
   if( !event.data ) {
@@ -131,20 +163,25 @@ TreeEventProcessor.prototype.treenode_added = function(event, tree) {
   if( !newNode.id ) {
     throw new Error('node is missing required property: id');
   }
+
+  if( !event.data.parentId ) {
+    winston.log('warn', '[TreeEventProcessor.treenode_added] Unexpected parentId value of null');
+    throw new Error('node is missing required property: parentId');
+  }
+
   winston.log('debug', '[TreeEventProcessor.treenode_added] Node to be added is:', newNode);
 
-
   // Find the parent node for this node.
-  if( !event.data.parentId ) {
-    winston.log('debug', '[TreeEventProcessor.treenode_added] Adding node to root of tree');
-    tree.rootNodes.push(newNode);
-  }else {
-    let parentNode = tree.hash[event.data.parentId];
-    // set the parentId to make moves and deletes easier
-    newNode.parentId = event.data.parentId;
-    winston.log('debug', '[TreeEventProcessor.treenode_added] Pushing node into children of parent node: ', parentNode);
-    parentNode.children.push(newNode);
+  let parentNode = tree.hash[event.data.parentId];
+  if( !parentNode ) {
+    throw new Error('the parent node with an ID ' + event.data.parentId + ' cannot be found in this tree');
   }
+  // set the parentId to make moves and deletes easier
+  newNode.parentId = event.data.parentId;
+  newNode.type = 'node';
+  winston.log('debug', '[TreeEventProcessor.treenode_added] Pushing node into children of parent node: ', parentNode);
+  parentNode.children.push(newNode);
+
 
   tree.hash[newNode.id] = newNode;
 
@@ -160,15 +197,21 @@ TreeEventProcessor.prototype.treenode_updated_fields = function(event, tree) {
   // Iterate through the properties and update
   Object.keys(event.data.fields).forEach((fieldKey)=> {
     if(fieldKey === 'name') {
+      if( node.type === 'root' ) {
+        throw new Error('Updates to the name of a root node are not allowed.');
+      }
       node.name = event.data.fields.name;
 
+      //TODO: Resove the inconsistency of fullpath being set for addnodes
+      // in the sketch service, while the updated path is set here.
       // Update the fullpath of this node
-      let parentPath = '';
-      if( node.parentId ) {
-        let parentNode = tree.hash[node.parentId];
-        parentPath = parentNode.fullpath;
+      let parentNode = tree.hash[node.parentId];
+      if( parentNode.type === 'root') {
+        node.fullpath = '/' + node.name;
+      }else {
+        node.fullpath = parentNode.fullpath + '/' + node.name;
       }
-      node.fullpath = parentPath + '/' + node.name;
+
 
       // Update all of the descendant nodes with the new path
       let updateChildPaths = function(node) {

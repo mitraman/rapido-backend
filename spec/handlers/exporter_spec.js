@@ -30,7 +30,7 @@ describe('handlers/exporter.js ', function() {
       // Create a test project
       return db.query("insert into projects (userid, name) values (" + this.userId + ", 'treeNodesTest') RETURNING id")
     }).then( result => {
-      console.log(result);
+      //console.log(result);
       this.projectId = result[0].id;
       return db.query("insert into sketches (userid, projectid, sketchIndex) values ("
         + this.userId + ", " + this.projectId + ", 1) RETURNING id, sketchIndex");

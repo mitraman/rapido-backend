@@ -86,6 +86,56 @@ Sketches.prototype.getTree = function(sketchId, label) {
   })
 }
 
+Sketches.prototype.createRootNode = function(userId, sketchId, rootNode) {
+  return new Promise( (resolve,reject) => {
+    // Generate a unique ID for the new node
+    const nodeId = uuidV4();
+
+    // Generate a temporary token to identify the event that we are pushing
+    const token = uuidV4();
+
+    // Retrieve a subscriber object (the tree cache is available from the subscriber)
+    Sketches.getSubscription(sketchId)
+    .then( subscriber =>  {
+      winston.log('debug', '[Sketches.setRootNode] subscriber:', subscriber);
+
+      // Set the fullpath to wahtever the name of the rootnode is
+      let fullPath = rootNode.name;
+
+      // Setup an event handler to listen for processed events
+      let processedHandler = function(event) {
+        // If we catch the event we are pushing, resolve the promise
+        winston.log('[Sketches.setRootNode] processed event caught:', event);
+        if( event.token === token) {
+          //now that we know the event has been processed, stop listening
+          subscriber.stream().removeListener('event_processed', processedHandler);
+          resolve({
+            nodeId: nodeId,
+            tree: subscriber.tree
+          });
+        }
+      }
+      subscriber.stream().on('event_processed', processedHandler);
+
+      winston.log('debug', '[Sketches.setRootNode] recording tree node addition event');
+      // Record the tree node addition event
+      return Sketches.es.push(userId, sketchId,
+        'treenode_defineroot',
+        {
+          rootNode: {
+            id: nodeId,
+            name: rootNode.name,
+            data : rootNode.data,
+            fullpath: fullPath,
+            children: []
+          }
+        }, token);
+    }).catch( e => {
+      reject(e);
+    })
+  })
+}
+
 Sketches.prototype.addTreeNode = function(userId, sketchId, treeNode, parentId, label) {
   return new Promise( (resolve, reject) => {
     // Generate a unique ID for the new node
@@ -103,18 +153,32 @@ Sketches.prototype.addTreeNode = function(userId, sketchId, treeNode, parentId, 
       let fullPath = '/' + treeNode.name;
 
       // Validate the request
-      if(parentId) {
-        let parentNode = subscriber.tree.hash[parentId];
+      if(!parentId) {
+        winston.log('warning', '[Sketches.addTreeNode] missing required parameter parentId on call to add node');
+        reject(new RapidoError(RapidoErrorCodes.fieldValidationError, 'Unable to add node', 500));
+        return;
+      }
 
-        if(!parentNode) {
-          let errorMessage = 'Cannot add node to non-existent parent node with ID:' + parentId;
-          reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400,
-            [{ field: "nodeId", type: "invalid", description: errorMessage}]));
-          //reject('Cannot add node to non-existent parent node with ID:' + parentId);
-          return;
+      console.log(subscriber.tree);
+
+      let parentNode = subscriber.tree.hash[parentId];
+      if(!parentNode) {
+        let errorMessage = 'Cannot add node to non-existent parent node with ID:' + parentId;
+        reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400,
+          [{ field: "nodeId", type: "invalid", description: errorMessage}]));
+        //reject('Cannot add node to non-existent parent node with ID:' + parentId);
+        return;
+      }else {
+        console.log('*****')
+        console.log('setting fullpath for ', treeNode.name);
+        console.log('parentNode is ', parentNode);
+        if( parentNode.type === 'root') {
+          fullPath = '/' + treeNode.name;
         }else {
           fullPath = parentNode.fullpath + '/' + treeNode.name;
         }
+        console.log('fullpath set to: ', fullPath);
+        console.log('****');
       }
 
       // Setup an event handler to listen for processed events
@@ -273,22 +337,6 @@ Sketches.prototype.moveNode = function(userId, sketchId, sourceNodeId, targetNod
       winston.log('debug', '[Sketches.moveNode] subscriber:', subscriber);
 
       // Validate the request
-      if(targetNodeId) {
-        if(!subscriber.tree.hash[targetNodeId]) {
-          let errorMessage = 'Cannot move node to non-existent target node with ID:' + targetNodeId;
-          reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400,
-          [
-            {
-              field: "targetNodeId",
-              type: "invalid",
-              description: "The target parent node for this move operation does not exist"
-            }
-          ]));
-          //reject('Cannot add node to non-existent parent node with ID:' + parentId);
-          return;
-        }
-      }
-
       if(!sourceNodeId ) {
         let errorMessage = 'Cannot move undefined node';
         reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400));
@@ -296,9 +344,37 @@ Sketches.prototype.moveNode = function(userId, sketchId, sourceNodeId, targetNod
         return;
       }
 
+      if(!targetNodeId ) {
+        let errorMessage = 'Cannot move node: a target ID has not been identified';
+        reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400));
+        //reject('Cannot add node to non-existent parent node with ID:' + parentId);
+        return;
+      }
+
       if( !subscriber.tree.hash[sourceNodeId]  ) {
         let errorMessage = 'Cannot move non-existent node with id: ' + sourceNodeId;
-        reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400));
+        reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400,
+        [
+          {
+            field: "sourceNodeId",
+            type: "invalid",
+            description: "The identified node does not exist."
+          }
+        ]));
+        //reject('Cannot add node to non-existent parent node with ID:' + parentId);
+        return;
+      }
+
+      if(!subscriber.tree.hash[targetNodeId]) {
+        let errorMessage = 'Cannot move node to non-existent target node with ID:' + targetNodeId;
+        reject(new RapidoError(RapidoErrorCodes.fieldValidationError, errorMessage, 400,
+        [
+          {
+            field: "targetNodeId",
+            type: "invalid",
+            description: "The target parent node for this move operation does not exist"
+          }
+        ]));
         //reject('Cannot add node to non-existent parent node with ID:' + parentId);
         return;
       }

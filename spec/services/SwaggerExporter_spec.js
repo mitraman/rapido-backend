@@ -7,7 +7,7 @@ const Ajv = require('ajv');
 const fs = require('fs');
 const jsdiff = require('diff')
 
-fdescribe('SwaggerExporter v2', function() {
+describe('SwaggerExporter v2', function() {
 
   // Generates a simple test node that can be customized if needed
   let generateNode = function(name, fullpath, children, operations) {
@@ -70,8 +70,8 @@ fdescribe('SwaggerExporter v2', function() {
 
   })
 
-  it('should return an empty swagger doc if the tree is empty', function() {
-    let tree = { rootNodes: [], hash: {}};
+  it('should return an empty swagger doc if there is no root node defined', function() {
+    let tree = { rootNode: null, hash: {}};
 
     let swaggerDoc = this.exporter.exportTree(tree)
     expect(swaggerDoc.json).not.toBeNull();
@@ -81,7 +81,7 @@ fdescribe('SwaggerExporter v2', function() {
   })
 
   it('should populate an empty swagger doc with default meta information', function() {
-    let tree = { rootNodes: [], hash: {}};
+    let tree = { rootNode: null, hash: {}};
     let title = 'test-title'
     let description = 'project description'
 
@@ -96,13 +96,14 @@ fdescribe('SwaggerExporter v2', function() {
   })
 
   it('should set the content type and response status for a simple object', function() {
-    let tree = { rootNodes: [], hash: {}};
-    let node = generateNode('/node', '/node', [], ['get']);
+    let tree = { rootNode: null, hash: {}};
+    let node = generateNode('/', '/', [], ['get']);
 
     let title = 'test-title'
     let description = 'project description'
 
-    tree.rootNodes.push(node);
+    //tree.rootNodes.push(node);
+    tree.rootNode = node;
 
     let doc = this.exporter.exportTree(tree, title, description);
     expect(this.validate(doc.json)).toBe(true);
@@ -126,7 +127,7 @@ fdescribe('SwaggerExporter v2', function() {
     let description = 'project description'
 
     node.data.get.response.body = '{"test": "value"}';
-    tree.rootNodes.push(node);
+    tree.rootNode = node;
 
     let doc = this.exporter.exportTree(tree, title, description);
     expect(this.validate(doc.json)).toBe(true);
@@ -149,7 +150,7 @@ fdescribe('SwaggerExporter v2', function() {
     let description = 'project description'
 
     node.data.get.response.body = '{bad: "json"}';
-    tree.rootNodes.push(node);
+    tree.rootNode = node;
 
     let doc = this.exporter.exportTree(tree, title, description);
     expect(this.validate(doc.json)).toBe(true);
@@ -169,7 +170,7 @@ fdescribe('SwaggerExporter v2', function() {
     let description = 'project description'
 
     node.data.get.response.body = '{"name": "rootobject", "child": { "name": "child1", "test": "value", "gc": { "name": "grandchild"}}}';
-    tree.rootNodes.push(node);
+    tree.rootNode = node;
 
     let doc = this.exporter.exportTree(tree, title, description);
     expect(this.validate(doc.json)).toBe(true);
@@ -197,7 +198,7 @@ fdescribe('SwaggerExporter v2', function() {
     let description = 'project description'
 
     node.data.get.response.body = '{"name": "rootobject", "number": 3992093}';
-    tree.rootNodes.push(node);
+    tree.rootNode = node;
 
     let doc = this.exporter.exportTree(tree, title, description);
     expect(this.validate(doc.json)).toBe(true);
@@ -216,7 +217,7 @@ fdescribe('SwaggerExporter v2', function() {
     let description = 'project description'
 
     node.data.get.response.body = '{"name": "rootobject", "array1": ["val1", "val2"], "array2": [{"obj1_key": "value"}, "string", 1]}';
-    tree.rootNodes.push(node);
+    tree.rootNode = node;
 
     /*
     array2 : {
@@ -264,7 +265,7 @@ fdescribe('SwaggerExporter v2', function() {
     let description = 'project description'
 
     let node = generateNode('/get-node', '/somepath/:paramsegment/get-node', [], ['get']);
-    tree.rootNodes.push(node);
+    tree.rootNode = node;
 
     let swaggerDoc = this.exporter.exportTree(tree, title, description);
     expect(swaggerDoc.yaml).toBeDefined();
@@ -288,7 +289,7 @@ fdescribe('SwaggerExporter v2', function() {
     let projectId = generateNode('/:projectId', '/projects/:projectId', [], ['get', 'delete']);
     projectId.data.get.response.body = '{"name": "rootobject", "array1": ["val1", "val2"], "array2": [{"obj1_key": "value"}, "string", 1]}';
     let projects = generateNode('/projects', '/projects', [projectId], ['get', 'post']);
-    tree.rootNodes.push(projects);
+    tree.rootNode = projects;
 
     let swaggerDoc = this.exporter.exportTree(tree, title, description);
     expect(swaggerDoc.yaml).toBeDefined();
@@ -320,7 +321,7 @@ fdescribe('SwaggerExporter v2', function() {
     }
     projectId.data.get.response.body = JSON.stringify(responseBody);
     let projects = generateNode('/projects', '/projects', [projectId], ['get', 'post']);
-    tree.rootNodes.push(projects);
+    tree.rootNode = projects;
 
     let swaggerDoc = this.exporter.exportTree(tree, title, description);
     expect(swaggerDoc.yaml).toBeDefined();
@@ -342,7 +343,7 @@ fdescribe('SwaggerExporter v2', function() {
     it('should return a single path with a JSON get response', function() {
       let tree = { rootNodes: [], hash: {}};
       let node = generateNode('/get-node', '/somepath/get-node', [], ['get']);
-      tree.rootNodes.push(node);
+      tree.rootNode = node;
 
       let doc = this.exporter.exportTree(tree, '', '');
       expect(this.validate(doc.json)).toBe(true);
@@ -351,11 +352,24 @@ fdescribe('SwaggerExporter v2', function() {
       expect(path).toBeDefined();
     })
 
+    it('should ignore a path that has no method content defined', function() {
+      let a = generateNode('a', '/root/a', [], []);
+      console.log(a);
+      let parent = generateNode('parent', '/root', [a], ['get'] );
+      let tree = { rootNodes: [], hash: {}};
+      tree.rootNode = parent;
+
+      let doc = this.exporter.exportTree(tree, '', '');
+      expect(this.validate(doc.json)).toBe(true);
+      expect(doc.json.paths['/root']).toBeDefined();
+      expect(doc.json.paths['/root/a']).not.toBeDefined();
+    })
+
     it('should generate a request body schema from a valid JSON body', function() {
       let node = generateNode('a', '/root/a', [], ['get']);
       node.data.get.request.body = '{"test": "works"}';
       let tree = { rootNodes: [], hash: {}};
-      tree.rootNodes.push(node);
+      tree.rootNode = node;
 
       let doc = this.exporter.exportTree(tree, '', '');
       expect(this.validate(doc.json)).toBe(true);
@@ -376,7 +390,7 @@ fdescribe('SwaggerExporter v2', function() {
       let node = generateNode('a', '/root/a', [], ['get']);
       node.data.get.request.body = '{badjson}';
       let tree = { rootNodes: [], hash: {}};
-      tree.rootNodes.push(node);
+      tree.rootNode = node;
 
       let doc = this.exporter.exportTree(tree, '', '');
       expect(this.validate(doc.json)).toBe(true);
@@ -410,7 +424,7 @@ fdescribe('SwaggerExporter v2', function() {
       let node = generateNode('a', '/root/a', [], ['get']);
       node.data.get.request.queryParams = '?queryName=aValue';
       let tree = { rootNodes: [], hash: {}};
-      tree.rootNodes.push(node);
+      tree.rootNode = node;
 
       let doc = this.exporter.exportTree(tree, '', '');
       expect(this.validate(doc.json)).toBe(true);
@@ -427,7 +441,7 @@ fdescribe('SwaggerExporter v2', function() {
       let node = generateNode('a', '/root/a', [], ['get']);
       node.data.get.request.queryParams = '?query1=aValue&query2=anothervalue&query3=lastvalue&query4';
       let tree = { rootNodes: [], hash: {}};
-      tree.rootNodes.push(node);
+      tree.rootNode = node;
 
       let doc = this.exporter.exportTree(tree, '', '');
       expect(this.validate(doc.json)).toBe(true);
@@ -447,12 +461,12 @@ fdescribe('SwaggerExporter v2', function() {
       let node = generateNode('a', '/root/a', [], ['get']);
       node.data.get.request.queryParams = 'query1=aValue&query2=anothervalue';
       let tree = { rootNodes: [], hash: {}};
-      tree.rootNodes.push(node);
+      tree.rootNode = node;
 
       let doc = this.exporter.exportTree(tree, '', '');
       expect(this.validate(doc.json)).toBe(true);
       //console.log(this.validate.errors);
-      let path = doc.json.paths[node.fullpath];
+      let path = doc.json.paths['/root/a'];
       expect(path).toBeDefined();
       let operation = path.get;
       expect(operation).toBeDefined();
@@ -467,7 +481,7 @@ fdescribe('SwaggerExporter v2', function() {
       let node = generateNode('a', '/root/a', [], ['get']);
       node.data.get.request.queryParams = 'badquerystring!';
       let tree = { rootNodes: [], hash: {}};
-      tree.rootNodes.push(node);
+      tree.rootNode = node;
 
       let doc = this.exporter.exportTree(tree, '', '');
       expect(this.validate(doc.json)).toBe(true);
@@ -485,7 +499,7 @@ fdescribe('SwaggerExporter v2', function() {
       let node = generateNode(':id', '/root/a/:id', [], ['get']);
       node.data.get.request.queryParams='?query=value';
       let tree = { rootNodes: [], hash: {}};
-      tree.rootNodes.push(node);
+      tree.rootNode = node;
 
       let doc = this.exporter.exportTree(tree, '', '');
       expect(this.validate(doc.json)).toBe(true);
@@ -507,7 +521,7 @@ fdescribe('SwaggerExporter v2', function() {
       let node = generateNode(':lastone', '/:root/:someId/another/:id/:lastone', [], ['get']);
       node.data.get.request.queryParams='?query=value';
       let tree = { rootNodes: [], hash: {}};
-      tree.rootNodes.push(node);
+      tree.rootNode = node;
 
       let doc = this.exporter.exportTree(tree, '', '');
       expect(this.validate(doc.json)).toBe(true);
@@ -544,7 +558,7 @@ fdescribe('SwaggerExporter v2', function() {
       let node = generateNode(':lastone', '/root/{someId}/another/:id/{lastone}', [], ['get']);
       node.data.get.request.queryParams='?query=value';
       let tree = { rootNodes: [], hash: {}};
-      tree.rootNodes.push(node);
+      tree.rootNode =node;
 
       let doc = this.exporter.exportTree(tree, '', '');
       expect(this.validate(doc.json)).toBe(true);
@@ -564,7 +578,7 @@ fdescribe('SwaggerExporter v2', function() {
       let node = generateNode(':lastone', '/root/{badParameter/another/:id/{lastone}', [], ['get']);
       node.data.get.request.queryParams='?query=value';
       let tree = { rootNodes: [], hash: {}};
-      tree.rootNodes.push(node);
+      tree.rootNode = node;
 
       let doc = this.exporter.exportTree(tree, '', '');
       expect(this.validate(doc.json)).toBe(true);
@@ -586,15 +600,13 @@ fdescribe('SwaggerExporter v2', function() {
       let b = generateNode('/b-node', '/root1/b-node', [], ['post']);
       let a = generateNode('/a-node', '/root1/a-node', [c], ['get']);
       let root1 = generateNode('/root1', '/root1', [a, b], ['get']);
-      let root2 = generateNode('/root2', '/root2', [], ['get']);
 
-      tree.rootNodes.push(root1, root2);
+      tree.rootNode = root1;
 
       let doc = this.exporter.exportTree(tree, '', '');
       expect(this.validate(doc.json)).toBe(true);
-      expect(Object.keys(doc.json.paths).length).toBe(5);
+      expect(Object.keys(doc.json.paths).length).toBe(4);
       expect(doc.json.paths['/root1']).toBeDefined();
-      expect(doc.json.paths['/root2']).toBeDefined();
       expect(doc.json.paths['/root1/a-node']).toBeDefined();
       expect(doc.json.paths['/root1/b-node']).toBeDefined();
       expect(doc.json.paths['/root1/a-node/c-node']).toBeDefined();
@@ -612,15 +624,13 @@ fdescribe('SwaggerExporter v2', function() {
       let a = generateNode('/a-node', '/root1/a-node', [c], ['get']);
       a.data.get.enabled = false;
       let root1 = generateNode('/root1', '/root1', [a, b], ['get']);
-      let root2 = generateNode('/root2', '/root2', [], ['get']);
 
-      tree.rootNodes.push(root1, root2);
+      tree.rootNode = root1;
 
       let doc = this.exporter.exportTree(tree, '', '');
       expect(this.validate(doc.json)).toBe(true);
-      expect(Object.keys(doc.json.paths).length).toBe(4);
+      expect(Object.keys(doc.json.paths).length).toBe(3);
       expect(doc.json.paths['/root1']).toBeDefined();
-      expect(doc.json.paths['/root2']).toBeDefined();
       expect(doc.json.paths['/root1/a-node']).not.toBeDefined();
       expect(doc.json.paths['/root1/b-node']).toBeDefined();
       expect(doc.json.paths['/root1/a-node/c-node']).toBeDefined();

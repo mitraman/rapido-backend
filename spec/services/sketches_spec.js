@@ -48,26 +48,58 @@ describe('/services/sketches.js ', function() {
     }
   }
 
+  describe('createRoot', function() {
+    it('should create and set the root node for a tree', function(done) {
+      sketchService.createRootNode(this.userId, this.sketchId, { name: '/'})
+      .then( result => {
+        expect(result.tree).toBeDefined();
+        expect(result.tree.rootNode).toBeDefined();
+        expect(result.tree.rootNode.id).toBeDefined();
+        expect(result.tree.rootNode.name).toBe('/');
+        expect(result.tree.rootNode.fullpath).toBe('/');
+      }).catch( e => {
+        fail(e);
+      }).finally(done);
+    })
+
+    //TODO: Currently only getTree applies historical events to the tree
+    // All sketch operations should do that.
+    xit('should apply historical events before setting the root node', function(done) {
+      fail('to be implemented.');
+    })
+  })
 
   describe('addNode', function() {
 
-    it('should add a root node to a sketch tree', function(done) {
-      winston.log('info', 'should add a root node to a sketch tree');
-      let newNode = createEmptyNode('root_test');
+    beforeEach(function(done) {
+      sketchService.createRootNode(this.userId, this.sketchId, { name: '/'})
+      .then( result => {
+        this.rootId = result.tree.rootNode.id;
+      }).catch( e=> {
+        console.log(e);
+        fail(e);
+      }).finally(done);
+    })
 
-      sketchService.addTreeNode(this.userId, this.sketchId, newNode, null, 'test1')
+    it('should add a node to a sketch tree root', function(done) {
+      winston.log('info', 'should add a node to a sketch tree root');
+      let newNode = {
+        name: 'newNode'
+      };
+
+      sketchService.addTreeNode(this.userId, this.sketchId, newNode, this.rootId)
       .then( (result) => {
         expect(result).toBeDefined();
         expect(result.nodeId).toBeDefined();
         expect(result.tree).toBeDefined();
         expect(result.tree).not.toBeNull();
-        expect(result.tree.rootNodes[0].name).toBe(newNode.name);
+        expect(result.tree.rootNode.children[0].name).toBe('newNode');
       }).catch( e => {
         fail(e);
       }).finally(done)
     });
 
-    it('should create a root node with the expected properties', function(done) {
+    it('should add a node to a sketch tree root with the expected properties', function(done) {
       let name = 'name-test';
       let path = '/name-test';
       let newNode = {
@@ -75,7 +107,7 @@ describe('/services/sketches.js ', function() {
         data: {}
       }
 
-      sketchService.addTreeNode(this.userId, this.sketchId, newNode, null, 'test1')
+      sketchService.addTreeNode(this.userId, this.sketchId, newNode, this.rootId)
       .then( (result) => {
         expect(result).toBeDefined();
         let node = result.tree.hash[result.nodeId];
@@ -90,20 +122,20 @@ describe('/services/sketches.js ', function() {
       }).finally(done)
     })
 
-    it('should add a child node to an existing node', function(done) {
+    it('should add a child node to a non-root node', function(done) {
       winston.log('info', 'should add a child node to an existing node');
       let parentNode = createEmptyNode('parent');
       let childNode = createEmptyNode('child');
-      sketchService.addTreeNode(this.userId, this.sketchId, parentNode, null, 'add_child_test(parent)')
+      sketchService.addTreeNode(this.userId, this.sketchId, parentNode, this.rootId)
       .then( result => {
         expect(result.nodeId).toBeDefined();
-        expect(result.tree.rootNodes[0].name).toBe(parentNode.name);
+        expect(result.tree.rootNode.children[0].name).toBe(parentNode.name);
         let parentNodeId = result.nodeId;
-        return sketchService.addTreeNode(this.userId, this.sketchId, childNode, parentNodeId, 'add_child_test(child)')
+        return sketchService.addTreeNode(this.userId, this.sketchId, childNode, parentNodeId)
       }).then( result => {
         expect(result.nodeId).toBeDefined();
-        expect(result.tree.rootNodes.length).toBe(1);
-        let parentNode = result.tree.rootNodes[0];
+        expect(result.tree.rootNode.children.length).toBe(1);
+        let parentNode = result.tree.rootNode.children[0];
         expect(parentNode.children.length).toBe(1);
         expect(parentNode.children[0].name).toBe(childNode.name);
         done();
@@ -115,13 +147,13 @@ describe('/services/sketches.js ', function() {
       let parentNode = createEmptyNode('parent');
       let childNode = createEmptyNode('child');
       let gcNode = createEmptyNode('gc');
-      sketchService.addTreeNode(this.userId, this.sketchId, parentNode, null, 'add_child_test(parent)')
+      sketchService.addTreeNode(this.userId, this.sketchId, parentNode, this.rootId)
       .then( result => {
         let parentNodeId = result.nodeId;
-        return sketchService.addTreeNode(this.userId, this.sketchId, childNode, parentNodeId, 'add_child_test(child)');
+        return sketchService.addTreeNode(this.userId, this.sketchId, childNode, parentNodeId);
       }).then( result => {
         let childNodeId = result.nodeId;
-        return sketchService.addTreeNode(this.userId, this.sketchId, gcNode, childNodeId, 'add_child_test(gc)');
+        return sketchService.addTreeNode(this.userId, this.sketchId, gcNode, childNodeId);
       }).then( result => {
         let node = result.tree.hash[result.nodeId];
         expect(node.name).toBe(gcNode.name);
@@ -149,9 +181,15 @@ describe('/services/sketches.js ', function() {
       this.node1 = createEmptyNode('name1', '/name1');
       this.node2 = createEmptyNode('name2', '/name2');
 
-      // Generate a tree
-      sketchService.addTreeNode(this.userId, this.sketchId, this.node1).then( result => {
-        this.node1.id = result.nodeId;
+      sketchService.createRootNode(this.userId, this.sketchId, { name: '/'})
+      .then( result => {
+        this.rootId = result.tree.rootNode.id;
+        return sketchService.addTreeNode(this.userId, this.sketchId, this.node1, this.rootId)
+      }).then( result => {
+          this.node1.id = result.nodeId;
+      }).catch( e=> {
+        console.log(e);
+        fail(e);
       }).finally(done);
     })
 
@@ -159,8 +197,8 @@ describe('/services/sketches.js ', function() {
       sketchService.getTree(this.sketchId).then(
       result => {
         expect(result.tree).toBeDefined();
-        expect(result.tree.rootNodes.length).toBe(1);
-        expect(result.tree.rootNodes[0].name).toBe(this.node1.name);
+        expect(result.tree.rootNode.children.length).toBe(1);
+        expect(result.tree.rootNode.children[0].name).toBe(this.node1.name);
       }).catch( e=> {
         fail(e);
       }).finally(done);
@@ -186,10 +224,10 @@ describe('/services/sketches.js ', function() {
           return sketchService.getTree(this.sketchId);
       }).then( result => {
         winston.log('debug', result.tree)
-        expect(result.tree.rootNodes.length).toBe(1);
-        expect(result.tree.rootNodes[0].children.length).toBe(2);
-        expect(result.tree.rootNodes[0].children[0].name).toBe('child1');
-        expect(result.tree.rootNodes[0].children[0].children[0].name).toBe('gc1')
+        expect(result.tree.rootNode.children.length).toBe(1);
+        expect(result.tree.rootNode.children[0].children.length).toBe(2);
+        expect(result.tree.rootNode.children[0].children[0].name).toBe('child1');
+        expect(result.tree.rootNode.children[0].children[0].children[0].name).toBe('gc1')
       }).catch( e => {fail(e);}).finally(done);
     });
 
@@ -224,6 +262,7 @@ describe('/services/sketches.js ', function() {
           'treenode_added',
           {
             id: 300,
+            parentId: this.rootId,
             node: {
               id: nodeId,
               name: '1388-name',
@@ -241,8 +280,11 @@ describe('/services/sketches.js ', function() {
       this.originalChildNode = createEmptyNode('original_child', '/original_child');
 
       // Generate a tree
-      sketchService.addTreeNode(this.userId, this.sketchId, this.originalNode)
-      .then( (result) => {
+      sketchService.createRootNode(this.userId, this.sketchId, { name: '/'})
+      .then( result => {
+        this.rootId = result.tree.rootNode.id;
+        return sketchService.addTreeNode(this.userId, this.sketchId, this.originalNode, this.rootId);
+      }).then( (result) => {
         this.originalNode.id = result.nodeId;
         return sketchService.addTreeNode(this.userId, this.sketchId, this.originalChildNode, result.nodeId)
       }).then( result => {
@@ -260,9 +302,9 @@ describe('/services/sketches.js ', function() {
 
       sketchService.updateNodeDetails(this.userId, this.sketchId, this.originalNode.id, updateObject)
       .then( result => {
-        expect(result.tree.rootNodes[0].fullpath).not.toBe(this.originalNode.fullpath);
-        expect(result.tree.rootNodes[0].fullpath).toBe('/newName');
-        expect(result.tree.rootNodes[0].children[0].fullpath).toBe('/newName/' + this.originalChildNode.name);
+        expect(result.tree.rootNode.children[0].fullpath).not.toBe(this.originalNode.fullpath);
+        expect(result.tree.rootNode.children[0].fullpath).toBe('/newName');
+        expect(result.tree.rootNode.children[0].children[0].fullpath).toBe('/newName/' + this.originalChildNode.name);
       }).catch( e => { fail(e); }).finally(done);
     })
 
@@ -287,7 +329,7 @@ describe('/services/sketches.js ', function() {
 
       sketchService.updateBodyData(this.userId, this.sketchId, this.originalNode.id, updateObject)
       .then( (result) => {
-        let putData = result.tree.rootNodes[0].data.put;
+        let putData = result.tree.rootNode.children[0].data.put;
         expect(putData.request.queryParams).toBe(updateObject.fields.request.queryParams);
         expect(putData.request.body).toBe(updateObject.fields.request.body);
         expect(putData.response.body).toBe(updateObject.fields.response.body);
@@ -322,8 +364,8 @@ describe('/services/sketches.js ', function() {
 
       sketchService.updateNodeDetails(this.userId, this.sketchId, this.originalNode.id, updateObject)
       .then( result => {
-        expect(result.tree.rootNodes[0].name).not.toBe(this.originalNode.name);
-        expect(result.tree.rootNodes[0].name).toBe('newName');
+        expect(result.tree.rootNode.children[0].name).not.toBe(this.originalNode.name);
+        expect(result.tree.rootNode.children[0].name).toBe('newName');
       }).catch( e => { fail(e); }).finally(done);
     })
 
@@ -341,7 +383,7 @@ describe('/services/sketches.js ', function() {
         winston.log('debug', 'Trying to get tree');
         return sketchService.getTree( this.sketchId )
       }).then( result => {
-        expect(result.tree.rootNodes[0].name).toBe(updateObject3.fields.name);
+        expect(result.tree.rootNode.children[0].name).toBe(updateObject3.fields.name);
       }).catch( e=> {fail(e)}).then(done)
     })
   })
@@ -355,8 +397,11 @@ describe('/services/sketches.js ', function() {
       this.nodeD = createEmptyNode('d');
 
       // Generate a tree
-      sketchService.addTreeNode(this.userId, this.sketchId, this.nodeA)
+      sketchService.createRootNode(this.userId, this.sketchId, { name: '/'})
       .then( result => {
+        this.rootId = result.tree.rootNode.id;
+        return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeA, this.rootId);
+      }).then( result => {
         this.nodeA.id = result.nodeId;
         return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeB, this.nodeA.id);
       }).then( result => {
@@ -364,7 +409,7 @@ describe('/services/sketches.js ', function() {
         return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeC, this.nodeB.id);
       }).then( result => {
         this.nodeC.id = result.nodeId;
-        return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeD);
+        return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeD, this.rootId);
       }).then( result => {
         this.nodeD.id = result.nodeId;
       }).finally(done);
@@ -424,8 +469,11 @@ describe('/services/sketches.js ', function() {
       this.nodeD = createEmptyNode('d', '/d');
 
       // Generate a tree
-      sketchService.addTreeNode(this.userId, this.sketchId, this.nodeA)
+      sketchService.createRootNode(this.userId, this.sketchId, { name: '/'})
       .then( result => {
+        this.rootId = result.tree.rootNode.id;
+        return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeA, this.rootId)
+      }).then( result => {
         this.nodeA.id = result.nodeId;
         return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeB, this.nodeA.id);
       }).then( result => {
@@ -433,7 +481,7 @@ describe('/services/sketches.js ', function() {
         return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeC, this.nodeB.id);
       }).then( result => {
         this.nodeC.id = result.nodeId;
-        return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeD);
+        return sketchService.addTreeNode(this.userId, this.sketchId, this.nodeD, this.rootId);
       }).then( result => {
         this.nodeD.id = result.nodeId;
       }).finally(done);
@@ -469,34 +517,5 @@ describe('/services/sketches.js ', function() {
         expect(result.tree.hash[this.nodeB.id]).toBeUndefined();
       }).catch( e=> {fail(e)}).then(done)
     });
-  })
-
-
-  describe('general tests', function() {
-
-    it('should populate three sketch cache without conflict', function(done) {
-      let sketch1 = 10;
-      let sketch2 = 20;
-      let sketch3 = 30;
-
-      let node1 = createEmptyNode('node1', '/node1');
-      let node2 = createEmptyNode('node2', '/node2');
-      let node3 = createEmptyNode('node3', '/node3');
-
-      sketchService.getTree(sketch1)
-      .then( result => {
-        return sketchService.addTreeNode(this.userId, sketch2, node1);
-      }).then( result => {
-        return sketchService.addTreeNode(this.userId, sketch3, node2);
-      }).then( result => {
-        return sketchService.getTree(sketch1)
-      }).then( result => {
-        expect(result.tree.rootNodes.length).toBe(0);
-        return sketchService.getTree(sketch2)
-      }).then( result => {
-        expect(result.tree.rootNodes.length).toBe(1);
-      }).catch( e => {fail(e)}).finally(done);
-
-    })
   })
 });
