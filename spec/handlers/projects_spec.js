@@ -44,7 +44,7 @@ describe('handlers/projects.js ', function() {
         }
       },function(err, res, body) {
           expect(res.statusCode).toBe(201);
-          projectList.push(body);
+          projectList.push(body.project);
           if( index >= projectsToAdd ) {
             // We are finished, call the next function
             finished(index);
@@ -151,11 +151,22 @@ describe('handlers/projects.js ', function() {
           }
         },function(err, res, body) {
             expect(err).toBe(null);
+            console.log(body);
             expect(res.statusCode).toBe(201);
-            expect(body.name).toBe(name);
-            expect(body.description).toBe(description);
-            expect(body.id).not.toBeUndefined();
-            expect(body.createdAt).not.toBeUndefined();
+            expect(body.project).toBeDefined();
+            let project = body.project;
+            expect(project.id).toBeDefined();
+
+            expect(project.name).toBe(name);
+            expect(project.description).toBe(description);
+            expect(project.createdAt).not.toBeUndefined();
+            expect(project.sketches.length).toBe(1);
+            expect(project.sketches[0].id).toBeDefined();
+            expect(project.sketches[0].index).toBe(1);
+            expect(project.sketches[0].createdAt).toBeDefined();
+            expect(project.sketches[0].rootNode).toBeDefined();
+            expect(project.sketches[0].rootNode.id).toBeDefined();
+            expect(project.sketches[0].rootNode.children.length).toBe(0);
             done();
         }
       )
@@ -348,7 +359,7 @@ describe('handlers/projects.js ', function() {
 
             let sketch = jsonBody.project.sketches[0];
             expect(sketch.index).toBe(1);
-            expect(sketch.tree).toBeDefined();
+            expect(sketch.rootNode).toBeDefined();
             expect(sketch.createdAt).toBeDefined();
             expect(jsonBody.project.vocabulary).toEqual({});
 

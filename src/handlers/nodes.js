@@ -9,6 +9,7 @@ const uuidV4 = require('uuid/v4');
 const Promise = require('bluebird');
 const dataAccessor = require('../db/DataAccessor.js');
 const sketchModel = require('../model/sketches.js');
+const CRUDService = require('../services/CRUD.js');
 
 
 module.exports = {
@@ -16,34 +17,7 @@ module.exports = {
 		winston.log('debug', '[createRootNodeHandler] handling request');
 		let transactionID = uuidV4();
 
-    let newNode = {
-        name: '',
-        fullpath: '',
-        data: {}
-    }
-
-		//TODO: if we support different types of porjects, the default data should
-		// depend on the project type
-		let generateMethodData = function(data, methodName, statusCode, requestBody, responseBody) {
-			data[methodName] = {
-				enabled: false,
-				request: {
-					contentType: 'application/json',
-					queryParams: '',
-					body: requestBody
-				},
-				response: {
-					contentType: 'application/json',
-					status: statusCode,
-					body: responseBody
-				}
-			}
-		}
-		generateMethodData(newNode.data, 'get', '200', '', '{\n}');
-		generateMethodData(newNode.data, 'put', '200', '{\n}', '{\n}');
-		generateMethodData(newNode.data, 'post', '201', '{\n}', '{\n}');
-		generateMethodData(newNode.data, 'delete', '204', '', '');
-		generateMethodData(newNode.data, 'patch', '200', '{\n}', '{\n}');
+    let newNode = CRUDService.createNode();
 
     let userId = req.credentials.id;
 		let sketchIndex = req.params.sketchIndex;
@@ -58,7 +32,7 @@ module.exports = {
 				let responseBody =
 				{
 					node: result.tree.hash[result.nodeId],
-					tree: result.tree.rootNodes
+					rootNode: result.tree.rootNode
 				}
 				winston.log('debug', '[createRootNodeHandler] returning succesful response');
 				res.status(201).send(representer.responseMessage(responseBody));

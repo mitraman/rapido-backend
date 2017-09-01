@@ -30,13 +30,8 @@ TreeEventProcessor.prototype.treenode_deleted = function(event, tree) {
   // Remove the source node from its parent's child list
   let parentNode = tree.hash[node.parentId];
   let childList = null;
-  if( !parentNode ) {
-    // This is a rootNode, so manipulate the rootNodes array
-    childList = tree.rootNodes;
-  } else {
-    childList = parentNode.children;
+  childList = parentNode.children;
 
-  }
   for( let i = 0; i < childList.length; i++ ) {
     let child = childList[i];
 
@@ -148,7 +143,7 @@ TreeEventProcessor.prototype.treenode_defineroot = function(event, tree) {
 //     id: id of node to be added
 //     _other attributes_
 //   }
-// } 
+// }
 TreeEventProcessor.prototype.treenode_added = function(event, tree) {
   winston.log('debug', '[TreeEventProcessor.treenode_added] applying treenode_added event: ', event);
   if( !event.data ) {

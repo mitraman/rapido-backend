@@ -169,16 +169,11 @@ Sketches.prototype.addTreeNode = function(userId, sketchId, treeNode, parentId, 
         //reject('Cannot add node to non-existent parent node with ID:' + parentId);
         return;
       }else {
-        console.log('*****')
-        console.log('setting fullpath for ', treeNode.name);
-        console.log('parentNode is ', parentNode);
         if( parentNode.type === 'root') {
           fullPath = '/' + treeNode.name;
         }else {
           fullPath = parentNode.fullpath + '/' + treeNode.name;
         }
-        console.log('fullpath set to: ', fullPath);
-        console.log('****');
       }
 
       // Setup an event handler to listen for processed events

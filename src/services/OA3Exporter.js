@@ -4,19 +4,19 @@ const winston = require('winston');
 const Promise = require('bluebird');
 
 /**
-* Export functions for OpenAPISpec
+* Export functions for OpenAPISpec 3
 */
-var SwaggerExporter = function () {
+var OA3Exporter = function () {
 };
 
 
 // Converts a json thing into a JSON Schema using dynamic typing
 let generateSchema = function(json) {
-  winston.log('debug', '[SwaggerExporter] generating schema for: ', json);
+  winston.log('debug', '[OA3Exporter] generating schema for: ', json);
   let schema = {};
   if( typeof json === 'object') {
     if( Array.isArray(json)) {
-      winston.log('debug', '[SwaggerExporter] generateSchema - this is an array');
+      winston.log('debug', '[OA3Exporter] generateSchema - this is an array');
       schema.type = 'array';
       let items = [];
       json.forEach(item => {
@@ -48,7 +48,7 @@ let generateSchema = function(json) {
       }
 
     }else {
-      winston.log('debug', '[SwaggerExporter] generateSchema - this is an object');
+      winston.log('debug', '[OA3Exporter] generateSchema - this is an object');
       schema.type = 'object';
       let properties = {};
       Object.keys(json).forEach(property => {
@@ -59,21 +59,21 @@ let generateSchema = function(json) {
       }
     }
   }else {
-    winston.log('debug', '[SwaggerExporter] generateSchema - this is a primitive type:',typeof json);
+    winston.log('debug', '[OA3Exporter] generateSchema - this is a primitive type:',typeof json);
     schema.type = typeof json;
   }
   return schema;
 }
 
 let objectToYaml = function(jsonObject, depth, sequenceItem) {
-  winston.log('debug', '[SwaggerExporter] objectToYaml called with: ', jsonObject);
+  winston.log('debug', '[OA3Exporter] objectToYaml called with: ', jsonObject);
   let yamlDoc = '';
   if( !depth ) {
     depth = 0;
   }
 
   Object.keys(jsonObject).forEach((key, index) => {
-    winston.log('debug', '[SwaggerExporter] objectToYaml processing key: ', key);
+    winston.log('debug', '[OA3Exporter] objectToYaml processing key: ', key);
     let indent = '';
 
 
@@ -98,7 +98,7 @@ let objectToYaml = function(jsonObject, depth, sequenceItem) {
         yamlDoc += indent + key + ': ' + JSON.stringify(jsonVal) + '\n';
     }else if( typeof jsonVal === 'object' ) {
       if( Array.isArray(jsonVal)) {
-        winston.log('debug', '[SwaggerExporter] ' + key + ' is an array');
+        winston.log('debug', '[OA3Exporter] ' + key + ' is an array');
         // Write the values as a hyphenated list
         // Only conver the array if it has values
         if( jsonVal.length > 0 ) {
@@ -112,7 +112,7 @@ let objectToYaml = function(jsonObject, depth, sequenceItem) {
           })
         }
       } else {
-        winston.log('debug', '[SwaggerExporter] ' + key + ' is an object');
+        winston.log('debug', '[OA3Exporter] ' + key + ' is an object');
         yamlDoc += indent + key + ':\n';
         if( sequenceItem ) {
           yamlDoc += objectToYaml( jsonVal, depth+2 );
@@ -135,7 +135,7 @@ let extractPathParameters = function(node) {
 
   while(path.indexOf('/:') >= 0 || path.indexOf('/{') >= 0 ) {
 
-    winston.log('debug', '[SwaggerExporter] this path contains parameters: ', path);
+    winston.log('debug', '[OA3Exporter] this path contains parameters: ', path);
 
     let segment;
     let parameter = {
@@ -175,14 +175,14 @@ let extractPathParameters = function(node) {
 
           // Condition 1: there is only a single opening curly brace: /{badToken/notokens
           // Condition 2: there is a curly brace and other tokens: /{badToken/:goodToken/{goodToken}
-          winston.log('debug', '[SwaggerExporter] found invalid curly token in:', path);
+          winston.log('debug', '[OA3Exporter] found invalid curly token in:', path);
           parameterizedPath += path.slice(0, nextPathSeparator);
           winston.log('debug', 'parametrizedPath is ', parameterizedPath);
           path = path.slice(nextPathSeparator);
           processedCurly = true;
         }else {
           // This is the last path segment so just copy it over
-          winston.log('debug', '[SwaggerExporter] this is the last path segment');
+          winston.log('debug', '[OA3Exporter] this is the last path segment');
           processedCurly = true;
           segment = path.slice(curlyStartIndex);
           parameter.name = segment.slice(2,segment.length-1);
@@ -198,13 +198,13 @@ let extractPathParameters = function(node) {
 
     if( !processedCurly ) {
 
-      winston.log('debug', '[SwaggerExporter] parametrized path segment uses a ":" token');
+      winston.log('debug', '[OA3Exporter] parametrized path segment uses a ":" token');
       let endIndex = path.indexOf('/', startIndex+2);
       if( endIndex > 0) {
-        winston.log('debug', '[SwaggerExporter] found the end of this path segment');
+        winston.log('debug', '[OA3Exporter] found the end of this path segment');
         segment = path.slice(startIndex, endIndex)
       } else {
-        winston.log('debug', '[SwaggerExporter] this is the last segment in the path');
+        winston.log('debug', '[OA3Exporter] this is the last segment in the path');
         segment = path.slice(startIndex);
       }
 
@@ -236,7 +236,7 @@ let extractPathParameters = function(node) {
 }
 
 let convertNodeToPathItem = function(node, pathsObject) {
-  winston.log('debug', '[SwaggerExporter] convertNodeToPathItem called for node: ', node);
+  winston.log('debug', '[OA3Exporter] convertNodeToPathItem called for node: ', node);
 
   const validMethods = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'];
   let pathItem = {};
@@ -262,7 +262,7 @@ let convertNodeToPathItem = function(node, pathsObject) {
       winston.log('warn', 'unable to convert response method ' + key + ' into OpenAPI Spec');
     }else if(node.data[key].enabled){
       // Only extract enabled methods
-      winston.log('debug', '[SwaggerExporter] procesing enabled data object: ', key);
+      winston.log('debug', '[OA3Exporter] procesing enabled data object: ', key);
 
       let operation = {};
       let nodeData = node.data[key];
@@ -316,7 +316,7 @@ let convertNodeToPathItem = function(node, pathsObject) {
         }catch( e ) {
           if( e instanceof SyntaxError) {
             // This is not legal JSON, so treat it as a string
-            winston.log('debug', '[SwaggerExporter] unable to parse JSON request body data:', e);
+            winston.log('debug', '[OA3Exporter] unable to parse JSON request body data:', e);
             requestBodyParameter.schema.type = 'string';
             requestBodyParameter.schema.description = 'Rapido was unable to parse the JSON request body from this sketch node'
           }
@@ -343,7 +343,7 @@ let convertNodeToPathItem = function(node, pathsObject) {
       }catch( e ) {
         if( e instanceof SyntaxError) {
           // This is not legal JSON, so treat it as a string
-          winston.log('debug', '[SwaggerExporter] unable to parse JSON body data:', e);
+          winston.log('debug', '[OA3Exporter] unable to parse JSON body data:', e);
           operation.responses['200'].examples['text/plain'] =
             nodeData.response.body;
           operation.responses['200'].schema = generateSchema(nodeData.response.body);
@@ -352,7 +352,7 @@ let convertNodeToPathItem = function(node, pathsObject) {
       }
       pathItem[key] = operation;
     }else {
-      winston.log('debug', '[SwaggerExporter] skipping disabled method: ', key)
+      winston.log('debug', '[OA3Exporter] skipping disabled method: ', key)
     }
   });
 
@@ -360,10 +360,10 @@ let convertNodeToPathItem = function(node, pathsObject) {
   // Add this path itmem to the paths collection (if there are operations defined for it)
   if( Object.keys(pathItem).length > 0 ) {
     if( pathParameterObjects.length > 0 ) {
-      winston.log('debug', '[SwaggerExporter] adding path object to paths with key ', parameterizedPath);
+      winston.log('debug', '[OA3Exporter] adding path object to paths with key ', parameterizedPath);
       pathsObject[parameterizedPath] = pathItem;
     }else  {
-      winston.log('debug', '[SwaggerExporter] adding path object to paths with key ', node.fullpath);
+      winston.log('debug', '[OA3Exporter] adding path object to paths with key ', node.fullpath);
       pathsObject[node.fullpath] = pathItem;
     }
   }
@@ -378,9 +378,9 @@ let convertNodeToPathItem = function(node, pathsObject) {
   //return pathItem;
 }
 
-SwaggerExporter.prototype.exportTree = function(tree, title, description) {
+OA3Exporter.prototype.exportTree = function(tree, title, description) {
 
-  winston.log('debug', '[SwaggerExporter] exportTree called.');
+  winston.log('debug', '[OA3Exporter] exportTree called.');
   let swaggerDoc = {json: {}, yaml: ''};
 
   let info = {
@@ -394,12 +394,12 @@ SwaggerExporter.prototype.exportTree = function(tree, title, description) {
 
   }
 
-  winston.log('debug', '[SwaggerExporter] parsing root nodes');
+  winston.log('debug', '[OA3Exporter] parsing root nodes');
   if( tree.rootNode) {
     convertNodeToPathItem(tree.rootNode, paths);
   }
 
-  winston.log('debug', '[SwaggerExporter] paths:', paths);
+  winston.log('debug', '[OA3Exporter] paths:', paths);
 
 
   swaggerDoc.json = {
@@ -408,13 +408,13 @@ SwaggerExporter.prototype.exportTree = function(tree, title, description) {
     paths: paths
   }
 
-  winston.log('debug', '[SwaggerExporter] jsondoc:', swaggerDoc.json);
+  winston.log('debug', '[OA3Exporter] jsondoc:', swaggerDoc.json);
 
   swaggerDoc.yaml = objectToYaml(swaggerDoc.json);
 
-  winston.log('debug', '[SwaggerExporter] returning swaggerdoc: ', swaggerDoc);
+  winston.log('debug', '[OA3Exporter] returning swaggerdoc: ', swaggerDoc);
 
   return swaggerDoc;
 }
 
-module.exports = SwaggerExporter;
+module.exports = OA3Exporter;

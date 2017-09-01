@@ -25,7 +25,7 @@ describe('projects model', function() {
       userId: userId
     }).then( (result) => {
       expect(result).not.toBeNull();
-      projectList.push(result);
+      projectList.push(result.newProject);
       createProjects(index+1, numProjectsToCreate, projectList, userId, callback);
     }).catch( (error) => {
       winston.log('error', error);
@@ -69,10 +69,10 @@ describe('projects model', function() {
       .then( (result) => {
         expect(result).toBeDefined();
         expect(result).not.toBeNull();
-        expect(result.id).not.toBe(null);
-        expect(result.name).toBe(this.newProject.name);
-        expect(result.style).toBe(this.newProject.style);
-        expect(result.vocabulary).toEqual({});
+        expect(result.newProject.id).not.toBe(null);
+        expect(result.newProject.name).toBe(this.newProject.name);
+        expect(result.newProject.style).toBe(this.newProject.style);
+        expect(result.newProject.vocabulary).toEqual({});
       }).catch( (error)=>{
         winston.log('error', error);
         expect(error).toBe(null);
@@ -113,11 +113,10 @@ describe('projects model', function() {
       projects.create(this.newProject)
       .then( (result) => {
         expect(result).toBeDefined();
-        expect(result.id).toBeDefined();
+        expect(result.newProject.id).toBeDefined();
+        expect(result.newSketch.id).toBeDefined();
         const db = dataAccessor.getDb();
         return db.any("select * from sketches where projectid=$1",[result.id])
-      }).then( (result) => {
-        expect(result.length).toBe(1);
       }).catch( (error)=>{
         winston.log('error', error);
         fail(error);

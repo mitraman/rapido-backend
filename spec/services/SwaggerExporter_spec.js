@@ -142,6 +142,52 @@ describe('SwaggerExporter v2', function() {
 
   })
 
+  it('should generate a schema of type object with no propeties if the body is an empty object', function() {
+    let tree = { rootNodes: [], hash: {}};
+    let node = generateNode('/node', '/node', [], ['get']);
+
+    let title = 'test-title'
+    let description = 'project description'
+
+    node.data.get.response.body = '{}';
+    node.data.get.request.body = '';
+    tree.rootNode = node;
+
+    let doc = this.exporter.exportTree(tree, title, description);
+    expect(this.validate(doc.json)).toBe(true);
+
+    let path = doc.json.paths[node.fullpath];
+    let responseObject = path.get.responses['200'];
+    expect(responseObject).toBeDefined();
+    expect(responseObject.examples["application/json"]).toEqual(JSON.parse(node.data.get.response.body));
+    expect(responseObject.schema).toBeDefined();
+    expect(responseObject.schema.type).toBe('object');
+    expect(responseObject.schema.properties).not.toBeDefined();
+  })
+
+  it('should generate a schema of type string with no propeties if the body is an empty string', function() {
+    let tree = { rootNodes: [], hash: {}};
+    let node = generateNode('/node', '/node', [], ['get']);
+
+    let title = 'test-title'
+    let description = 'project description'
+
+    node.data.get.response.body = '';
+    tree.rootNode = node;
+
+    let doc = this.exporter.exportTree(tree, title, description);
+    expect(this.validate(doc.json)).toBe(true);
+
+    let path = doc.json.paths[node.fullpath];
+    let responseObject = path.get.responses['200'];
+    expect(responseObject).toBeDefined();
+    console.log(responseObject);
+    expect(responseObject.examples["text/plain"]).toBe('');
+    expect(responseObject.schema).toBeDefined();
+    expect(responseObject.schema.type).toBe('string');
+    expect(responseObject.schema.properties).not.toBeDefined();
+  })
+
   it('should set a schema with a type of string when the JSON body is invalid', function() {
     let tree = { rootNodes: [], hash: {}};
     let node = generateNode('/node', '/node', [], ['get']);
@@ -621,7 +667,7 @@ describe('SwaggerExporter v2', function() {
       let c = generateNode('/c-node', '/root1/a-node/c-node', [], ['put']);
       let b = generateNode('/b-node', '/root1/b-node', [], ['post', 'put', 'get']);
       b.data.put.enabled = false;
-      let a = generateNode('/a-node', '/root1/a-node', [c], ['get']);
+      let a = generateNode(':a-node', '/root1/:a-node', [c], ['get']);
       a.data.get.enabled = false;
       let root1 = generateNode('/root1', '/root1', [a, b], ['get']);
 
@@ -631,7 +677,7 @@ describe('SwaggerExporter v2', function() {
       expect(this.validate(doc.json)).toBe(true);
       expect(Object.keys(doc.json.paths).length).toBe(3);
       expect(doc.json.paths['/root1']).toBeDefined();
-      expect(doc.json.paths['/root1/a-node']).not.toBeDefined();
+      expect(doc.json.paths['/root1/{a-node}']).not.toBeDefined();
       expect(doc.json.paths['/root1/b-node']).toBeDefined();
       expect(doc.json.paths['/root1/a-node/c-node']).toBeDefined();
 

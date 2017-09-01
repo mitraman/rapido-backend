@@ -137,7 +137,7 @@ module.exports = {
 
 			return sketchService.getTree(sketch.id);
 		}).then( result => {
-			sketch.tree = result.tree.rootNodes;
+			sketch.rootNode = result.tree.rootNode;
 			res.status(200).send(representer.responseMessage({
 				sketch: sketch
 			}));
@@ -160,6 +160,7 @@ module.exports = {
 
 	},
 
+	//TODO: Automatically create a rootnode
 	createSketchHandler: function(req, res, next) {
 		winston.log('debug', 'createSketchHandler called.');
 		winston.log('debug', req.body);

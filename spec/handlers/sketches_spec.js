@@ -48,8 +48,8 @@ describe('Sketches API', function() {
         },function(err, res, body) {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(201);
-            projectId = body.id;
-            sketchesUrl = sketchesUrlTemplate.replace(/{projectsId}/gi, body.id);
+            projectId = body.project.id;
+            sketchesUrl = sketchesUrlTemplate.replace(/{projectsId}/gi, body.project.id);
             done();
         }
       )
@@ -77,6 +77,7 @@ describe('Sketches API', function() {
       db.query('INSERT into sketches (userid, projectid, sketchindex) VALUES ($1, $2, $3) RETURNING id',
       [userid, projectId, 1])
       .then(result => {
+        console.log('result:', result);
         getSketchId = result[0].id;
       }).catch(e => {
         console.log('ERROR:', e);
@@ -95,7 +96,7 @@ describe('Sketches API', function() {
         expect(jsonBody.sketch).toBeDefined();
         expect(jsonBody.sketch.id).toBeDefined();
         expect(jsonBody.sketch.id).toBe(sketchId);
-        expect(jsonBody.sketch.tree).toBeDefined();
+        expect(jsonBody.sketch.rootNode).toBeDefined();
         done();
       });
 
@@ -172,6 +173,7 @@ describe('Sketches API', function() {
     })
 
     it( 'should generate a serial id for sketches', function(done) {
+      console.log('+++ sketchesUrl:', sketchesUrl);
       request.post(
         {
           url: sketchesUrl,

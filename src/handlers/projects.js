@@ -8,6 +8,7 @@ const pgp = require('pg-promise');
 const projects =  require('../model/projects.js');
 const sketches = require('../model/sketches.js');
 const sketchService = require('../services/sketches.js');
+const CRUDService = require('../services/CRUD.js');
 
 
 let transformProject = function(projectModel) {
@@ -103,7 +104,7 @@ module.exports = {
 
 				for( let i = 0; i < trees.length; i++ ) {
 					winston.log('debug', '[handler/projects.findByProject] sketch  #' + i + ' getTree result:', trees[i]);
-					responseBody.project.sketches[i].tree = trees[i].tree.rootNodes;
+					responseBody.project.sketches[i].rootNode = trees[i].tree.rootNode;
 				}
 
 				// Send the data back to the client
@@ -214,14 +215,34 @@ module.exports = {
       userId: userId
     }
 
+		let createdProject = {
+		}
+
 	  projects.create(newProject)
     .then( (result) => {
+
 			winston.log('debug', 'New project created');
+
+			createdProject.id = result.newProject.id;
+			createdProject.name = result.newProject.name;
+			createdProject.description = result.newProject.description;
+			createdProject.createdAt = result.newProject.createdat;
+			createdProject.sketches = [{
+				id: result.newSketch.id,
+				index: 1,
+				createdAt: result.newSketch.createdAt
+			}];
+
+			//TODO: Move this into a service
+
+			// Add a default root node to the sketch
+			let rootNode = CRUDService.createRootNode()
+			return sketchService.createRootNode(userId, result.newSketch.id, rootNode);
+		}).then( result => {
+			console.log('*** result:', result);
+			createdProject.sketches[0].rootNode = result.tree.rootNode;
 			res.status(201).send(representer.responseMessage({
-				id: result.id,
-				name: result.name,
-				description: result.description,
-				createdAt: result.createdat
+				project: createdProject
 			}));
     }).catch( (error) => {
 			winston.log('warn', 'An error occurred while trying to create a new project: ', error);

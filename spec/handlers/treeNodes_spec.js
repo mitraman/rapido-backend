@@ -609,13 +609,13 @@ describe('handlers/nodes.js', function() {
             headers: headers
           }, function( err, res, body) {
             let jsonBody = JSON.parse(body);
-            let tree = jsonBody.project.sketches[0].tree;
-            expect(nodeExists(nodeId, tree)).toBe(false);
-            expect(nodeExists(thisSpec.deleteNodes.nodeB.id, tree)).toBe(false);
-            expect(nodeExists(thisSpec.deleteNodes.nodeD.id, tree)).toBe(false);
-            expect(nodeExists(thisSpec.deleteNodes.nodeE.id, tree)).toBe(false);
-            expect(nodeExists(thisSpec.deleteNodes.nodeF.id, tree)).toBe(false);
-            expect(nodeExists(thisSpec.deleteNodes.nodeG.id, tree)).toBe(false);
+            let rootNode = jsonBody.project.sketches[0].rootNode;
+            expect(nodeExists(nodeId, rootNode)).toBe(false);
+            expect(nodeExists(thisSpec.deleteNodes.nodeB.id, rootNode)).toBe(false);
+            expect(nodeExists(thisSpec.deleteNodes.nodeD.id, rootNode)).toBe(false);
+            expect(nodeExists(thisSpec.deleteNodes.nodeE.id, rootNode)).toBe(false);
+            expect(nodeExists(thisSpec.deleteNodes.nodeF.id, rootNode)).toBe(false);
+            expect(nodeExists(thisSpec.deleteNodes.nodeG.id, rootNode)).toBe(false);
             done();
           });
         }

@@ -24,8 +24,8 @@ projects.create = function( project ) {
       // Create a default sketch for this project
       return sketches.create({projectId: result.id, userId: project.userId})
     }).then( (result) => {
-      // Everything went well, so return the original create project result
-      resolve(createProjectResult);
+      // Everything went well, so return the original create project result and the new sketch
+      resolve({newProject: createProjectResult, newSketch: result});
     }).catch( (error) => {
       reject(error);
     })

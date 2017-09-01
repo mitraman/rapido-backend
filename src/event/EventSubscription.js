@@ -14,7 +14,7 @@ class EventSubscription {
     this.emitter = new EventEmitter();
     this.tree = {
       hash: {},
-      rootNodes: [],
+      rootNode: null,
       deletedNodes: {}
     };
     this.lastEventIDProcessed = -1;
