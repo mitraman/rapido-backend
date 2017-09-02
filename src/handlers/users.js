@@ -66,9 +66,16 @@ module.exports = {
 		}
 
 		registrationService.register(email, password, fullName, nickName)
-		.then((newUser)=>{
+		.then((result)=>{
 			winston.log('debug', 'Returning succesful registration response message');
-			res.send(representer.responseMessage(newUser));
+			res.send(representer.responseMessage({
+			user: {
+				id: result.newUser.id,
+				email: result.newUser.email,
+				nickName: result.newUser.nickName,
+				fullName: result.newUser.fullName,
+				isVerified: result.newUser.isVerified
+			}}));
 		})
 		.catch((error)=>{
 			winston.log('debug', 'Unable to register', error);
@@ -128,7 +135,9 @@ module.exports = {
 							email: result[0].email,
 							userId: result[0].id,
 							nickName: result[0].nickname,
-							fullName: result[0].fullname
+							fullName: result[0].fullname,
+							isVerified: result[0].isverified
+
 						}
 						res.send(representer.responseMessage(responseBody));
 					}
@@ -158,6 +167,53 @@ module.exports = {
 			}
 		})
 
+	},
+
+	verifyHandler: function(req, res, next) {
+		winston.log('debug', 'verifyHandler called.');
+		let token = req.query.code;
+
+		if( !token ) {
+			next(new RapidoError(
+				RapidoErrorCodes.fieldValidationError,
+				'Verification code cannot be found',
+				400,
+				[{field: 'code', type: 'missing', description: 'the query parameter "code" is missing'}]
+			))
+			return;
+		}
+
+		registrationService.verify(token)
+		.then( result => {
+			let userId = result.userId;
+
+			// Retrieve this user's information
+			return users.find({id: userId});
+		}).then( result => {
+			// Generate an authentication token for this user
+			let jwtToken = authentication.generateJWT({id: result[0].id, email: result[0].email});
+			winston.log('debug', 'token: ', jwtToken);
+			let responseBody = {
+				token: jwtToken,
+				email: result[0].email,
+				userId: result[0].id,
+				nickName: result[0].nickname,
+				fullName: result[0].fullname,
+				isVerified: result[0].isverified
+			}
+			res.send(representer.responseMessage(responseBody));
+		}).catch(e => {
+			winston.log('error', e);
+			if( e.name === 'RapidoError') {
+				next(e)
+			}else {
+				next(new RapidoError(
+					RapidoErrorCodes.genericError,
+					'An error occurred while trying to login',
+					500
+				))
+			}
+		})
 	}
 
 }

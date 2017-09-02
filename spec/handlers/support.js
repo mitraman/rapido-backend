@@ -20,7 +20,9 @@
  };
 
 
- let registerAndGenerate = function(email, password) {
+ let registerAndGenerate = function(email, password, verified) {
+   // Set isVerified to true by default
+   let isVerified = (typeof verified === 'undefined') ? true : verified;
    const db = dataAccessor.getDb();
 
    return new Promise( (resolve, reject) => {
@@ -30,8 +32,8 @@
          reject(err);
        }else {
 
-         db.one('insert into USERS (email, password) VALUES ($1, $2) returning id',
-        [email, encryptedPassword])
+         db.one('insert into USERS (email, password, isverified) VALUES ($1, $2, $3) returning id',
+        [email, encryptedPassword, isVerified])
          .then( result => {
            let token = generateLoginToken(result.id, email);
            resolve({

@@ -6,6 +6,7 @@ const RapidoError = require('../../src/errors/rapido-error.js');
 const RapidoErrorCodes = require('../../src/errors/codes.js');
 const pgp = require('pg-promise');
 const projects =  require('../model/projects.js');
+const userModel =  require('../model/users.js');
 const sketches = require('../model/sketches.js');
 const sketchService = require('../services/sketches.js');
 const CRUDService = require('../services/CRUD.js');
@@ -168,6 +169,7 @@ module.exports = {
     let style = req.body.style;
     let userId = req.credentials.id;
 
+
     // Make sure that all mandatory properties are present.
 		let fieldErrors = [];
 		if( !name ) {
@@ -218,8 +220,24 @@ module.exports = {
 		let createdProject = {
 		}
 
-	  projects.create(newProject)
-    .then( (result) => {
+
+		winston.log('debug', '[Project Handler] Checking if user has been validated');
+		// Only verified users are alllowed to create projects
+		userModel.find({
+			id: userId,
+			isVerified: true,
+		}).then( result => {
+			console.log('*** result:', result);
+			if(result.length === 0) {
+				winston.log('debug', '[Project Handler] Rejecting attempt to create a project by an unverified user');
+				throw new RapidoError(
+					RapidoErrorCodes.verificationRequired,
+					'You must verify your email address before you can create a project',
+					401
+				);
+			}
+	  	return projects.create(newProject)
+		}).then( (result) => {
 
 			winston.log('debug', 'New project created');
 
@@ -239,18 +257,21 @@ module.exports = {
 			let rootNode = CRUDService.createRootNode()
 			return sketchService.createRootNode(userId, result.newSketch.id, rootNode);
 		}).then( result => {
-			console.log('*** result:', result);
 			createdProject.sketches[0].rootNode = result.tree.rootNode;
 			res.status(201).send(representer.responseMessage({
 				project: createdProject
 			}));
     }).catch( (error) => {
-			winston.log('warn', 'An error occurred while trying to create a new project: ', error);
-			next(new RapidoError(
-				RapidoErrorCodes.genericError,
-				'Unable to create new project',
-				500
-			));
+			if( error.name === 'RapidoError') {
+				next(error);
+			}else {
+				winston.log('warn', 'An error occurred while trying to create a new project: ', error);
+				next(new RapidoError(
+					RapidoErrorCodes.genericError,
+					'Unable to create new project',
+					500
+				));
+			}
     })
 	}
 }

@@ -3,6 +3,7 @@
 module.exports = {
   genericError: 'GENERIC_ERROR',
   duplicateUser: 'DUPLICATE_USER',
+  verificationRequired: 'VERIFICATION_REQUIRED',
   invalidVerificationToken: 'INVALID_VERIFICATION_TOKEN',
   unsupportedContentType: 'UNSUPPORTED_CONTENTTYPE',
   unsupportedAcceptType: 'UNSUPPORTED_ACCEPTTYPE',

@@ -9,6 +9,7 @@ const users = function() {};
 users.create = function( user ) {
 
   const db = dataAccessor.getDb();
+
   return db.one({
     name: "create-user",
     text: "INSERT INTO users(email, password, fullname, nickname, isactive, isverified) VALUES($1, $2, $3, $4, $5, $6) returning id",
@@ -110,6 +111,7 @@ users.find = function( params ) {
   }
 
   winston.log('debug', 'users.find:', queryString);
+  console.log(queryParams);
 
   return db.manyOrNone({
     name: queryName,

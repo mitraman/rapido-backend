@@ -11,7 +11,7 @@
   "nodemailer": {
     "options": {
       "host": "localhost",
-      "port": 2525,
+      "port": 32769,
       "secure": false,
       "tls": {
         "rejectUnauthorized": false

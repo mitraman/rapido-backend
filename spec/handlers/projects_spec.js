@@ -6,7 +6,9 @@ const winston = require('winston');
 const dataAccessor = require('../../src/db/DataAccessor.js');
 const HandlerSupport = require('./support.js');
 const RapidoErrorCodes = require('../../src/errors/codes.js');
-
+const Promise = require('bluebird');
+const projectModel =  require('../../src/model/projects.js');
+const userModel = require('../../src/model/users.js');
 
 describe('handlers/projects.js ', function() {
 
@@ -55,7 +57,6 @@ describe('handlers/projects.js ', function() {
   }
 
   beforeAll(function(done) {
-
     HandlerSupport.registerAndLogin('ProjectsTest')
     .then( (result) => {
       const authValue = 'Bearer ' + result.token;
@@ -118,7 +119,6 @@ describe('handlers/projects.js ', function() {
     })
 
     it( 'should reject a request with an invalid JWT', function(done) {
-
       request.post(
         {
           url: projectsUrl,
@@ -138,6 +138,35 @@ describe('handlers/projects.js ', function() {
         }
       )
     });
+
+    it( 'should reject a request to create a project if the user is not verified', function(done) {
+      spyOn(userModel, 'find').and.callFake(params => {
+        return new Promise( (resolve, reject) => {
+          console.log('userModel.find:', params);
+          if( params.isVerified ) {
+            resolve([]);
+          }else {
+            resolve([{id: 1}])
+          }
+        })
+
+      })
+
+      request.post(
+        {
+          url: projectsUrl,
+          headers: headers,
+          json: {
+            name: name,
+            description: description,
+            style: style
+          }
+        },function(err, res, body) {
+          console.log(body);
+          expect(body.code).toBe(RapidoErrorCodes.verificationRequired);
+          done();
+        });
+    })
 
     it( 'should create a new project', function(done) {
       request.post(

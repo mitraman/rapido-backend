@@ -4,7 +4,7 @@ const registrationService = require('../../src/services/registration.js');
 const RapidoErrorCodes = require('../../src/errors/codes.js');
 const winston = require('winston');
 const nodemailer = require('nodemailer');
-const verification = require('../../src/model/user-verification.js');
+const verificationModel = require('../../src/model/user-verification.js');
 const uuidV4 = require('uuid/v4');
 const dataAccessor = require('../../src/db/DataAccessor.js');
 const bcrypt = require('bcrypt-nodejs');
@@ -32,6 +32,7 @@ let transport = {
 };
 const mailTransporter  = nodemailer.createTransport(transport);
 
+//TODO: Mock the calls to the user model database service
 describe('register new users', function() {
 
   const password = "test-password";
@@ -55,6 +56,7 @@ describe('register new users', function() {
       expect(newUser.nickName).toBe(nickName);
       expect(newUser.email).toBe(validEmail);
       expect(newUser.password).toBeUndefined();
+      expect(newUser.isVerified).toBe(false);
     })
     .catch((error)=>{
       winston.log('warn', error);
@@ -91,8 +93,7 @@ describe('register new users', function() {
     })
   })
 
-  // email verification has been disabled
-  xit ('should send a verification email after registration', function(done) {
+  it ('should send a verification email after registration', function(done) {
     const validEmail = "testEmail2@email.com";
 
     registrationService.register(validEmail, password, fullName, nickName, mailTransporter)
@@ -243,6 +244,7 @@ describe('register new users', function() {
     .catch((error)=> {
       expect(error.name).toBe('RapidoError');
       expect(error.code).toBe(RapidoErrorCodes.fieldValidationError);
+      expect(error.status).toBe(400);
       expect(error.fieldErrors[0].field).toBe('password');
       expect(error.fieldErrors[0].type).toBe('invalid');
     })
@@ -265,77 +267,52 @@ describe('verify a registered user', function() {
 
     const validEmail = "verifytest1@email.com";
 
-    registrationService.register(validEmail, password, fullName, nickName, mailTransporter)
-    .then((result)=>{
-      winston.log('debug', result);
-      let newUser = result.newUser;
-      expect(newUser).not.toBeUndefined();
-      expect(newUser.id).not.toBeUndefined();
-      expect(result.verificationToken).not.toBeUndefined();
-      token = result.verificationToken;
-      return registrationService.verify(newUser.id, token);
-    })
-    .then((result)=>{
-      // Make sure that the verification was succesful by searching for the token
-      // the token entry should not exist.
-      verification.findByToken(token)
-      .then((result)=>{
-        fail("The verification token was not removed from the table");
+    spyOn(verificationModel, 'findByToken').and.callFake(token => {
+      expect(token).toBe('token')
+      return new Promise( (resolve,reject) => {
+        resolve(
+          {
+            id: 1,
+            userid: 33,
+            verifytoken: token,
+            generatedat: 'time'
+          });
       })
-      .finally(done);
     })
-    .catch((error)=>{
-      winston.log('warn', error);
-      expect(error).toBeUndefined();
-    })
+
+    spyOn(verificationModel, 'delete').and.returnValue(new Promise( (resolve,reject) => { resolve(); }));
+
+    registrationService.verify('token')
+    .then( result => {
+      expect(result.userId).toBe(33);
+      expect(verificationModel.delete.calls.count()).toBe(1);
+    }).finally(done);
 
   });
 
 
-  it( 'should reject a verification attempt with the wrong token for a user waiting for verification', function(done) {
+  it( 'should reject a verification attempt when a findByToken yields no results', function(done) {
 
-    const validEmail = "verifytest2@email.com";
-    // Generate a random token and assume that it isn't a duplicate
-    const token = uuidV4();
-
-    registrationService.register(validEmail, password, fullName, nickName, mailTransporter)
-    .then((result)=>{
-      winston.log('debug', result);
-      let newUser = result.newUser;
-      expect(newUser).not.toBeUndefined();
-      expect(newUser.id).not.toBeUndefined();
-      expect(result.verificationToken).not.toBeUndefined();
-      return registrationService.verify(newUser.id, token);
+    spyOn(verificationModel, 'findByToken').and.callFake(token => {
+      return new Promise( (resolve,reject) => {
+        // Simulate a pg-promise query error
+        let error = new Error('Simluated Error Condition');
+        error.name = 'QueryResultError';
+        reject(error);
+      })
     })
-    .then((result)=>{
+
+    spyOn(verificationModel, 'delete').and.returnValue(new Promise( (resolve,reject) => { resolve(); }));
+
+    registrationService.verify('token')
+    .then( result => {
       fail("verification suceeded for a bad verification token");
-    })
-    .catch((error)=>{
-      winston.log('debug', error);
-      expect(error).not.toBeUndefined();
+    }).catch( error => {
+      expect(error).toBeDefined();
       expect(error.name).toBe('RapidoError');
       expect(error.code).toBe(RapidoErrorCodes.invalidVerificationToken);
-    })
-    .finally(done);
-
-  })
-
-  it( 'should reject a verification attempt with an unknown token and random user ID', function(done) {
-
-    // Generate a random token and assume that it isn't a duplicate
-    const token = uuidV4();
-
-    registrationService.verify(10, token)
-    .then((result)=>{
-      fail("verification suceeded for an unknown verification token");
-    })
-    .catch((error)=>{
-      winston.log('debug', error);
-      expect(error).not.toBeUndefined();
-      expect(error.name).toBe('RapidoError');
-      expect(error.code).toBe(RapidoErrorCodes.invalidVerificationToken);
-    })
-    .finally(done);
+      expect(error.status).toBe(400);
+    }).finally(done);
 
   })
 

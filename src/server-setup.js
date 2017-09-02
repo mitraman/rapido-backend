@@ -38,6 +38,7 @@ const start = function start(serverPort, cb) {
   // Setup routes
   app.all('/api/echo', echo.echoHandler);
   app.post('/api/register', users.registrationHandler);
+  app.get('/api/verify', users.verifyHandler);
   app.post('/api/login', users.loginHandler);
   app.get('/api/sketch/:sketchId', authentication.authenticateRequest, sketches.retrieveSketchHandler);
   app.post('/api/projects', authentication.authenticateRequest, projects.createProjectHandler);

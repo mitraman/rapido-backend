@@ -3,12 +3,12 @@
 const request = require("request");
 const config = require('../../src/config.js');
 const winston = require('winston');
-const mailServer = require('../mail-server.js');
+const registrationService = require('../../src/services/registration.js');
+let userModel = require('../../src/model/users.js');
 const authentication = require('../../src/security/authentication.js');
 const dataAccessor = require('../../src/db/DataAccessor.js');
 const RapidoErrorCodes = require('../../src/errors/codes.js');
-
-// TODO: Setup a simluated email service so that we can test the verification process.
+const RapidoError = require('../../src/errors/rapido-error.js');
 
 describe('Authentication API', function() {
 
@@ -25,12 +25,13 @@ describe('Authentication API', function() {
 
     this.registrationUrl = this.urlBase + '/register';
     this.loginUrl = this.urlBase + '/login';
+
   })
 
   beforeEach(function(done) {
     // Delete the test user before each test
     const db = dataAccessor.getDb();
-    console.log(this.email);
+    //console.log(this.email);
     db.query("DELETE from users where email = $1", this.email)
       .then(result => {
       }).catch(e => {
@@ -63,7 +64,21 @@ describe('Authentication API', function() {
 
     it( 'should register a new user', function(done) {
 
-      let thisSpec = this;
+      spyOn(registrationService, 'register').and.callFake( (email, password, fullName, nickName, nodeMailerTransporter) => {
+        return new Promise( (resolve,reject) => {
+          resolve({
+            newUser: {
+              id: 101,
+              fullName: 'First last',
+              nickName: 'nickname',
+              email: 'email@email.com',
+              isVerified: false
+            },
+            token: 'token'
+          })
+        })
+      })
+
       request.post(
         {
           url: this.registrationUrl,
@@ -78,72 +93,46 @@ describe('Authentication API', function() {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(200);
 
-            expect(body.newUser).not.toBeUndefined();
-            expect(body.newUser.id).not.toBeUndefined();
-
-            const db = dataAccessor.getDb();
-            let query = "SELECT * from users where email='" + thisSpec.email + "'";
-            db.any(query)
-            .then( (results) => {
-              expect(results.length).toBe(1);
-            }).catch(e => {
-              fail(e);
-            }).finally(done);
-
-            //winston.log('debug', res.body);
-            // Mail verification has been disabled.
-            //expect(mailServer.findEmail(email)).not.toBeUndefined();
-
+            expect(body.user).toBeDefined();
+            expect(body.user.id).toBe(101);
+            expect(body.user.fullName).toBe('First last');
+            expect(body.user.nickName).toBe('nickname');
+            expect(body.user.email).toBe('email@email.com');
+            expect(body.user.isVerified).toBe(false);
+            done();
         }
       )
     })
 
     it( 'should reject registration if the email already exists', function(done) {
 
-      let thisSpec = this;
+      spyOn(registrationService, 'register').and.callFake( (email, password, fullName, nickName, nodeMailerTransporter) => {
+        return new Promise( (resolve,reject) => {
+          reject(new RapidoError(
+  					RapidoErrorCodes.duplicateUser,
+  					"a user with this email address already exists",
+  					400));
+        })
+      })
+
 
       request.post(
         {
           url: this.registrationUrl,
           headers: this.headers,
           json: {
-            fullname: this.fullname,
-            nickname: this.nickname,
-            password: this.password,
-            email: this.email
+            fullname: 'Second User',
+            nickname: 'dupe',
+            password: 'asdfasdf',
+            email: 'email@email.com'
           }
-        },function(err, res, body) {
-          expect(err).toBe(null);
-          expect(res.statusCode).toBe(200);
-
-          // Send second registration request with the same email
-          request.post(
-            {
-              url: thisSpec.registrationUrl,
-              headers: thisSpec.headers,
-              json: {
-                fullname: 'Second User',
-                nickname: 'dupe',
-                password: 'asdfasdf',
-                email: thisSpec.email
-              }
-          }, function(err, res, body) {
-            expect(err).toBe(null);
-            expect(res.statusCode).toBe(400);
-            expect(body.code).toBe(RapidoErrorCodes.duplicateUser);
-            expect(body.detail).toBe("a user with this email address already exists")
-            // Make sure that the user was not added to the database twice
-            const db = dataAccessor.getDb();
-            let query = "SELECT * from users where email='" + thisSpec.email + "'";
-            db.any(query)
-            .then( (results) => {
-              expect(results.length).toBe(1);
-            }).catch( e=> {
-              fail(e);
-            }).finally(done);
-          });
-        }
-      )
+      }, function(err, res, body) {
+        expect(err).toBe(null);
+        expect(res.statusCode).toBe(400);
+        expect(body.code).toBe(RapidoErrorCodes.duplicateUser);
+        expect(body.detail).toBe("a user with this email address already exists")
+        done();
+      });
     })
 
     it( 'should reject registration if the email address property is missing', function(done) {
@@ -176,6 +165,23 @@ describe('Authentication API', function() {
     })
 
     it( 'should populate the nickname field with the fullname value if the nickname property is missing', function(done) {
+
+      spyOn(registrationService, 'register').and.callFake( (email, password, fullName, nickName, nodeMailerTransporter) => {
+        return new Promise( (resolve,reject) => {
+          expect(nickName).toBe(fullName);
+          resolve({
+            newUser: {
+              id: 101,
+              fullName: 'First last',
+              nickName: 'nickname',
+              email: 'email@email.com',
+              isVerified: false
+            },
+            token: 'token'
+          })
+        })
+      })
+
       const jsonBody = {
         fullname: this.fullname,
         email: this.email,
@@ -191,7 +197,6 @@ describe('Authentication API', function() {
       }, function(err, res, body) {
         expect(err).toBe(null);
         expect(res.statusCode).toBe(200);
-        expect(body.newUser.nickName).toBe(thisSpec.fullname);
         done();
       });
     })
@@ -245,26 +250,97 @@ describe('Authentication API', function() {
       }
       fieldErrorTest(jsonBody, done, this, 'password', 'invalid');
     })
+  })
 
-    // Disabled until we reactivate email verification
-    xit( 'should receive a verification email after registration', function(done) {
-      const username = "New User";
-      const password = "password";
-      const email = "new.user@domain.com";
+  describe('GET /verify', function() {
 
-      request.post(
+    beforeAll(function() {
+      this.verifyUrl = this.urlBase + '/verify';
+    })
+
+    it('should reject a request that does not contain a token', function(done) {
+      request.get(
         {
-          url: registrationUrl,
-          headers: headers,
+          url: this.verifyUrl,
+          headers: this.headers,
           json: {
-            username: username,
-            password: password,
-            email: email
+            notoken: 'token'
           }
         },function(err, res, body) {
-            expect(err).toBe(null);
-            expect(res.statusCode).toBe(200);
-            done();
+          expect(err).toBe(null);
+          expect(res.statusCode).toBe(400);
+          expect(body.code).toBe(RapidoErrorCodes.fieldValidationError);
+          done();
+        }
+      )
+    })
+
+    it( 'should return an authentication token when a user is verified', function(done) {
+
+      spyOn(registrationService, 'verify').and.callFake( token => {
+        expect(token).toBe('mycode');
+        return new Promise( (resolve,reject) => {
+          resolve({
+            userId: 15
+          })
+        })
+      })
+
+      spyOn(userModel, 'find').and.callFake( params => {
+        return new Promise( (resolve, reject) => {
+          resolve([{
+            id: 15,
+            email: 'email@email.com',
+            password: '$2a$04$fSygNGoF/MQgznyAp.Lxwut2IRgHIY3MCjIev3aVAHSWEi.e0IH0O',
+            nickname: 'nickName',
+            fullname: 'first last',
+            isverified: true
+          }])
+        })
+      } )
+
+      request.get(
+        {
+          url: this.verifyUrl+'?code=mycode',
+          headers: this.headers,
+          json: {
+            token: 'token'
+          }
+        },function(err, res, body) {
+          expect(err).toBe(null);
+          expect(res.statusCode).toBe(200);
+          expect(body.token).toBeDefined();
+          expect(body.email).toBe('email@email.com');
+          expect(body.userId).toBe(15);
+          expect(body.nickName).toBe('nickName');
+          expect(body.fullName).toBe('first last');
+          expect(body.isVerified).toBe(true);
+          done();
+        }
+      )
+    })
+
+    it('should return an error when a token is not found', function(done) {
+      spyOn(registrationService, 'verify').and.callFake( token => {
+        expect(token).toBe('mycode');
+        return new Promise( (resolve,reject) => {
+          reject(new RapidoError(RapidoErrorCodes.invalidVerificationToken, "Unable to complete verification process", 400));
+        })
+      })
+
+      request.get(
+        {
+          url: this.verifyUrl+'?code=mycode',
+          headers: this.headers,
+          json: {
+            token: 'token'
+          }
+        },function(err, res, body) {
+          console.log('got response:', body);
+          expect(err).toBe(null);
+          expect(res.statusCode).toBe(400);
+          expect(body.code).toBe(RapidoErrorCodes.invalidVerificationToken);
+          done();
         }
       )
     })
@@ -273,63 +349,59 @@ describe('Authentication API', function() {
 
   describe('POST /login', function() {
 
-    beforeEach(function(done) {
-
-      //console.log('Registering user for login tests');
-      // Register the test user
-      request.post(
-        {
-          url: this.registrationUrl,
-          headers: this.headers,
-          json: {
-            fullname: 'Login User',
-            nickname: 'Logan',
-            password: this.password,
-            email: this.email
-          }
-        },function(err, res, body) {
-          expect(err).toBe(null);
-          expect(res.statusCode).toBe(200);
-          done();
-        }
-      )
-    })
-
-
-
     it( 'should return an authentication token for a valid user', function(done) {
 
-      let thisSpec = this;
+      spyOn(userModel, 'find').and.callFake( params => {
+        return new Promise( (resolve, reject) => {
+          resolve([{
+            id: 1,
+            email: 'email@email.com',
+            password: '$2a$04$fSygNGoF/MQgznyAp.Lxwut2IRgHIY3MCjIev3aVAHSWEi.e0IH0O',
+            nickname: 'nickName',
+            fullname: 'first last',
+            isverified: true
+          }])
+        })
+      } )
+
       // Register a new user
       request.post(
         {
           url: this.loginUrl,
           headers: this.headers,
           json: {
-            password: this.password,
+            password: 'password',
             email: this.email
           }
         },function(err, res, body) {
           expect(err).toBe(null);
           expect(res.statusCode).toBe(200);
           expect(body.token).toBeDefined();
-          expect(body.email).toBeDefined();
-          expect(body.userId).toBeDefined();
-          expect(body.nickName).toBeDefined();
-          expect(body.fullName).toBeDefined();
-          let token = body.token;
-
-          // Decode the token and make sure the properties are correct
-          let decoded = authentication.validateJWT(token);
-          winston.log('debug', 'decoded token', decoded);
-          expect(decoded.email).toBe(thisSpec.email);
-          expect(decoded.id).toBeDefined();
+          expect(body.email).toBe('email@email.com');
+          expect(body.userId).toBe(1);
+          expect(body.nickName).toBe('nickName');
+          expect(body.fullName).toBe('first last');
+          expect(body.isVerified).toBe(true);
           done();
         }
       )
     });
 
     it( 'should reject an authentication attempt with a bad password', function(done) {
+
+      spyOn(userModel, 'find').and.callFake( params => {
+        return new Promise( (resolve, reject) => {
+          resolve([{
+            id: 1,
+            email: 'email@email.com',
+            password: '$2a$04$fSygNGoF/MQgznyAp.Lxwut2IRgHIY3MCjIev3aVAHSWEi.e0IH0O',
+            nickname: 'nickName',
+            fullname: 'first last',
+            isverified: true
+          }])
+        })
+      } )
+
       request.post(
         {
           url: this.loginUrl,
@@ -348,6 +420,13 @@ describe('Authentication API', function() {
     })
 
     it( 'should reject an authentication attempt for an unknown user', function(done) {
+
+      spyOn(userModel, 'find').and.callFake( params => {
+        return new Promise( (resolve, reject) => {
+          resolve([])
+        })
+      } )
+
       request.post(
         {
           url: this.loginUrl,

@@ -94,26 +94,6 @@ describe('Cache', function() {
     })
     **/
 
-    xit('should emit an event when a cache entry has expired', function(done) {
-      let key = 'ttl-test'
-      const cacheExpiryTime = 1;
-      let ttlCache = new Cache({ stdTTL: 100, checkperiod: 120 })
-
-      let expirationListener = function(event) {
-
-      }
-
-      ttlCache.on('expired', function(key,value) {
-      });
-
-      ttlCache.set(key, {name: 'test'}, 10)
-      .then( () => {
-        // Advance time forward
-        let nodeCache = ttlCache._nodecache();
-        jasmine.clock().tick(cacheExpiryTime + 100);
-        fail('not working yet.')
-      })
-    })
   });
 
 });
