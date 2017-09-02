@@ -45,6 +45,18 @@ Cache.prototype.set = function(key, value, ttl) {
   })
 }
 
+Cache.prototype.ttl = function(key, ttl) {
+  return new Promise( (resolve, reject) => {
+    Cache._cache.ttl(key, value, (err, changed) => {
+      if( err ) {
+        reject(err);
+      } else {
+        resolve(changed);
+      }
+    })
+  })
+}
+
 Cache.prototype.on = function(eventName, listener) {
   return Cache._cache.on(eventName, listener);
 }

@@ -18,8 +18,8 @@ let Sketches = function () {
   Sketches.eventSubscriptions = {};
 };
 
-//TODO: Setup interval timer to unsubscribe and remove a subscription
 Sketches.getSubscription = function(sketchId, label) {
+  const SUBSCRIPTION_TIMEOUT = 600000; // 10 minutes
   return new Promise( (resolve, reject) => {
     // Retrieve a subscriber object (the tree cache is available from the subscriber)
     winston.log('debug', '[Sketches.getSubscription] sketchId is: ', sketchId);
@@ -34,11 +34,13 @@ Sketches.getSubscription = function(sketchId, label) {
         Sketches.es.subscribe(sketchId, subscriber.onEvent, 0);
         winston.log('debug', '[Sketches.getSubscription] storing subscription: ', subscriber);
         // Store the subscription in cache
-        Sketches.cache.set(sketchId, subscriber);
+        Sketches.cache.set(sketchId, subscriber, SUBSCRIPTION_TIMEOUT);
         resolve(subscriber);
       }else {
         winston.log('debug', '[Sketches.getSubscription] An existing subscriber was retrieved form cache: ', subscriber);
         winston.log('debug', '[Sketches.getSubscription] lastEventIDProcessed:', subscriber.getLastEventID());
+        winston.log('debug', '[Sketches.getSubscription] resetting TTL for cache entry');
+        Sketches.cache.ttl(sketchId, SUBSCRIPTION_TIMEOUT);
         resolve(subscriber);
       }
 
@@ -538,6 +540,10 @@ Sketches.prototype.reset = function() {
 
 Sketches.prototype.getEventStore = function() {
   return Sketches.es;
+}
+
+Sketches.prototype.getCache = function() {
+  return Sketches.cache;
 }
 
 module.exports = new Sketches();

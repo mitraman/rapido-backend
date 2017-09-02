@@ -4,7 +4,9 @@ const sketchService = require('../../src/services/sketches.js');
 const RapidoErrorCodes = require('../../src/errors/codes.js');
 const winston = require('winston');
 const uuidV4 = require('uuid/v4');
+const Promise = require('bluebird');
 const EventStore = require('../../src/event/EventStore.js');
+const EventSubscription = require('../../src/event/EventSubscription.js')
 const SketchEventStream = require('../../src/event/SketchEventStream.js');
 const dataAccessor = require('../../src/db/DataAccessor.js');
 
@@ -66,6 +68,64 @@ describe('/services/sketches.js ', function() {
     // All sketch operations should do that.
     xit('should apply historical events before setting the root node', function(done) {
       fail('to be implemented.');
+    })
+  })
+
+  describe('subscription management', function() {
+
+    it('should set a ttl for event subscriptions', function(done) {
+
+      let subscriber;
+
+      spyOn(sketchService.getCache(), 'get').and.callFake(key => {
+        return new Promise( (resolve,reject) => {
+          resolve(subscriber)
+        });
+      })
+
+      spyOn(sketchService.getCache(), 'set').and.callFake( (key, value, ttl) => {
+        expect(key).toBe(10);
+        expect(ttl).toBeDefined();
+        done();
+      })
+
+      // Make a call to load a tree into memory
+      sketchService.getTree(10);
+    })
+
+    it('should extend the timeout period when any sketch call is made', function(done) {
+      let subscriber;
+
+      spyOn(sketchService.getCache(), 'get').and.callFake(key => {
+        return new Promise( (resolve,reject) => {
+          resolve(subscriber)
+        });
+      })
+
+      spyOn(sketchService.getCache(), 'set').and.callFake( (key, value, ttl) => {
+        expect(key).toBe(10);
+        expect(ttl).toBeDefined();
+        if( key === 10) {
+          subscriber = value;
+        }
+      })
+
+      spyOn(sketchService.getCache(), 'ttl').and.callFake( (key, ttl) => {
+        expect(key).toBe(10);
+        expect(ttl).toBeDefined();
+      })
+
+      // Make a call to load a tree into memory
+      sketchService.getTree(10)
+      .then( result => {
+        // Make another call and expect the cache TTL to be extended
+        console.log('making second call');
+        return sketchService.getTree(10);
+      }).then( result => {
+        expect(sketchService.getCache().ttl.calls.count()).toBe(1);
+      }).catch( e => {
+        fail(e);
+      }).finally(done);
     })
   })
 
