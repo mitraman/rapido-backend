@@ -47,7 +47,7 @@ Cache.prototype.set = function(key, value, ttl) {
 
 Cache.prototype.ttl = function(key, ttl) {
   return new Promise( (resolve, reject) => {
-    Cache._cache.ttl(key, value, (err, changed) => {
+    Cache._cache.ttl(key, ttl, (err, changed) => {
       if( err ) {
         reject(err);
       } else {

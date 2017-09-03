@@ -46,7 +46,7 @@ RegistrationService.sendVerificationEmail = function(transporter, verificationTo
 		throw new RapidoError(RapidoErrorCodes.genericError, "Verification email html template missing");
 	}
 
-	const verificationLink = "rapido.com/verify?code=" + verificationToken;
+	const verificationLink = "https://rapidodesigner.com/verify?code=" + verificationToken;
 	// Replate the tokens in the email templates with the verification link
 	let plainTextEmail = verificationEmailTemplatePlainText.replace(/\$\^\w+/g, verificationLink);
 	//winston.log('debug', plainTextEmail);
@@ -254,7 +254,7 @@ RegistrationService.prototype.verify = function( token ) {
 			winston.log('warn', 'Verification Error:', error);
 			if( error.name === 'QueryResultError' ) {
 				// This means that the verification code was not found
-				let errorMessage = 'The verification token ' + token + ' was not found for user ID ' + userId;
+				let errorMessage = 'The verification token ' + token + ' was not found.';
 				reject(new RapidoError(RapidoErrorCodes.invalidVerificationToken, "Unable to complete verification process", 400));
 			}
 

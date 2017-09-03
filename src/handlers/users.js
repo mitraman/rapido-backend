@@ -171,22 +171,26 @@ module.exports = {
 
 	verifyHandler: function(req, res, next) {
 		winston.log('debug', 'verifyHandler called.');
-		let token = req.query.code;
+		let token = req.body.code;
 
 		if( !token ) {
 			next(new RapidoError(
 				RapidoErrorCodes.fieldValidationError,
 				'Verification code cannot be found',
 				400,
-				[{field: 'code', type: 'missing', description: 'the query parameter "code" is missing'}]
+				[{field: 'code', type: 'missing', description: 'the parameter "code" is missing from the request body'}]
 			))
 			return;
 		}
 
+		let userId;
+
 		registrationService.verify(token)
 		.then( result => {
-			let userId = result.userId;
-
+			userId = result.userId;
+			// Update the isVerified flag
+			return users.update({isVerified: true}, userId);
+		}).then( result => {
 			// Retrieve this user's information
 			return users.find({id: userId});
 		}).then( result => {

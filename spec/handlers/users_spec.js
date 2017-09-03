@@ -259,12 +259,12 @@ describe('Authentication API', function() {
     })
 
     it('should reject a request that does not contain a token', function(done) {
-      request.get(
+      request.post(
         {
           url: this.verifyUrl,
           headers: this.headers,
           json: {
-            notoken: 'token'
+            notoken: 'mycode'
           }
         },function(err, res, body) {
           expect(err).toBe(null);
@@ -277,6 +277,7 @@ describe('Authentication API', function() {
 
     it( 'should return an authentication token when a user is verified', function(done) {
 
+      // it should call verify with the correct token
       spyOn(registrationService, 'verify').and.callFake( token => {
         expect(token).toBe('mycode');
         return new Promise( (resolve,reject) => {
@@ -286,6 +287,13 @@ describe('Authentication API', function() {
         })
       })
 
+      // it should update the isverified column for this user
+      spyOn(userModel, 'update').and.callFake( (params, id) => {
+        expect(id).toBe(15);
+        expect(params.isVerified).toBe(true);
+      })
+
+      // it should retrieve user details from the user data
       spyOn(userModel, 'find').and.callFake( params => {
         return new Promise( (resolve, reject) => {
           resolve([{
@@ -299,12 +307,12 @@ describe('Authentication API', function() {
         })
       } )
 
-      request.get(
+      request.post(
         {
-          url: this.verifyUrl+'?code=mycode',
+          url: this.verifyUrl,
           headers: this.headers,
           json: {
-            token: 'token'
+            code: 'mycode'
           }
         },function(err, res, body) {
           expect(err).toBe(null);
@@ -315,6 +323,10 @@ describe('Authentication API', function() {
           expect(body.nickName).toBe('nickName');
           expect(body.fullName).toBe('first last');
           expect(body.isVerified).toBe(true);
+
+          // Make sure the dependencies were called
+          expect(userModel.find.calls.count()).toBe(1);
+          expect(userModel.update.calls.count()).toBe(1);
           done();
         }
       )
@@ -328,12 +340,12 @@ describe('Authentication API', function() {
         })
       })
 
-      request.get(
+      request.post(
         {
-          url: this.verifyUrl+'?code=mycode',
+          url: this.verifyUrl,
           headers: this.headers,
           json: {
-            token: 'token'
+            code: 'mycode'
           }
         },function(err, res, body) {
           console.log('got response:', body);
