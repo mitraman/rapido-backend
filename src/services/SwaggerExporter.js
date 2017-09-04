@@ -154,10 +154,10 @@ let extractPathParameters = function(node) {
       // Make sure there is an end brace
       let curlyEndIndex = path.indexOf('}', curlyStartIndex);
       if(curlyEndIndex >= 0) {
-        console.log('curlyEndIndex:', curlyEndIndex);
+        //console.log('curlyEndIndex:', curlyEndIndex);
         // Make sure the end brace occurs before the next path segment
         let nextPathSeparator = path.indexOf('/', curlyStartIndex+2);
-        console.log('nextPathSeparator:', nextPathSeparator);
+        //console.log('nextPathSeparator:', nextPathSeparator);
         if( nextPathSeparator >= 0 && nextPathSeparator > curlyEndIndex ) {
           winston.log('debug', 'processing curly brace segment ');
           processedCurly = true;
@@ -253,10 +253,10 @@ let convertNodeToPathItem = function(node, pathsObject) {
   }
 
   Object.keys(node.data).forEach( (key) => {
-    console.log('******');
-    console.log('processing method data for node ', node.name);
-    console.log('key is ', key);
-    console.log('enabled: ', node.data[key].enabled);
+    // console.log('******');
+    // console.log('processing method data for node ', node.name);
+    // console.log('key is ', key);
+    // console.log('enabled: ', node.data[key].enabled);
     if( validMethods.indexOf(key) < 0 ) {
       // this is not a valid key
       winston.log('warn', 'unable to convert response method ' + key + ' into OpenAPI Spec');

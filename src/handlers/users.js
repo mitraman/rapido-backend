@@ -145,7 +145,7 @@ module.exports = {
         })
 			}else {
 				//uh oh
-				console.log(result);
+				//console.log(result);
 				winston.log('warn', 'More than one user was returned when looking up user ', email);
 				throw new RapidoError(
 					RapidoErrorCodes.genericError,

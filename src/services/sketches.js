@@ -161,8 +161,6 @@ Sketches.prototype.addTreeNode = function(userId, sketchId, treeNode, parentId, 
         return;
       }
 
-      console.log(subscriber.tree);
-
       let parentNode = subscriber.tree.hash[parentId];
       if(!parentNode) {
         let errorMessage = 'Cannot add node to non-existent parent node with ID:' + parentId;

@@ -110,9 +110,6 @@ users.find = function( params ) {
     //winston.log('debug', 'This is the error**************************')
   }
 
-  winston.log('debug', 'users.find:', queryString);
-  console.log(queryParams);
-
   return db.manyOrNone({
     name: queryName,
     text: queryString,

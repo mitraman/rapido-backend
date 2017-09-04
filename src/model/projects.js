@@ -130,7 +130,6 @@ projects.update = function( id, params ) {
   // Add the conditional clause to the query string
   queryString += " WHERE id = " + id;
 
-  console.log(queryString);
   return db.none({
     name: queryName,
     text: queryString,

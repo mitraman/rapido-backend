@@ -237,8 +237,7 @@ RegistrationService.prototype.register = function(email, password, fullName, nic
 				return RegistrationService.sendVerificationEmail(nodeMailerTransporter, token, newUser);
 			} else {
         winston.log('error', '[RegistrationService] no mail transporter found.');
-        console.log('!!!!!:', nodeMailerTransporter);
-				return result;
+        return result;
 			}
 
 		}).then( () => {

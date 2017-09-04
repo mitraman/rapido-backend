@@ -227,7 +227,6 @@ module.exports = {
 			id: userId,
 			isVerified: true,
 		}).then( result => {
-			console.log('*** result:', result);
 			if(result.length === 0) {
 				winston.log('debug', '[Project Handler] Rejecting attempt to create a project by an unverified user');
 				throw new RapidoError(
