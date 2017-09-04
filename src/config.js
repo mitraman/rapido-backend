@@ -1,7 +1,9 @@
 // Load configuration properties from a json file
 
 //TODO: make all of this code programmatic
+//TODO: emit log messages to tell operator where config properties were loaded from
 
+//TODO: figure out why I needed to write this constructor - can it be removed?
 let config = function() {
   this.database = {
     host: process.env.npm_package_config_db_host,
@@ -72,7 +74,17 @@ config.prototype.load = function(configFile) {
   if( process.env.RAPIDO_DATABASE_PASSWORD ) { this.database.password = process.env.RAPIDO_DATABASE_PASSWORD }
   if( process.env.RAPIDO_PORT ) { this.port = parseInt(process.env.RAPIDO_PORT) }
   if( process.env.RAPIDO_MAIL_TESTMODE ) { this.nodemailer.testmode = process.env.RAPIDO_MAIL_TESTMODE }
-  if( process.env.RAPIDO_MAIL_OPTIONS ) { this.nodemailer.options = process.env.RAPIDO_MAIL_OPTIONS }
+  if( process.env.RAPIDO_MAIL_OPTIONS ) {
+    let jsonString = process.env.RAPIDO_MAIL_OPTIONS;
+    try {
+      let json = JSON.parse(jsonString);
+      this.nodemailer.options = json;
+    }catch (e) {
+      console.error('Unable to parse RAPIDO_MAIL_OPTIONS enviornment value as a JSON object:', process.env.RAPIDO_MAIL_OPTIONS);
+      console.error(e);
+    }
+
+  }
   if( process.env.RAPIDO_MAIL_LINKBASE ) { this.nodemailer.linkBase = process.env.RAPIDO_MAIL_LINKBASE }
   if( process.env.RAPIDO_MAIL_PATH_VERIFICATION ) { this.nodemailer.paths.verification = process.env.RAPIDO_MAIL_PATH_VERIFICATION }
   if( process.env.RAPIDO_SECRET) { this.secret = process.env.RAPIDO_SECRET }

@@ -10,8 +10,8 @@
   "port": 9090,
   "nodemailer": {
     "options": {
-      "host": "mail",
-      "port": 25,
+      "host": "localhost",
+      "port": 32769,
       "secure": false,
       "tls": {
         "rejectUnauthorized": false
