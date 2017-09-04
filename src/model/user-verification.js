@@ -17,6 +17,15 @@ userVerification.create = function( userId, token ) {
 
 }
 
+userVerification.findById = function( id ) {
+  const db = dataAccessor.getDb();
+  return db.one({
+    name: "find-verification-by-id",
+    text: "SELECT * from user_verify WHERE userid=$1",
+    values: [id]
+  });
+}
+
 userVerification.findByToken = function( token ) {
 
   const db = dataAccessor.getDb();
@@ -25,7 +34,6 @@ userVerification.findByToken = function( token ) {
     text: "SELECT * FROM user_verify WHERE verifytoken=$1",
     values: [token]
   });
-
 }
 
 userVerification.delete = function( params ) {

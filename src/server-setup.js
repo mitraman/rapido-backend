@@ -39,6 +39,7 @@ const start = function start(serverPort, cb) {
   app.all('/api/echo', echo.echoHandler);
   app.post('/api/register', users.registrationHandler);
   app.post('/api/verify', users.verifyHandler);
+  app.post('/api/resendEmail', users.resendHandler);
   app.post('/api/login', users.loginHandler);
   app.get('/api/sketch/:sketchId', authentication.authenticateRequest, sketches.retrieveSketchHandler);
   app.post('/api/projects', authentication.authenticateRequest, projects.createProjectHandler);

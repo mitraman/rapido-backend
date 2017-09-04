@@ -35,10 +35,23 @@ let RegistrationService = function () {
 		verificationEmailTemplateHtmlText = data;
 	});
 
-	//TODO: Setup mailer transport here
+	if( config.nodemailer ) {
+    // If the nodeMailerTransport has not been specified, create one based on configuration values
+    winston.log('debug', 'creating mail transport from nodemailer options', config.nodemailer.options)
+    this.nodeMailerTransporter = nodemailer.createTransport(config.nodemailer.options);
+  }else {
+    winston.log('error', '[services/registration] config.nodemailer is not defined');
+  }
+
 };
 
+RegistrationService.prototype.getNodeMailerTransporter = function() {
+  return this.nodeMailerTransporter;
+}
+
 RegistrationService.sendVerificationEmail = function(transporter, verificationToken, user) {
+  winston.log('debug', '[RegistrationService] sendVerificationEmail called');
+  winston.log('debug', '[RegistrationService] sendVerificationEmail verificationToken:', verificationToken);
 	if( !verificationEmailTemplatePlainText ) {
 		throw new RapidoError(RapidoErrorCodes.genericError, "Verification email plain text template missing");
 	}
@@ -46,7 +59,15 @@ RegistrationService.sendVerificationEmail = function(transporter, verificationTo
 		throw new RapidoError(RapidoErrorCodes.genericError, "Verification email html template missing");
 	}
 
-	const verificationLink = "https://rapidodesigner.com/verify?code=" + verificationToken;
+  //TODO: This should come from a config value
+	let verificationLink = "https://rapidodesigner.com/verify?code=";
+  if( config.nodemailer && config.nodemailer.linkBase ) {
+    verificationLink = config.nodemailer.linkBase;
+  }
+
+  verificationLink = verificationLink + verificationToken;
+
+  winston.log('debug', '[RegistrationService] sendVerificationEmail verificationLink:', verificationLink);
 	// Replate the tokens in the email templates with the verification link
 	let plainTextEmail = verificationEmailTemplatePlainText.replace(/\$\^\w+/g, verificationLink);
 	//winston.log('debug', plainTextEmail);
@@ -54,6 +75,7 @@ RegistrationService.sendVerificationEmail = function(transporter, verificationTo
 	let htmlEmail = verificationEmailTemplateHtmlText.replace(/\$\^\w+/g, verificationLink);
 	//winston.log('debug', htmlEmail)
 
+  winston.log('debug', '[RegistrationService] sendVerificationEmail user email:', user.email);
 	let mailOptions = {
 	    from: 'Rapido App <ronnie@rapidodesigner.com>', // sender address
 	    to: user.email, // list of receivers
@@ -62,11 +84,17 @@ RegistrationService.sendVerificationEmail = function(transporter, verificationTo
 	    html: htmlEmail // html body
 	};
 
+  winston.log('debug', '[RegistrationService] sending email.');
 	return transporter.sendMail(mailOptions)
 
 }
 
 RegistrationService.prototype.register = function(email, password, fullName, nickName, nodeMailerTransporter) {
+
+  if(!nodeMailerTransporter) {
+    nodeMailerTransporter = this.nodeMailerTransporter;
+  }
+
   // Validate User inputs.
 	//if(userService.validate(username, password, firstname, lastname))	return;
 	winston.log('debug', 'registrationServer.register called for ' + email);
@@ -88,13 +116,6 @@ RegistrationService.prototype.register = function(email, password, fullName, nic
 
 		// Generate a verification token
 		const token = uuidV4();
-
-		//TODO: Why are we creating this transport every time?
-		if( !nodeMailerTransporter && config.nodemailer && (!config.nodemailer.testmode) ) {
-			// If the nodeMailerTransport has not been specified, create one based on configuration values
-			winston.log('debug', 'creating mail transport from nodemailer options', config.nodemailer.options)
-			nodeMailerTransporter = nodemailer.createTransport(config.nodemailer.options);
-		}
 
 		let fieldErrors = [];
 
@@ -208,17 +229,17 @@ RegistrationService.prototype.register = function(email, password, fullName, nic
 			return verificationDS.create(newUser.id, token);
 		}).then( (result) => {
 
-
-			// Only send an email if the transporter has been defined.  This is so that we can do lots of integration testing
+      // Only send an email if the transporter has been defined.  This is so that we can do lots of integration testing
 			// without sending emails.  In the future, a better solution can be found.
 			if( nodeMailerTransporter ) {
 				// Send a verification email
 				winston.log('debug', 'sending verification email');
 				return RegistrationService.sendVerificationEmail(nodeMailerTransporter, token, newUser);
 			} else {
+        winston.log('error', '[RegistrationService] no mail transporter found.');
+        console.log('!!!!!:', nodeMailerTransporter);
 				return result;
 			}
-
 
 		}).then( () => {
 			// return a newUser object if everything has gone well.
@@ -233,6 +254,62 @@ RegistrationService.prototype.register = function(email, password, fullName, nic
 			reject(error);
 		})
 	});  // End of promise
+}
+
+RegistrationService.prototype.resendVerificationEmail = function(email) {
+  return new Promise( (resolve, reject) => {
+    winston.log('debug', '[RegistrationService] resendVerificationEmail called');
+    let user, token;
+
+    // Look up the user
+    usersDS.find({email:email})
+    .then( result => {
+      winston.log('debug', '[RegistrationService] retrieved user by email:', result);
+      if( result.length < 1) {
+        winston.log('debug', '[RegistrationService] this user does not exist');
+        // This user does not exist
+        reject(new RapidoError(
+          RapidoErrorCodes.userNotFound,
+          "No user with this email address was found",
+          400
+        ));
+      }
+      user = result[0];
+      winston.log('debug','[RegistrationService] user:', user);
+      if(user.isverified) {
+        winston.log('debug', '[RegistrationService] this user is already verified');
+        // This user is already verified, so need to send an email
+        reject(new RapidoError(
+          RapidoErrorCodes.alreadyVerified,
+          "This user is already verified",
+          400
+        ));
+      }
+
+      winston.log('debug', '[RegistrationService] retrieving the verificaiton code');
+      // Get the verification code
+      return verificationDS.findById(user.id);
+    }).then( result => {
+      // Send the email
+
+      winston.log('debug', '[RegistrationService] result:', result);
+      RegistrationService.sendVerificationEmail(this.nodeMailerTransporter, result.verifytoken, user);
+      resolve();
+    }).catch( error => {
+			if( error.name === 'QueryResultError' ) {
+        winston.log('debug', 'verification entry not found');
+				// This means that the verification code was not found, so create a new one and send an email
+        const token = uuidV4();
+        verificationDS.create(user.id, token)
+        .then( result => {
+          RegistrationService.sendVerificationEmail(this.nodeMailerTransporter, token, user);
+          resolve();
+        })
+      }else {
+			     reject(new RapidoError(RapidoErrorCodes.genericError, "Unable to complete verification process", 500));
+      }
+    })
+  });
 }
 
 RegistrationService.prototype.verify = function( token ) {

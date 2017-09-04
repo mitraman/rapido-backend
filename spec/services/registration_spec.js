@@ -5,6 +5,7 @@ const RapidoErrorCodes = require('../../src/errors/codes.js');
 const winston = require('winston');
 const nodemailer = require('nodemailer');
 const verificationModel = require('../../src/model/user-verification.js');
+const userModel = require('../../src/model/users.js');
 const uuidV4 = require('uuid/v4');
 const dataAccessor = require('../../src/db/DataAccessor.js');
 const bcrypt = require('bcrypt-nodejs');
@@ -253,6 +254,143 @@ describe('register new users', function() {
 
 });
 
+describe('resend verification email', function() {
+
+  //TODO: It should remove any previous verification emails 
+  it('should resend the verification email if the user is registered', function(done) {
+
+    spyOn(userModel, 'find').and.callFake( params => {
+      return new Promise( (resolve, reject) => {
+        resolve([{
+          id: 15,
+          email: 'email@email.com',
+          password: '$2a$04$fSygNGoF/MQgznyAp.Lxwut2IRgHIY3MCjIev3aVAHSWEi.e0IH0O',
+          nickname: 'nickName',
+          fullname: 'first last',
+          isverified: false
+        }])
+      })
+    });
+
+    spyOn(verificationModel, 'findById').and.callFake( id => {
+      return new Promise( (resolve,reject) => {
+        resolve({verifytoken: 'valid-code'})
+      })
+    })
+
+    spyOn(registrationService.getNodeMailerTransporter(), 'sendMail').and.callFake( mailOptions  => {
+      expect(mailOptions.to).toBe('email@email.com');
+    });
+
+    registrationService.resendVerificationEmail('email@email.com')
+    .then( result => {
+      expect(userModel.find.calls.count()).toBe(1);
+      expect(verificationModel.findById.calls.count()).toBe(1);
+    }).catch( e => {
+        fail(e);
+    }).finally(done);
+
+  })
+
+  it('should reject a verification email attempt if the user is already verified', function(done) {
+    spyOn(userModel, 'find').and.callFake( params => {
+      return new Promise( (resolve, reject) => {
+        resolve([{
+          id: 15,
+          email: 'email@email.com',
+          password: '$2a$04$fSygNGoF/MQgznyAp.Lxwut2IRgHIY3MCjIev3aVAHSWEi.e0IH0O',
+          nickname: 'nickName',
+          fullname: 'first last',
+          isverified: true
+        }])
+      })
+    });
+
+    spyOn(registrationService.getNodeMailerTransporter(), 'sendMail');
+
+    registrationService.resendVerificationEmail('email@email.com')
+    .then( result => {
+      fail('this call should have failed');
+    }).catch( e => {
+      expect(e.name).toBe('RapidoError');
+      expect(e.code).toBe(RapidoErrorCodes.alreadyVerified);
+      expect(e.status).toBe(400);
+      expect(registrationService.getNodeMailerTransporter().sendMail.calls.count()).toBe(0);
+    }).finally(done);
+  })
+
+  it('should reject a verification email attempt if the user does not exist', function(done) {
+    spyOn(userModel, 'find').and.callFake( params => {
+      return new Promise( (resolve, reject) => {
+        resolve([]);
+      })
+    });
+
+    spyOn(registrationService.getNodeMailerTransporter(), 'sendMail');
+
+    registrationService.resendVerificationEmail('email@email.com')
+    .then( result => {
+      fail('this call should have failed');
+    }).catch( e => {
+      expect(e.name).toBe('RapidoError');
+      expect(e.code).toBe(RapidoErrorCodes.userNotFound);
+      expect(e.status).toBe(400);
+      expect(registrationService.getNodeMailerTransporter().sendMail.calls.count()).toBe(0);
+    }).finally(done);
+  })
+
+  it('should create a new verification token entry if one does not already exist for a registered user', function(done) {
+    spyOn(userModel, 'find').and.callFake( params => {
+      return new Promise( (resolve, reject) => {
+        resolve([{
+          id: 15,
+          email: 'email@email.com',
+          password: '$2a$04$fSygNGoF/MQgznyAp.Lxwut2IRgHIY3MCjIev3aVAHSWEi.e0IH0O',
+          nickname: 'nickName',
+          fullname: 'first last',
+          isverified: false
+        }])
+      })
+    });
+
+    // Mock the PGsql error thrown when a token entry cannot be found
+    spyOn(verificationModel, 'findById').and.callFake( id => {
+      return new Promise( (resolve,reject) => {
+        let error = new Error();
+        error.name = 'QueryResultError';
+        reject(error);
+      })
+    })
+
+    spyOn(verificationModel, 'create').and.callFake( (userId, token) => {
+      return new Promise( (resolve,reject) => {
+        expect(userId).toBe(15);
+        expect(token).toBeDefined();
+        resolve();
+      })
+    })
+
+    spyOn(registrationService.getNodeMailerTransporter(), 'sendMail').and.callFake( mailOptions  => {
+      expect(mailOptions.to).toBe('email@email.com');
+    });
+
+    registrationService.resendVerificationEmail('email@email.com')
+    .then( result => {
+      expect(userModel.find.calls.count()).toBe(1);
+      expect(verificationModel.findById.calls.count()).toBe(1);
+      expect(verificationModel.create.calls.count()).toBe(1);
+    }).catch( e => {
+        fail(e);
+    }).finally(done);
+
+  })
+
+//TODO
+  xit('should reject a rsend request if the maximum rate of email transmissions has already been reached', function(done) {
+    fail('to be written');
+    done();
+  })
+})
 
 describe('verify a registered user', function() {
 

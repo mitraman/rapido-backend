@@ -1,5 +1,7 @@
 // Load configuration properties from a json file
 
+//TODO: make all of this code programmatic
+
 let config = function() {
   this.database = {
     host: process.env.npm_package_config_db_host,
@@ -12,6 +14,7 @@ let config = function() {
   this.nodemailer =  {
     testmode: process.env.npm_package_config_nodemailer_testmode,
     options: process.env.npm_package_config_nodemailer_options,
+    linkBase: process.env.npm_package_config_nodemailer_linkBase,
     paths: {
       verification: process.env.npm_package_config_nodemailer_path_verification
     }
@@ -33,6 +36,7 @@ config.prototype.load = function(configFile) {
   this.nodemailer = {
     testmode: process.env.npm_package_config_nodemailer_testmode,
     options: process.env.npm_package_config_nodemailer_options,
+    linkBase: process.env.npm_package_config_nodemailer_linkBase,
     paths: {
       verification: process.env.npm_package_config_nodemailer_path_verification
     }
@@ -50,6 +54,7 @@ config.prototype.load = function(configFile) {
       if( configJSON.port ) { this.port = configJSON.port };
       if( configJSON.nodemailer.testmode ) { this.nodemailer.testmode = configJSON.nodemailer.testmode };
       if( configJSON.nodemailer.options ) { this.nodemailer.options = configJSON.nodemailer.options };
+      if( configJSON.nodemailer.linkBase ) { this.nodemailer.linkBase = configJSON.nodemailer.linkBase };
       if( configJSON.nodemailer.paths.verification ) { this.nodemailer.paths.verification = configJSON.nodemailer.paths.verification };
       if( configJSON.secret ) { this.secret = configJSON.secret };
     }
@@ -68,6 +73,7 @@ config.prototype.load = function(configFile) {
   if( process.env.RAPIDO_PORT ) { this.port = parseInt(process.env.RAPIDO_PORT) }
   if( process.env.RAPIDO_MAIL_TESTMODE ) { this.nodemailer.testmode = process.env.RAPIDO_MAIL_TESTMODE }
   if( process.env.RAPIDO_MAIL_OPTIONS ) { this.nodemailer.options = process.env.RAPIDO_MAIL_OPTIONS }
+  if( process.env.RAPIDO_MAIL_LINKBASE ) { this.nodemailer.linkBase = process.env.RAPIDO_MAIL_LINKBASE }
   if( process.env.RAPIDO_MAIL_PATH_VERIFICATION ) { this.nodemailer.paths.verification = process.env.RAPIDO_MAIL_PATH_VERIFICATION }
   if( process.env.RAPIDO_SECRET) { this.secret = process.env.RAPIDO_SECRET }
 }

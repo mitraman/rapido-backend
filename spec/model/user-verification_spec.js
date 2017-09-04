@@ -9,8 +9,6 @@ const RapidoErrorCodes = require('../../src/errors/codes.js');
 
 describe('verification management', function() {
 
-
-
   it( 'should create a new user verification in the datastore', function(done) {
 
     const userId = 12;
@@ -71,6 +69,35 @@ describe('verification management', function() {
       winston.log('debug', error);
     })
     .finally(done);
+  })
+
+  it('should return a token when finding by id', function(done) {
+    // First insert a new verification token
+    verification.create('183', 'verify-code')
+    .then((result)=> {
+      // Try to find the token
+      return verification.findById('183');
+    })
+    .then((result)=> {
+      expect(result.verifytoken).toBe('verify-code');
+    }).catch((error)=>{
+      expect(error).toBeUndefined();
+    }).finally(done);
+  })
+
+  it('should throw a QueryError if a token cannot be found by id', function(done) {
+    // First insert a new verification token
+    verification.create('183', 'verify-code')
+    .then((result)=> {
+      // Try to find the token
+      return verification.findById('183');
+    })
+    .then((result)=> {
+      fail('should have thrown an error');
+    }).catch((error)=>{
+      expect(error).toBeDefined();
+      expect(error.name).toBe('QueryResultError');
+    }).finally(done);
   })
 
   it( "should reject an attempt to delete verifications with unknown parameters", function() {

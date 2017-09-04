@@ -252,6 +252,76 @@ describe('Authentication API', function() {
     })
   })
 
+  describe('POST /resendEmail', function() {
+    it('should attempt to resend an email if an email address is provided', function(done) {
+
+      // it should call verify with the correct token
+      spyOn(registrationService, 'resendVerificationEmail').and.callFake( email => {
+        expect(email).toBe('myemail@email.com');
+        return new Promise( (resolve,reject) => {
+          resolve();
+        })
+      })
+
+      request.post(
+        {
+          url: this.urlBase + '/resendEmail',
+          headers: this.headers,
+          json: {
+            email: 'myemail@email.com'
+          }
+        },function( err, res, body ) {
+          expect(err).toBe(null);
+          expect(res.statusCode).toBe(204);
+          done();
+        }
+      )
+    })
+
+    it('should reject a request that does not provide an email address', function(done) {
+      request.post(
+        {
+          url: this.urlBase + '/resendEmail',
+          headers: this.headers,
+          json: {
+            no_email: 'myemail@email.com'
+          }
+        },function( err, res, body ) {
+          expect(err).toBe(null);
+          expect(res.statusCode).toBe(400);
+          expect(body.code).toBe(RapidoErrorCodes.fieldValidationError)
+          done();
+        }
+      )
+    })
+
+    it('should provide an error message if something unexpected happens', function(done) {
+      // it should call verify with the correct token
+      spyOn(registrationService, 'resendVerificationEmail').and.callFake( email => {
+        expect(email).toBe('myemail@email.com');
+        return new Promise( (resolve,reject) => {
+          reject(new RapidoError(RapidoErrorCodes.genericError, 'testing error handling', 543));
+        })
+      })
+
+      request.post(
+        {
+          url: this.urlBase + '/resendEmail',
+          headers: this.headers,
+          json: {
+            email: 'myemail@email.com'
+          }
+        },function( err, res, body ) {
+          expect(err).toBe(null);
+          expect(res.statusCode).toBe(543);
+          expect(body.code).toBe(RapidoErrorCodes.genericError)
+          done();
+        }
+      )
+
+    })
+  })
+
   describe('GET /verify', function() {
 
     beforeAll(function() {

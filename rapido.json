@@ -10,13 +10,14 @@
   "port": 9090,
   "nodemailer": {
     "options": {
-      "host": "localhost",
-      "port": 32769,
+      "host": "mail",
+      "port": 25,
       "secure": false,
       "tls": {
         "rejectUnauthorized": false
       }
     },
+    "linkBase": "https://www.rapidodesigner.com/verify?code=",
     "paths": {
       "verification": "./mail/verification.eml"
     }

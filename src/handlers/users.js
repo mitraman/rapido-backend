@@ -67,7 +67,8 @@ module.exports = {
 
 		registrationService.register(email, password, fullName, nickName)
 		.then((result)=>{
-			winston.log('debug', 'Returning succesful registration response message');
+			winston.log('debug', '[RegistrationHandler] Returning succesful registration response message');
+			winston.log('debug', '[RegistrationHandler] User ID is:', result.newUser.id);
 			res.send(representer.responseMessage({
 			user: {
 				id: result.newUser.id,
@@ -169,6 +170,44 @@ module.exports = {
 
 	},
 
+	/***
+	Resend Verification email
+	***/
+	resendHandler: function(req, res, next) {
+		winston.log('debug', 'resendHandler called.');
+
+		let email = req.body.email;
+
+		if( !email ) {
+			next(new RapidoError(
+				RapidoErrorCodes.fieldValidationError,
+				'Cannot send verification email without an email address to send to',
+				400,
+				[{field: 'email', type: 'missing', description: 'the parameter "email" is missing from the request body'}]
+			))
+			return;
+		}
+
+		registrationService.resendVerificationEmail(email)
+		.then( result => {
+			res.status(204).send();
+		}).catch(e => {
+			winston.log('error', e);
+			if( e.name === 'RapidoError') {
+				next(e)
+			}else {
+				next(new RapidoError(
+					RapidoErrorCodes.genericError,
+					'An error occurred while trying to login',
+					500
+				))
+			}
+		});
+	},
+
+	/***
+	Verify email registration code
+	***/
 	verifyHandler: function(req, res, next) {
 		winston.log('debug', 'verifyHandler called.');
 		let token = req.body.code;
