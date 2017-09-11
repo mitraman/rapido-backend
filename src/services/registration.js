@@ -9,50 +9,50 @@ const RapidoError = require('../errors/rapido-error.js');
 const RapidoErrorCodes = require('../errors/codes.js');
 const validator = require('validator');
 const uuidV4 = require('uuid/v4');
-const nodemailer = require('nodemailer');
 const config = require('../config.js')
 const fs = require('fs');
+const EmailService = require('../services/Email.js')
+
+
+let verificationEmailTemplatePlainText, verificationEmailTemplateHtmlTextl;
+let initialized = false;
 
 let RegistrationService = function () {
   winston.log('debug', 'in Registration Service constructor');
 
-	// Load email templates from file system
-	this.verificationEmailTemplatePlainText = null;
-	this.verificationEmailTemplateHtmlText = null;
-
+  winston.log('debug', '[RegistrationService] Reading mail/verification.txt');
 	fs.readFile('./mail/verification.txt', 'utf8', function(err, data) {
+    winston.log('debug', '[RegistrationService] verification.txt callback');
 		if( err ) {
 			return winston.log('error', err);
 			throw err;
 		}
 		verificationEmailTemplatePlainText = data;
+    vetpt = data;
+    winston.log('debug', '[RegistrationService] Loaded plain text email template');
 	});
 
+  winston.log('debug', '[RegistrationService] Reading mail/verification.html');
 	fs.readFile('./mail/verification.html', 'utf8', function(err, data) {
 		if( err ) {
 			return winston.log('error', err);
 		}
 		verificationEmailTemplateHtmlText = data;
+    initialized = true;
+    winston.log('debug', '[RegistrationService] Loaded HTML email template');
 	});
-
-	if( config.nodemailer ) {
-    // If the nodeMailerTransport has not been specified, create one based on configuration values
-    winston.log('debug', 'creating mail transport from nodemailer options', config.nodemailer.options)
-    this.nodeMailerTransporter = nodemailer.createTransport(config.nodemailer.options);
-  }else {
-    winston.log('error', '[services/registration] config.nodemailer is not defined');
-  }
-
 };
 
-RegistrationService.prototype.getNodeMailerTransporter = function() {
-  return this.nodeMailerTransporter;
+RegistrationService.prototype.isInitialized = function() {
+  return initialized;
 }
 
-RegistrationService.sendVerificationEmail = function(transporter, verificationToken, user) {
+
+RegistrationService.sendVerificationEmail = function(verificationToken, user) {
   winston.log('debug', '[RegistrationService] sendVerificationEmail called');
   winston.log('debug', '[RegistrationService] sendVerificationEmail verificationToken:', verificationToken);
-	if( !verificationEmailTemplatePlainText ) {
+
+  if( !verificationEmailTemplatePlainText ) {
 		throw new RapidoError(RapidoErrorCodes.genericError, "Verification email plain text template missing");
 	}
 	if( !verificationEmailTemplateHtmlText ) {
@@ -76,24 +76,16 @@ RegistrationService.sendVerificationEmail = function(transporter, verificationTo
 	//winston.log('debug', htmlEmail)
 
   winston.log('debug', '[RegistrationService] sendVerificationEmail user email:', user.email);
-	let mailOptions = {
-	    from: 'Rapido App <ronnie@rapidodesigner.com>', // sender address
-	    to: user.email, // list of receivers
-	    subject: 'Welcome to Rapido', // Subject line
-	    text: plainTextEmail, // plain text body
-	    html: htmlEmail // html body
-	};
+  winston.log('debug', 'user:', user);
 
   winston.log('debug', '[RegistrationService] sending email.');
-	return transporter.sendMail(mailOptions)
+
+  return EmailService.sendEmail(user.email, user.fullName, 'Welcome to Rapido', htmlEmail, plainTextEmail);
+
 
 }
 
-RegistrationService.prototype.register = function(email, password, fullName, nickName, nodeMailerTransporter) {
-
-  if(!nodeMailerTransporter) {
-    nodeMailerTransporter = this.nodeMailerTransporter;
-  }
+RegistrationService.prototype.register = function(email, password, fullName, nickName) {
 
   // Validate User inputs.
 	//if(userService.validate(username, password, firstname, lastname))	return;
@@ -228,18 +220,7 @@ RegistrationService.prototype.register = function(email, password, fullName, nic
 			// Try to insert a verification entry into the verification table for emailing
 			return verificationDS.create(newUser.id, token);
 		}).then( (result) => {
-
-      // Only send an email if the transporter has been defined.  This is so that we can do lots of integration testing
-			// without sending emails.  In the future, a better solution can be found.
-			if( nodeMailerTransporter ) {
-				// Send a verification email
-				winston.log('debug', 'sending verification email');
-				return RegistrationService.sendVerificationEmail(nodeMailerTransporter, token, newUser);
-			} else {
-        winston.log('error', '[RegistrationService] no mail transporter found.');
-        return result;
-			}
-
+			return RegistrationService.sendVerificationEmail(token, newUser);
 		}).then( () => {
 			// return a newUser object if everything has gone well.
 			winston.log('debug', 'returning succesfully from user registration');
@@ -256,6 +237,7 @@ RegistrationService.prototype.register = function(email, password, fullName, nic
 }
 
 RegistrationService.prototype.resendVerificationEmail = function(email) {
+
   return new Promise( (resolve, reject) => {
     winston.log('debug', '[RegistrationService] resendVerificationEmail called');
     let user, token;
@@ -290,9 +272,8 @@ RegistrationService.prototype.resendVerificationEmail = function(email) {
       return verificationDS.findById(user.id);
     }).then( result => {
       // Send the email
-
       winston.log('debug', '[RegistrationService] result:', result);
-      RegistrationService.sendVerificationEmail(this.nodeMailerTransporter, result.verifytoken, user);
+      RegistrationService.sendVerificationEmail(result.verifytoken, user);
       resolve();
     }).catch( error => {
 			if( error.name === 'QueryResultError' ) {
@@ -301,11 +282,12 @@ RegistrationService.prototype.resendVerificationEmail = function(email) {
         const token = uuidV4();
         verificationDS.create(user.id, token)
         .then( result => {
-          RegistrationService.sendVerificationEmail(this.nodeMailerTransporter, token, user);
+          RegistrationService.sendVerificationEmail(token, user);
           resolve();
         })
       }else {
-			     reject(new RapidoError(RapidoErrorCodes.genericError, "Unable to complete verification process", 500));
+        winston.log('error', '[RegistrationService] Unable to send email: ', error);
+		    reject(new RapidoError(RapidoErrorCodes.genericError, "Unable to complete verification process", 500));
       }
     })
   });
@@ -333,7 +315,7 @@ RegistrationService.prototype.verify = function( token ) {
 				let errorMessage = 'The verification token ' + token + ' was not found.';
 				reject(new RapidoError(RapidoErrorCodes.invalidVerificationToken, "Unable to complete verification process", 400));
 			}
-
+      winston.log('error', '[RegistrationService] Unable to verify a user :', error);
 			reject(new RapidoError(RapidoErrorCodes.genericError, "Unable to complete verification process", 500));
 		})
 	});

@@ -17,7 +17,7 @@
         "rejectUnauthorized": false
       }
     },
-    "linkBase": "https://www.rapidodesigner.com/verify?code=",
+    "linkBase": "https://rapidodesigner.com/verify?code=",
     "paths": {
       "verification": "./mail/verification.eml"
     }

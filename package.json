@@ -10,6 +10,7 @@
     "start": "node src/server.js",
     "test-istanbul": "istanbul cover --include-all-sources spec/test-manager.js",
     "test": "node spec/test-manager.js",
+    "unit": "./node_modules/.bin/jasmine unit/**/*.js",
     "init": "node sql/init-db.js"
   },
   "dependencies": {
@@ -41,7 +42,8 @@
     "envelope": "~1.0.6",
     "asciidoctor.js": "1.5.6-preview.1",
     "ajv": "~5.1.6",
-    "diff": "~3.3.0"
+    "diff": "~3.3.0",
+    "nock": "~9.0.14"
   },
   "keywords": [],
   "repository": "",

@@ -1,1 +1,1 @@
-Click on the following link to verify your registration: $^verificationLink
+Click on the following link to verify your Rapido registration: $^verificationLink

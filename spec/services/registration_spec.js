@@ -9,29 +9,8 @@ const userModel = require('../../src/model/users.js');
 const uuidV4 = require('uuid/v4');
 const dataAccessor = require('../../src/db/DataAccessor.js');
 const bcrypt = require('bcrypt-nodejs');
+const EmailService = require('../../src/services/Email.js');
 
-// Mock email transport used to test the email verfication code
-let mailData = {};
-
-let transport = {
-    name: 'minimal',
-    version: '0.1.0',
-    send: (mail, callback) => {
-        winston.log('debug', 'pretending to send an email');
-        //winston.log('debug', 'storing email: ', mail)
-        // Store the email in the mailData variable for later verification
-        //winston.log("debug", "email recipient:" + mail.data.to);
-        //winston.log("debug", mail);
-        mailData[mail.data.to] = mail;
-        let envelope = mail.message.getEnvelope();
-        let messageId = mail.message.messageId();
-        callback(null, {
-           envelope,
-           messageId
-       });
-    }
-};
-const mailTransporter  = nodemailer.createTransport(transport);
 
 //TODO: Mock the calls to the user model database service
 describe('register new users', function() {
@@ -43,9 +22,13 @@ describe('register new users', function() {
 
   it( 'should register a new user in the system', function(done) {
 
+    spyOn(EmailService, 'sendEmail').and.callFake( (recipientAddress, recipientName, title, htmlEmail, plainTextEmail) => {
+      return;
+    })
+
     const validEmail = "testEmail@email.com";
 
-    registrationService.register(validEmail, password, fullName, nickName, mailTransporter)
+    registrationService.register(validEmail, password, fullName, nickName)
     .then((result)=>{
       let newUser = result.newUser;
       expect(newUser).not.toBeUndefined();
@@ -67,9 +50,14 @@ describe('register new users', function() {
   });
 
   it( 'should bcrypt passwords when storing in the databse', function(done) {
+
     const validEmail = "passwordverification_testEmail@email.com";
 
-    registrationService.register(validEmail, password, fullName, nickName, mailTransporter)
+    spyOn(EmailService, 'sendEmail').and.callFake( (recipientAddress, recipientName, title, htmlEmail, plainTextEmail) => {
+      return;
+    })
+
+    registrationService.register(validEmail, password, fullName, nickName)
     .then((result)=>{
       // Check the database to see if the password has been encrypted
       const db = dataAccessor.getDb();
@@ -97,14 +85,17 @@ describe('register new users', function() {
   it ('should send a verification email after registration', function(done) {
     const validEmail = "testEmail2@email.com";
 
-    registrationService.register(validEmail, password, fullName, nickName, mailTransporter)
+    spyOn(EmailService, 'sendEmail').and.callFake( (recipientAddress, recipientName, title, htmlEmail, plainTextEmail) => {
+      expect(recipientAddress).toBe('testEmail2@email.com');
+      expect(recipientName).toBe('test FirstName');
+      expect(title).toBe('Welcome to Rapido');
+      expect(htmlEmail).toBeDefined();
+      expect(plainTextEmail).toBeDefined();
+    })
+
+    registrationService.register(validEmail, password, fullName, nickName)
     .then((result)=>{
-      let newUser = result.newUser;
-      winston.log('debug', newUser);
-      //winston.log('debug', mailData[validEmail]);
-      winston.log('debug', 'mailData keys:', Object.keys(mailData));
-      expect(mailData[validEmail]).not.toBeUndefined();
-      expect(mailData[validEmail]).not.toBeNull();
+
     })
     .catch((error)=>{
       winston.log('warn', error);
@@ -114,8 +105,13 @@ describe('register new users', function() {
 
   it( 'should reject a user with a duplicate email address', function(done) {
 
+    spyOn(EmailService, 'sendEmail').and.callFake( (recipientAddress, recipientName, title, htmlEmail, plainTextEmail) => {
+      return;
+    })
+
+
     // First register a user
-    registrationService.register(email, password, fullName, nickName, mailTransporter)
+    registrationService.register(email, password, fullName, nickName)
     .then((result)=>{
       let newUser = result.newUser;
       expect(newUser).not.toBeUndefined();
@@ -133,7 +129,7 @@ describe('register new users', function() {
     }).finally(()=>{
 
       // Try to create the user again
-      return registrationService.register(email, password, fullName, nickName, mailTransporter);
+      return registrationService.register(email, password, fullName, nickName);
     })
     .then((result)=>{
       fail("duplicate user not detected.")
@@ -151,7 +147,7 @@ describe('register new users', function() {
 
     const invalidEmail = "notagoodemailaddress";
 
-    registrationService.register(invalidEmail, password, fullName, nickName, mailTransporter)
+    registrationService.register(invalidEmail, password, fullName, nickName)
     .then((result)=> {
       fail("the registration attempt should have been rejected");
     })
@@ -167,7 +163,7 @@ describe('register new users', function() {
 
   it( 'should reject a user with a blank email ', function(done) {
 
-    registrationService.register("", password, fullName, nickName, mailTransporter)
+    registrationService.register("", password, fullName, nickName)
     .then((result)=> {
       fail("the registration attempt should have been rejected");
     })
@@ -182,7 +178,7 @@ describe('register new users', function() {
 
   it( 'should reject a user with an empty email field', function(done) {
 
-    registrationService.register(null, password, fullName, nickName, mailTransporter)
+    registrationService.register(null, password, fullName, nickName)
     .then((result)=> {
       fail("the registration attempt should have been rejected");
     })
@@ -193,7 +189,7 @@ describe('register new users', function() {
   })
 
   it( 'should reject a user with a missing full name ', function(done) {
-    registrationService.register(email, password, " ", nickName, mailTransporter)
+    registrationService.register(email, password, " ", nickName)
     .then((result)=> {
       fail("the registration attempt should have been rejected");
     })
@@ -208,7 +204,7 @@ describe('register new users', function() {
   })
 
   it( 'should reject a user with a missing nick name ', function(done) {
-    registrationService.register(email, password, fullName, "", mailTransporter)
+    registrationService.register(email, password, fullName, "")
     .then((result)=> {
       fail("the registration attempt should have been rejected");
     })
@@ -222,7 +218,7 @@ describe('register new users', function() {
   })
 
   it( 'should reject a user with a missing password ', function(done) {
-    registrationService.register(email, " ", fullName, nickName, mailTransporter)
+    registrationService.register(email, " ", fullName, nickName)
     .then((result)=> {
       fail("the registration attempt should have been rejected");
     })
@@ -238,7 +234,7 @@ describe('register new users', function() {
   it( 'should reject a user with an insecure password ', function(done) {
     const insecurePassword = "123";
 
-    registrationService.register(email, insecurePassword, fullName, nickName, mailTransporter)
+    registrationService.register(email, insecurePassword, fullName, nickName)
     .then((newUser)=> {
       fail("the registration attempt should have been rejected");
     })
@@ -256,7 +252,21 @@ describe('register new users', function() {
 
 describe('resend verification email', function() {
 
-  //TODO: It should remove any previous verification emails 
+  beforeAll(function(done) {
+    // Wait for the files to be loaded
+    if( registrationService.isInitialized()) {
+      done();
+    }else {
+      let checkInterval = setInterval(()=> {
+        if( registrationService.isInitialized()) {
+            clearInterval(checkInterval)
+            done();
+        }
+      }, 100);
+    }
+  })
+
+  //TODO: It should remove any previous verification emails
   it('should resend the verification email if the user is registered', function(done) {
 
     spyOn(userModel, 'find').and.callFake( params => {
@@ -278,9 +288,12 @@ describe('resend verification email', function() {
       })
     })
 
-    spyOn(registrationService.getNodeMailerTransporter(), 'sendMail').and.callFake( mailOptions  => {
-      expect(mailOptions.to).toBe('email@email.com');
-    });
+    spyOn(EmailService, 'sendEmail').and.callFake( (recipientAddress, recipientName, title, htmlEmail, plainTextEmail) => {
+      return;
+    })
+
+    expect(registrationService.isInitialized()).toBe(true);
+
 
     registrationService.resendVerificationEmail('email@email.com')
     .then( result => {
@@ -306,7 +319,9 @@ describe('resend verification email', function() {
       })
     });
 
-    spyOn(registrationService.getNodeMailerTransporter(), 'sendMail');
+    spyOn(EmailService, 'sendEmail').and.callFake( (recipientAddress, recipientName, title, htmlEmail, plainTextEmail) => {
+      return;
+    })
 
     registrationService.resendVerificationEmail('email@email.com')
     .then( result => {
@@ -315,7 +330,7 @@ describe('resend verification email', function() {
       expect(e.name).toBe('RapidoError');
       expect(e.code).toBe(RapidoErrorCodes.alreadyVerified);
       expect(e.status).toBe(400);
-      expect(registrationService.getNodeMailerTransporter().sendMail.calls.count()).toBe(0);
+      expect(EmailService.sendEmail.calls.count()).toBe(0);
     }).finally(done);
   })
 
@@ -326,7 +341,9 @@ describe('resend verification email', function() {
       })
     });
 
-    spyOn(registrationService.getNodeMailerTransporter(), 'sendMail');
+    spyOn(EmailService, 'sendEmail').and.callFake( (recipientAddress, recipientName, title, htmlEmail, plainTextEmail) => {
+      return;
+    })
 
     registrationService.resendVerificationEmail('email@email.com')
     .then( result => {
@@ -335,7 +352,7 @@ describe('resend verification email', function() {
       expect(e.name).toBe('RapidoError');
       expect(e.code).toBe(RapidoErrorCodes.userNotFound);
       expect(e.status).toBe(400);
-      expect(registrationService.getNodeMailerTransporter().sendMail.calls.count()).toBe(0);
+      expect(EmailService.sendEmail.calls.count()).toBe(0);
     }).finally(done);
   })
 
@@ -370,9 +387,9 @@ describe('resend verification email', function() {
       })
     })
 
-    spyOn(registrationService.getNodeMailerTransporter(), 'sendMail').and.callFake( mailOptions  => {
-      expect(mailOptions.to).toBe('email@email.com');
-    });
+    spyOn(EmailService, 'sendEmail').and.callFake( (recipientAddress, recipientName, title, htmlEmail, plainTextEmail) => {
+      expect(recipientAddress).toBe('email@email.com');
+    })
 
     registrationService.resendVerificationEmail('email@email.com')
     .then( result => {

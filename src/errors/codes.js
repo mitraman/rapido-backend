@@ -15,5 +15,6 @@ module.exports = {
   invalidLoginCredentials: 'INVALID_LOGIN_CREDENTIALS',
   authenticationProblem: 'INVALID_AUTHENTICATION_TOKEN',
   userNotFound: 'INVALID_USER_ID',
-  authorizationError: 'NOT_AUTHORIZED'
+  authorizationError: 'NOT_AUTHORIZED',
+  emailTransmissionError: 'EMAIL_TRANSMISSION_ERROR'
 };
