@@ -4,7 +4,6 @@ const winston = require('winston');
 //TODO: emit log messages to tell operator where config properties were loaded from
 
 let config = function() {
-  console.log('running constructor');
   this.configFileName = '';
   this.configJSON = {};
 }
@@ -117,6 +116,7 @@ config.prototype.load = function(configFile) {
   }
 
   // override all config with  environment variables
+  if( process.env.RAPIDO_PORT ) { this.port = process.env.RAPIDO_PORT }
   if( process.env.RAPIDO_DATABASE_HOST ) { this.database.host = process.env.RAPIDO_DATABASE_HOST }
   if( process.env.RAPIDO_DATABASE_PORT ) { this.database.port = parseInt(process.env.RAPIDO_DATABASE_PORT) }
   if( process.env.RAPIDO_DATABASE_NAME ) { this.database.database = process.env.RAPIDO_DATABASE_NAME }
