@@ -295,7 +295,7 @@ OA2Exporter.prototype.exportTree = function(tree, title, description) {
 
   winston.log('debug', '[OA2Exporter] jsondoc:', swaggerDoc.json);
 
-  swaggerDoc.yaml = YAMLUtils.objectToYaml(swaggerDoc.json);
+  swaggerDoc.yaml = YAMLUtils.objectToYaml('oai2', swaggerDoc.json);
 
   winston.log('debug', '[OA2Exporter] returning swaggerdoc: ', swaggerDoc);
 

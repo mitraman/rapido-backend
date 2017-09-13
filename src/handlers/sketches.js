@@ -11,6 +11,7 @@ const OA2Exporter = require('../services/OA2Exporter.js');
 const OA3Exporter = require('../services/OA3Exporter.js');
 const sketchService = require('../services/sketches.js');
 const sketchModel = require('../model/sketches.js');
+const projectsModel = require('../model/projects.js');
 const CRUDService = require('../services/CRUD.js');
 
 
@@ -49,13 +50,20 @@ module.exports = {
 	  let userId = req.credentials.id;
     let projectId = req.params.projectId;
 		let sketchIndex = req.params.sketchIndex;
+		let sketchId;
 
+		// TODO: get the project title and description for the export
 		let title = 'Rapido Export';
 		let description = '';
 
 		// Validate that this sketch is owned by the user
 		sketchModel.findBySketchIndex(projectId, sketchIndex, userId)
-		.then( sketchId => {
+		.then( result => {
+			sketchId = result;
+			return projectsModel.find({id: projectId});
+		}).then( result => {
+			title = result[0].name;
+			description = result[0].description ? result[0].description : '';
 			return sketchService.getTree(sketchId);
 		}).then( result => {
 				let tree = result.tree;
@@ -76,15 +84,14 @@ module.exports = {
 					);
 				}else if(exportFormat === 'oai2') {
 					winston.log('debug', '[sketches.js] performing OAI2 export');
-					// Open API 2.0 export
-					// TODO: get the project title and description for the export
+					// NOTE: For now we are just sending back the YAML
 					let swaggerDoc = OA2Exporter.exportTree(tree, title, description);
-					res.status(200).send(swaggerDoc);
+					res.status(200).send(swaggerDoc.yaml);
 				}else if( exportFormat === 'oai3') {
 					winston.log('debug', '[sketches.js] performing OAI3 export');
-					// TODO: get the project title and description for the export
+					// NOTE: For now we are just sending back the YAML
 					let doc = OA3Exporter.exportTree(tree, title, description);
-					res.status(200).send(doc);
+					res.status(200).send(doc.yaml);
 				}else {
 					// reject unknown formats
 					//TODO: send the correct error

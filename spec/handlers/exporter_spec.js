@@ -24,7 +24,7 @@ describe('handlers/exporter.js ', function() {
     // Register and login a test user
     HandlerSupport.registerAndLogin('ExporterTest')
     .then( (result) => {
-      console.log('result is:' + result);
+      //console.log('result is:' + result);
       const authValue = 'Bearer ' + result.token;
       this.headers['Authorization'] = authValue;
       this.userId = result.userId;
@@ -66,7 +66,7 @@ describe('handlers/exporter.js ', function() {
         url: badSketchUrl,
         headers: this.headers
       },function(err, res, body)  {
-        console.log(body);
+        //console.log(body);
         let jsonBody = JSON.parse(body);
         expect(res.statusCode).toBe(404);
         expect(jsonBody.code).toBe(RapidoErrorCodes.sketchNotFound);
@@ -101,17 +101,14 @@ describe('handlers/exporter.js ', function() {
         url: this.exporterUrl+'?format=oai2',
         headers: this.headers
       },function(err, res, body)  {
-        let jsonBody = JSON.parse(body);
         expect(res.statusCode).toBe(200);
         expect(OA2Exporter.exportTree.calls.count()).toBe(1);
-        expect(jsonBody.json).toBeDefined();
-        expect(jsonBody.yaml).toBeDefined();
         done();
       });
   })
 
   it('should export a sketch using the OAS3 Exporter when the fomat is oai3', function(done) {
-    console.log(OA3Exporter);
+    //console.log(OA3Exporter);
     spyOn(OA3Exporter, 'exportTree').and.callThrough();
 
     request.get(
@@ -119,12 +116,8 @@ describe('handlers/exporter.js ', function() {
         url: this.exporterUrl+'?format=oai3',
         headers: this.headers
       },function(err, res, body)  {
-        console.log(body);
-        let jsonBody = JSON.parse(body);
         expect(res.statusCode).toBe(200);
         expect(OA3Exporter.exportTree.calls.count()).toBe(1);
-        expect(jsonBody.json).toBeDefined();
-        expect(jsonBody.yaml).toBeDefined();
         done();
       });
   })

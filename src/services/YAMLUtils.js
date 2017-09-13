@@ -7,7 +7,7 @@ let YAMLUtils = function() {
 
 }
 
-YAMLUtils.prototype.objectToYaml = function(jsonObject, depth, sequenceItem) {
+YAMLUtils.prototype.objectToYaml = function(format, jsonObject, depth, sequenceItem) {
   winston.log('debug', '[YAMLUtils] objectToYaml called with: ', jsonObject);
   let yamlDoc = '';
   if( !depth ) {
@@ -33,10 +33,10 @@ YAMLUtils.prototype.objectToYaml = function(jsonObject, depth, sequenceItem) {
 
     let jsonVal = jsonObject[key];
     // the swagger property is a special case - in YAML it has to be a quoted string value
-    if(key === 'swagger') {
+    if(format === 'oai2' && key === 'swagger') {
       yamlDoc += indent + key + ': "' + jsonVal + '"\n';
-    }else if( key === 'application/json') {
-        // Just dump the JSON object directly
+    }else if( format === 'oai2' && key === 'application/json') {
+        // Just dump the JSON object directly for OAS2
         yamlDoc += indent + key + ': ' + JSON.stringify(jsonVal) + '\n';
     }else if( typeof jsonVal === 'object' ) {
       if( Array.isArray(jsonVal)) {
@@ -47,7 +47,7 @@ YAMLUtils.prototype.objectToYaml = function(jsonObject, depth, sequenceItem) {
           yamlDoc += indent + key + ':\n';
           jsonVal.forEach(item => {
             if( typeof item === 'object' ) {
-              yamlDoc += this.objectToYaml(item, depth+1, true);
+              yamlDoc += this.objectToYaml(format, item, depth+1, true);
             }else {
               yamlDoc += indent + '  - ' + item + '\n';
             }
@@ -57,9 +57,9 @@ YAMLUtils.prototype.objectToYaml = function(jsonObject, depth, sequenceItem) {
         winston.log('debug', '[YAMLUtils] ' + key + ' is an object');
         yamlDoc += indent + key + ':\n';
         if( sequenceItem ) {
-          yamlDoc += this.objectToYaml( jsonVal, depth+2 );
+          yamlDoc += this.objectToYaml( format, jsonVal, depth+2 );
         }else {
-          yamlDoc += this.objectToYaml( jsonVal, depth+1 );
+          yamlDoc += this.objectToYaml( format, jsonVal, depth+1 );
         }
 
       }
