@@ -321,4 +321,18 @@ RegistrationService.prototype.verify = function( token ) {
 	});
 }
 
+// Designed for a forgotten password flow
+RegistrationService.prototype.sendPasswordResetLink = function(email) {
+
+}
+
+// Designed for a forgotten password flow
+RegistrationService.prototype.setPassword = function(verificationCode, newPassword) {
+  
+}
+
+RegistrationService.prototype.changePassword = function(oldPassword, newPassword) {
+
+}
+
 module.exports = new RegistrationService();

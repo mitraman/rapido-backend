@@ -165,15 +165,18 @@ describe('Sketches API', function() {
         },function(err, res, body) {
           expect(err).toBe(null);
           expect(res.statusCode).toBe(201);
-          expect(body.index).toBe(1);
-          expect(body.createdAt).toBeDefined();
+          expect(body.sketch).toBeDefined();
+          expect(body.sketch.id).toBeDefined();
+          expect(body.sketch.index).toBe(1);
+          expect(body.sketch.createdAt).toBeDefined();
+          expect(body.sketch.rootNode).toBeDefined();
+          expect(body.sketch.rootNode.children.length).toBe(0);
           done();
         }
       )
     })
 
-    it( 'should generate a serial id for sketches', function(done) {
-      console.log('+++ sketchesUrl:', sketchesUrl);
+    it( 'should generate a new index and unique root node', function(done) {
       request.post(
         {
           url: sketchesUrl,
@@ -184,8 +187,8 @@ describe('Sketches API', function() {
         },function(err, res, body) {
             expect(err).toBe(null);
             expect(res.statusCode).toBe(201);
-            expect(body.index).toBe(1);
-            expect(body.createdAt).not.toBeUndefined();
+            expect(body.sketch.index).toBe(1);
+            let firstSketch = body.sketch;
             request.post(
               {
                 url: sketchesUrl,
@@ -196,8 +199,8 @@ describe('Sketches API', function() {
               },function( err, res, body) {
               expect(err).toBe(null);
               expect(res.statusCode).toBe(201);
-              expect(body.index).toBe(2);
-              expect(body.createdAt).not.toBeUndefined();
+              expect(body.sketch.index).toBe(2);
+              expect(body.sketch.rootNode.id).not.toEqual(firstSketch.rootNode.id);
               done();
             })
         }

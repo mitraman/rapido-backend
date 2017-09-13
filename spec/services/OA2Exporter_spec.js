@@ -2,7 +2,7 @@
 
 const winston = require('winston');
 const Promise = require('bluebird');
-const SwaggerExporter = require('../../src/services/SwaggerExporter.js');
+const OA2Exporter = require('../../src/services/OA2Exporter.js');
 const Ajv = require('ajv');
 const fs = require('fs');
 const jsdiff = require('diff')
@@ -40,7 +40,7 @@ describe('SwaggerExporter v2', function() {
   }
 
   beforeAll( function() {
-    this.exporter = new SwaggerExporter();
+    this.exporter = OA2Exporter;
 
     // Load the open API Spec schema
     let fileContents = fs.readFileSync("spec/services/schema/swagger-schema.json");

@@ -245,7 +245,6 @@ describe('handlers/projects.js ', function() {
     })
   })
 
-
   describe('GET /projects', function() {
 
     it( 'should reject an attempt to retrieve projects without a signed in user', function(done) {
@@ -306,7 +305,7 @@ describe('handlers/projects.js ', function() {
     });
   });
 
-  describe ('GET /projects/{id}', function() {
+  describe('GET /projects/{id}', function() {
 
 
     it ('should return a 404 if the specified project was not found', function(done) {
@@ -360,7 +359,6 @@ describe('handlers/projects.js ', function() {
       })
     })
 
-    // Implement this if we need it later on.
     it ('should retrieve a specific project', function(done){
       const projectsToAdd = 4;
       let addedProjects = [];
@@ -397,5 +395,56 @@ describe('handlers/projects.js ', function() {
       })
     })
 
+    it('should return a list of unique sketches for a project', function(done) {
+      let projectList = []
+      addProject(1, projectList, 1, () => {
+        // Create another sketch for the project
+        let project = projectList[0];
+        let projectUrl =  projectUrlTemplate.replace(/{projectId}/gi, project.id);
+        request.post({
+          url: projectUrl + '/sketches',
+          headers: headers
+        }, function(err, res, body) {
+          expect(res.statusCode).toBe(201);
+          request.get({
+            url: projectUrl,
+            headers: headers
+          }, function(err, res, body) {
+            winston.log('debug', 'body:', body);
+            let jsonBody = JSON.parse(body);
+            expect(jsonBody.project.sketches.length).toBe(2);
+            expect(jsonBody.project.sketches[0].rootNode.id).not.toEqual(jsonBody.project.sketches[1].rootNode.id);
+
+            done();
+          })
+        }
+      )
+
+      })
+    })
+  })
+
+  // TODO: Implement this in next release
+  xdescribe('DELETE /projects/{id}', function() {
+
+  });
+
+// TODO: Implement this in next release
+  xdescribe('PUT /projects/{id}', function(){
+
+    it('should update a project with new properties', function(done) {
+      fail('to be implemented');
+      done();
+    })
+
+    it('should reject an attempt to update a project that does not exist', function(done) {
+      fail('to be implemented');
+      done();
+    })
+
+    it('should reject an attempt to update a project that is not owned by this user', function(done) {
+      fail('to be implemented');
+      done();
+    })
   })
 })

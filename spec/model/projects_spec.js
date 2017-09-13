@@ -189,102 +189,120 @@ describe('projects model', function() {
       } ).toThrow();
     })
 
-})
-
-describe('update a project', function() {
-
-  beforeEach(function(done) {
-    // Remove all of the sketch and  project data from previous tests
-    let db = dataAccessor.getDb();
-    db.any('delete from sketches where userid = $1', [this.userId])
-    .then( result => {
-      return db.any('delete from projects where userid = $1 ',  [this.userId])
-    }).then( () => {
-      // Add test data
-      this.numProjects = 1;
-      this.addedProjects = [];
-      createProjects(0, this.numProjects, this.addedProjects, this.userId, done);
-    }).catch( e=> {
-      fail(e);
-    });
   })
 
-  it('should reject a project update without any parameters', function() {
-    expect( ()=>{
-      projects.update(this.addedProjects[0].id, {})
-    } ).toThrow();
-  })
+  describe('update a project', function() {
 
-  it('should reject a project update with an unknown parameter', function() {
-    expect( ()=>{
+    beforeEach(function(done) {
+      // Remove all of the sketch and  project data from previous tests
+      let db = dataAccessor.getDb();
+      db.any('delete from sketches where userid = $1', [this.userId])
+      .then( result => {
+        return db.any('delete from projects where userid = $1 ',  [this.userId])
+      }).then( () => {
+        // Add test data
+        this.numProjects = 1;
+        this.addedProjects = [];
+        createProjects(0, this.numProjects, this.addedProjects, this.userId, done);
+      }).catch( e=> {
+        fail(e);
+      });
+    })
+
+    it('should reject a project update without any parameters', function() {
+      expect( ()=>{
+        projects.update(this.addedProjects[0].id, {})
+      } ).toThrow();
+    })
+
+    it('should reject a project update with an unknown parameter', function() {
+      expect( ()=>{
+        projects.update(this.addedProjects[0].id, {
+          name: 'newName',
+          description: 'new description',
+          badProperty: 'blah'
+        })
+      } ).toThrow();
+    })
+
+    it('should update a project name', function(done) {
+      let newName = 'a new project name';
       projects.update(this.addedProjects[0].id, {
-        name: 'newName',
-        description: 'new description',
-        badProperty: 'blah'
-      })
-    } ).toThrow();
-  })
-
-  it('should update a project name', function(done) {
-    let newName = 'a new project name';
-    projects.update(this.addedProjects[0].id, {
-      name: newName
-    }).then( () => {
-      // Check the data to make sure the project was updated
-      let db = dataAccessor.getDb();
-      db.one('select * from projects where id=$1', [this.addedProjects[0].id])
-      .then( project => {
-        expect(project.name).toBe(newName);
-        expect(project.description).toBe(this.addedProjects[0].description);
+        name: newName
+      }).then( () => {
+        // Check the data to make sure the project was updated
+        let db = dataAccessor.getDb();
+        db.one('select * from projects where id=$1', [this.addedProjects[0].id])
+        .then( project => {
+          expect(project.name).toBe(newName);
+          expect(project.description).toBe(this.addedProjects[0].description);
+          done();
+        })
+      }).catch( e => {
+        fail(e);
         done();
       })
-    }).catch( e => {
-      fail(e);
-      done();
+    })
+
+    it('should update a project description', function(done) {
+      let newDescription = 'a new project description';
+      projects.update(this.addedProjects[0].id, {
+        description: newDescription
+      }).then( () => {
+        // Check the data to make sure the project was updated
+        let db = dataAccessor.getDb();
+        db.one('select * from projects where id=$1', [this.addedProjects[0].id])
+        .then( project => {
+          expect(project.name).toBe(this.addedProjects[0].name);
+          expect(project.description).toBe(newDescription);
+          done();
+        })
+      }).catch( e => {
+        fail(e);
+        done();
+      })
+    })
+
+    it('should update a project name and description', function(done) {
+      let newName = 'a new project name';
+      let newDescription = 'a new project description';
+      projects.update(this.addedProjects[0].id, {
+        name: newName,
+        description: newDescription
+      }).then( () => {
+        // Check the data to make sure the project was updated
+        let db = dataAccessor.getDb();
+        db.one('select * from projects where id=$1', [this.addedProjects[0].id])
+        .then( project => {
+          expect(project.name).toBe(newName);
+          expect(project.description).toBe(newDescription);
+          done();
+        })
+      }).catch( e => {
+        fail(e);
+        done();
+      })
     })
   })
 
-  it('should update a project description', function(done) {
-    let newDescription = 'a new project description';
-    projects.update(this.addedProjects[0].id, {
-      description: newDescription
-    }).then( () => {
-      // Check the data to make sure the project was updated
-      let db = dataAccessor.getDb();
-      db.one('select * from projects where id=$1', [this.addedProjects[0].id])
-      .then( project => {
-        expect(project.name).toBe(this.addedProjects[0].name);
-        expect(project.description).toBe(newDescription);
-        done();
-      })
-    }).catch( e => {
-      fail(e);
+  //TODO: Imlement this in the next release
+  xdescribe('delete a project', function() {
+
+    beforeEach(function(done) {
+
+    })
+
+    it('should delete a project and all of its associated sketches and sketch data from the database', function(done) {
+
+
+      fail();
+      done();
+    });
+
+    it('should reject an attempt to delete a project that does not exist', function(done) {
+      fail();
       done();
     })
   })
-
-  it('should update a project name and description', function(done) {
-    let newName = 'a new project name';
-    let newDescription = 'a new project description';
-    projects.update(this.addedProjects[0].id, {
-      name: newName,
-      description: newDescription
-    }).then( () => {
-      // Check the data to make sure the project was updated
-      let db = dataAccessor.getDb();
-      db.one('select * from projects where id=$1', [this.addedProjects[0].id])
-      .then( project => {
-        expect(project.name).toBe(newName);
-        expect(project.description).toBe(newDescription);
-        done();
-      })
-    }).catch( e => {
-      fail(e);
-      done();
-    })
-  })
-
-})
-
 
 });

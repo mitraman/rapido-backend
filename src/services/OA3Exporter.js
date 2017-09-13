@@ -2,6 +2,8 @@
 
 const winston = require('winston');
 const Promise = require('bluebird');
+const JSONSchemaUtils = require('./JSONSchemaUtils.js')
+const YAMLUtils = require('./YAMLUtils.js');
 
 /**
 * Export functions for OpenAPISpec 3
@@ -10,276 +12,190 @@ var OA3Exporter = function () {
 };
 
 
-// Converts a json thing into a JSON Schema using dynamic typing
-let generateSchema = function(json) {
-  winston.log('debug', '[OA3Exporter] generating schema for: ', json);
-  let schema = {};
-  if( typeof json === 'object') {
-    if( Array.isArray(json)) {
-      winston.log('debug', '[OA3Exporter] generateSchema - this is an array');
-      schema.type = 'array';
-      let items = [];
-      json.forEach(item => {
-        items.push(generateSchema(item));
-      })
+/**
+Identifies dynamic path segments ({segment} and :segment)
+*/
+let extractDynamicSegments = function(path) {
+  let dynamicPathSegments = [];
+  let remainingPath = path;
 
-      // If the items are all of the same type, they can be merged into a single type
-      let lastType;
-      let lastProps = {};
-      let identicalTypes = true;
+  // We are looking for two types of dynamic path segments -
+  // colon segments (:segment)
+  // curly brace sgements: ({segment})
+  let colonDelim = remainingPath.indexOf('/:');
+  let curlyDelim = remainingPath.indexOf('{');
 
-      for( let i = 0; i < items.length && identicalTypes === true; i++ ) {
-        if( items[i].type === 'object' ) {
-          // Don't bother, it gets too complicated.  Maybe in the future we can merge identical nested objects
-          identicalTypes = false;
-        }else if(!lastType) {
-          lastType = items[i].type;
-        }else if( items[i].type != lastType ) {
-          identicalTypes = false
-        }else {
-          lastType = items[i].type
-        }
-      }
+  winston.log('debug', '[OA3Exporter] looking for dynamic path segments');
 
-      if( identicalTypes ) {
-        schema.items = items[0];
-      }else {
-        schema.items = items;
-      }
+  // winston.log('debug', '[OA3Exporter] first colon delimiter index:', colonDelim);
+  // winston.log('debug', '[OA3Exporter] first curly brace delimiter index:', curlyDelim);
 
+  // Keep processing the path until we run out of delimiters
+  while(colonDelim >= 0 || curlyDelim >= 0) {
+
+    winston.log('debug', '[OA3Exporter] processing path segments in:', remainingPath);
+
+    // Process a :segment next if there are no more {segment}s or the :segment is first
+    if( (curlyDelim < 0) || (colonDelim < curlyDelim && colonDelim >= 0) ) {
+
+      winston.log('debug', '[OA3Exporter] extracting :segment');
+
+      // read until the path segment delimiter ('/') or the end of the string
+      let segmentDelim = remainingPath.indexOf('/', colonDelim + 2);
+
+      // If the end of there is no '/', use the end of the line
+      segmentDelim = (segmentDelim >= 0) ? segmentDelim : remainingPath.length;
+
+      let segment = remainingPath.slice(colonDelim+2, segmentDelim);
+      let sourceToken = remainingPath.slice(colonDelim+1, segmentDelim);
+      winston.log('debug', '[OA3Exporter] extracted segment: ', segment);
+      dynamicPathSegments.push({source: sourceToken, value: segment});
+
+      // Change the remainingPath to process the rest of the string
+      remainingPath =  remainingPath.slice(segmentDelim);
+
+    // The {segment} is next to be processed becuase it is first or there are no more :segments left
     }else {
-      winston.log('debug', '[OA3Exporter] generateSchema - this is an object');
-      schema.type = 'object';
-      let properties = {};
-      Object.keys(json).forEach(property => {
-        properties[property] = generateSchema(json[property]);
-      })
-      if( Object.keys(properties).length > 0) {
-        schema.properties = properties;
+      winston.log('debug', '[OA3Exporter] extracting {segment}');
+
+      let curlyCloseDelim = remainingPath.indexOf('}');
+      let segmentDelim = remainingPath.indexOf('/', curlyDelim);
+      // If there is no '/', use the end of the line
+      segmentDelim = (segmentDelim >= 0) ? segmentDelim : remainingPath.length;
+
+      // Make sure there is a closing curly brace for this segment
+      if( curlyCloseDelim < 0 ) {
+        winston.log('debug', '[OA3Exporter] no closing curly brace found for segment in path: ', path);
+        // Skip to the end of the line or the path delimiter
+        remainingPath = remainingPath.slice(segmentDelim);
+      }else if(segmentDelim < curlyCloseDelim) {
+        // The path segment delimiter was found before the closing brace
+        // Example: /{badse/gment}/segment
+        winston.log('debug', '[OA3Exporter] curly brace segment terminated by segment delimiter in path: ', path);
+        remainingPath = remainingPath.slice(segmentDelim);
+      }else {
+        let segment =  remainingPath.slice(curlyDelim+1, curlyCloseDelim);
+        let sourceToken = remainingPath.slice(curlyDelim, curlyCloseDelim+1);
+        winston.log('debug', '[OA3Exporter] extracted segment: ', segment);
+        dynamicPathSegments.push({source: sourceToken, value: segment});
+
+        // Change the remainingPath to process the rest of the string
+        remainingPath =  remainingPath.slice(segmentDelim);
       }
     }
-  }else {
-    winston.log('debug', '[OA3Exporter] generateSchema - this is a primitive type:',typeof json);
-    schema.type = typeof json;
+
+    // Look for the next delimiters
+    colonDelim = remainingPath.indexOf('/:');
+    curlyDelim = remainingPath.indexOf('{');
+    // console.log('colonDelim:', colonDelim);
+    // console.log('curlyDelim:', curlyDelim);
+    // console.log(remainingPath);
   }
-  return schema;
+
+  return dynamicPathSegments;
+
 }
 
-let objectToYaml = function(jsonObject, depth, sequenceItem) {
-  winston.log('debug', '[OA3Exporter] objectToYaml called with: ', jsonObject);
-  let yamlDoc = '';
-  if( !depth ) {
-    depth = 0;
-  }
-
-  Object.keys(jsonObject).forEach((key, index) => {
-    winston.log('debug', '[OA3Exporter] objectToYaml processing key: ', key);
-    let indent = '';
-
-
-    for( let i = 0; i < depth; i++ ) {
-      indent += '  ';
-    }
-
-    if( sequenceItem ) {
-        if( index === 0 ) {
-          indent += '- ';
-        }else {
-          indent += '  ';
-        }
-    }
-
-    let jsonVal = jsonObject[key];
-    // the swagger property is a special case - in YAML it has to be a quoted string value
-    if(key === 'swagger') {
-      yamlDoc += indent + key + ': "' + jsonVal + '"\n';
-    }else if( key === 'application/json') {
-        // Just dump the JSON object directly
-        yamlDoc += indent + key + ': ' + JSON.stringify(jsonVal) + '\n';
-    }else if( typeof jsonVal === 'object' ) {
-      if( Array.isArray(jsonVal)) {
-        winston.log('debug', '[OA3Exporter] ' + key + ' is an array');
-        // Write the values as a hyphenated list
-        // Only conver the array if it has values
-        if( jsonVal.length > 0 ) {
-          yamlDoc += indent + key + ':\n';
-          jsonVal.forEach(item => {
-            if( typeof item === 'object' ) {
-              yamlDoc += objectToYaml(item, depth+1, true);
-            }else {
-              yamlDoc += indent + '  - ' + item + '\n';
-            }
-          })
-        }
-      } else {
-        winston.log('debug', '[OA3Exporter] ' + key + ' is an object');
-        yamlDoc += indent + key + ':\n';
-        if( sequenceItem ) {
-          yamlDoc += objectToYaml( jsonVal, depth+2 );
-        }else {
-          yamlDoc += objectToYaml( jsonVal, depth+1 );
-        }
-
-      }
-    }else {
-      yamlDoc += indent + key +  ': ' + jsonVal + '\n';
+let normalizeParameterizedPath = function (path, dynamicPathSegments) {
+  let parameterizedPath = path;
+  // Convert any segmented style path segments (:segment) to the OAS3 curly brace style ({segment})
+  dynamicPathSegments.forEach(dynamicSegment => {
+    if( !dynamicSegment.source.startsWith('{') ) {
+      winston.log('debug', '[OA3Exporter] normalizing path segment:', dynamicSegment.source);
+      // This isn't an OAS style segment, so convert it
+      parameterizedPath = parameterizedPath.replace(dynamicSegment.source,
+        '{' + dynamicSegment.value +  '}');
     }
   })
-  return yamlDoc;
+
+  return parameterizedPath;
 }
 
-let extractPathParameters = function(node) {
-  let path = node.fullpath;
-  let parameterizedPath = '';
-  let pathParameterObjects = [];
 
-  while(path.indexOf('/:') >= 0 || path.indexOf('/{') >= 0 ) {
-
-    winston.log('debug', '[OA3Exporter] this path contains parameters: ', path);
-
-    let segment;
-    let parameter = {
-      name: '',
-      in: 'path',
-      type: 'string',
-      required: true,
-    };
-
-    // Determine which token to process (/: or /{})
-    let startIndex = path.indexOf('/:');
-    let curlyStartIndex = path.indexOf('/{');
-    let processedCurly = false;
-
-    if( curlyStartIndex >= 0 && (curlyStartIndex < startIndex || startIndex < 0) ) {
-      // Make sure there is an end brace
-      let curlyEndIndex = path.indexOf('}', curlyStartIndex);
-      if(curlyEndIndex >= 0) {
-        console.log('curlyEndIndex:', curlyEndIndex);
-        // Make sure the end brace occurs before the next path segment
-        let nextPathSeparator = path.indexOf('/', curlyStartIndex+2);
-        console.log('nextPathSeparator:', nextPathSeparator);
-        if( nextPathSeparator >= 0 && nextPathSeparator > curlyEndIndex ) {
-          winston.log('debug', 'processing curly brace segment ');
-          processedCurly = true;
-          // Store the path segment and continue processing
-          segment = path.slice(curlyStartIndex, curlyEndIndex);
-          parameter.name = segment.slice(2);
-          pathParameterObjects.push(parameter);
-
-          parameterizedPath += path.slice(0, curlyEndIndex+1);
-          winston.log('debug', 'parametrizedPath is ', parameterizedPath);
-          path = path.slice(curlyEndIndex+1);
-        }else if( nextPathSeparator >= 0 && nextPathSeparator < curlyEndIndex) {
-          // The curly brace is not closed before the next path segment starts
-          // In this case we just treat it as a normal path segment and continute processing.
-
-          // Condition 1: there is only a single opening curly brace: /{badToken/notokens
-          // Condition 2: there is a curly brace and other tokens: /{badToken/:goodToken/{goodToken}
-          winston.log('debug', '[OA3Exporter] found invalid curly token in:', path);
-          parameterizedPath += path.slice(0, nextPathSeparator);
-          winston.log('debug', 'parametrizedPath is ', parameterizedPath);
-          path = path.slice(nextPathSeparator);
-          processedCurly = true;
-        }else {
-          // This is the last path segment so just copy it over
-          winston.log('debug', '[OA3Exporter] this is the last path segment');
-          processedCurly = true;
-          segment = path.slice(curlyStartIndex);
-          parameter.name = segment.slice(2,segment.length-1);
-          pathParameterObjects.push(parameter);
-
-          parameterizedPath += path;
-          winston.log('debug', 'parametrizedPath is ', parameterizedPath);
-          path = '';
-          processedCurly = true;
-        }
-      }
-    }
-
-    if( !processedCurly ) {
-
-      winston.log('debug', '[OA3Exporter] parametrized path segment uses a ":" token');
-      let endIndex = path.indexOf('/', startIndex+2);
-      if( endIndex > 0) {
-        winston.log('debug', '[OA3Exporter] found the end of this path segment');
-        segment = path.slice(startIndex, endIndex)
-      } else {
-        winston.log('debug', '[OA3Exporter] this is the last segment in the path');
-        segment = path.slice(startIndex);
-      }
-
-      winston.log('debug', 'parametrized path segment is ', segment);
-      parameter.name = segment.slice(2);
-      pathParameterObjects.push(parameter);
-
-      // Convert the fullpath of the node to use the "{}" syntax for dynamic segments in OAPI 2
-      parameterizedPath += path.slice(0, startIndex) + '/{' + parameter.name + '}';
-      winston.log('debug', 'parametrizedPath is ', parameterizedPath);
-
-      // Get the path ready for further processing
-      if( endIndex >= 0) {
-        path = path.slice(endIndex);
-      }else {
-        path = '';
-      }
-      winston.log('debug', 'checking rest of path for paramterized segments:', path);
-    }
-  }
-
-  // If there is any path left, stick it onto the end of the parameterizedPath
-  parameterizedPath += path;
-  return {
-    parameterizedPath: parameterizedPath,
-    pathParameterObjects: pathParameterObjects
-  };
-
-}
-
-let convertNodeToPathItem = function(node, pathsObject) {
+let convertNodeToPathItem = function(node, paths) {
   winston.log('debug', '[OA3Exporter] convertNodeToPathItem called for node: ', node);
 
   const validMethods = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'];
   let pathItem = {};
-  let parameterizedPath = '';
-  let pathParameterObjects = [];
 
-  if( (node.fullpath.indexOf('/:') >= 0) || (node.fullpath.indexOf('/{') >= 0)) {
-    // Find all the tokenized path segments and create parameters for them
-    // /root/:segment/blah/:something/blah
-    winston.log('debug', 'path contains parameters');
-    let pathParameters = extractPathParameters(node);
-    parameterizedPath = pathParameters.parameterizedPath;
-    pathParameterObjects = pathParameters.pathParameterObjects;
-  }
+  let dynamicSegments = extractDynamicSegments(node.fullpath);
 
-  Object.keys(node.data).forEach( (key) => {
-    console.log('******');
-    console.log('processing method data for node ', node.name);
-    console.log('key is ', key);
-    console.log('enabled: ', node.data[key].enabled);
+  // Normalize the path for OAS3
+  let parameterizedPath = normalizeParameterizedPath(node.fullpath, dynamicSegments);
+
+  // Create a set of path parameters based on the dynamic segments we've identified
+  let pathParameters = [];
+  dynamicSegments.forEach(dynamicSegment => {
+    pathParameters.push({
+      name: dynamicSegment.value,
+      in: 'path',
+      required: true,
+    })
+  });
+
+  Object.keys(node.data).forEach( key => {
     if( validMethods.indexOf(key) < 0 ) {
       // this is not a valid key
       winston.log('warn', 'unable to convert response method ' + key + ' into OpenAPI Spec');
-    }else if(node.data[key].enabled){
-      // Only extract enabled methods
-      winston.log('debug', '[OA3Exporter] procesing enabled data object: ', key);
+    }else if(node.data[key].enabled === true){
+
+      winston.log('debug', '[OA3Exporter] processing enabled operation for method ', key );
 
       let operation = {};
+
+      // Create an empty operation object
+      operation.requestBody = { content: {}};
+      operation.responses = {};
+
       let nodeData = node.data[key];
 
-      operation.description = "auto generated by Rapido";
-      operation.produces = [nodeData.response.contentType];
-      operation.consumes = [nodeData.request.contentType];
+      // Initialize the reqeustBody and response properties for this operation object
+      let requestContent = {
+        schema: {},
+        example: ''
+      }
+      let responseContent = {
+        schema: {},
+        example: ''
+      }
+      operation.requestBody.description = 'Automatically generated by Rapido'
+      operation.responses[nodeData.response.status] = { content: {} };
+      operation.responses[nodeData.response.status].description = 'Automatically generated by Rapido';
 
-      //TODO: Don't use parameters if they are empty
-      operation.parameters = [];
+      // Generate JSON schemas based on the message bodies
 
-      if(pathParameterObjects.length > 0) {
-        pathParameterObjects.forEach(parameterObject => {
-          operation.parameters.push(parameterObject);
-        })
+      let generateMediaObject = function(contentType, body) {
+        let mediaObject = {};
+        if( contentType === 'application/json') {
+          try {
+            let jsonBody = JSON.parse(body);
+            mediaObject[contentType] = { schema: {}, example: {}};
+            mediaObject[contentType].schema = JSONSchemaUtils.generateSchema(jsonBody);
+            mediaObject[contentType].example = jsonBody;
+            return mediaObject;
+          }catch (e) {
+            if( e instanceof SyntaxError ) {
+              // If the parsing failed, treat the body as plain text
+              mediaObject['text/plain'] = { schema: {}, example: {}};
+              mediaObject['text/plain'].schema = JSONSchemaUtils.generateSchema(body);
+              mediaObject['text/plain'].example = body;
+              return mediaObject;
+            }
+          }
+        }else {
+          winston.log('warning', '[OA3Exporter] ignoring unsupported media type ', contentType);
+        }
       }
 
+      operation.responses[nodeData.response.status].content =
+        generateMediaObject(nodeData.response.contentType, nodeData.response.body);
+
+      operation.requestBody.content =
+        generateMediaObject(nodeData.request.contentType, nodeData.request.body);
+
+      operation.parameters = [];
+
+      // Generate query parameters
       if( nodeData.request.queryParams.trim().length > 0) {
         // Parse thq query parameter and create a parameter object for eqch query name
         let queryString = nodeData.request.queryParams.trim();
@@ -302,86 +218,35 @@ let convertNodeToPathItem = function(node, pathsObject) {
         })
       }
 
-      // If there is a request body defined, create a schema for it
-      if( nodeData.request.body.trim().length > 0) {
-        let requestBodyParameter = {
-          name: 'request body',
-          in: 'body',
-          schema: {}
-        };
-        // Try to parse the string into a JSON object
-        try {
-          let jsonBody = JSON.parse(nodeData.request.body);
-          requestBodyParameter.schema = generateSchema(jsonBody);
-        }catch( e ) {
-          if( e instanceof SyntaxError) {
-            // This is not legal JSON, so treat it as a string
-            winston.log('debug', '[OA3Exporter] unable to parse JSON request body data:', e);
-            requestBodyParameter.schema.type = 'string';
-            requestBodyParameter.schema.description = 'Rapido was unable to parse the JSON request body from this sketch node'
-          }
-        }
-        operation.parameters.push(requestBodyParameter);
-      }
-
-      operation.responses = {
-        "200" : {
-          "description": "auto generated by Rapido",
-          "examples": {
-          },
-          "schema" : {
-          }
-        }
-      };
-
-      // Try to parse the string into a JSON object
-      try {
-        let jsonBody = JSON.parse(nodeData.response.body);
-        operation.responses['200'].examples[nodeData.response.contentType] =
-          jsonBody;
-        operation.responses['200'].schema = generateSchema(jsonBody);
-      }catch( e ) {
-        if( e instanceof SyntaxError) {
-          // This is not legal JSON, so treat it as a string
-          winston.log('debug', '[OA3Exporter] unable to parse JSON body data:', e);
-          operation.responses['200'].examples['text/plain'] =
-            nodeData.response.body;
-          operation.responses['200'].schema = generateSchema(nodeData.response.body);
-
-        }
-      }
+      // Add the operation object to the path item
       pathItem[key] = operation;
-    }else {
-      winston.log('debug', '[OA3Exporter] skipping disabled method: ', key)
     }
   });
 
 
-  // Add this path itmem to the paths collection (if there are operations defined for it)
-  if( Object.keys(pathItem).length > 0 ) {
-    if( pathParameterObjects.length > 0 ) {
-      winston.log('debug', '[OA3Exporter] adding path object to paths with key ', parameterizedPath);
-      pathsObject[parameterizedPath] = pathItem;
-    }else  {
-      winston.log('debug', '[OA3Exporter] adding path object to paths with key ', node.fullpath);
-      pathsObject[node.fullpath] = pathItem;
+  // Don't store the pathItem if there is no data defined for it
+  if( Object.keys(pathItem).length > 0) {
+    paths[parameterizedPath] = pathItem;
+    // If there are any path parameters add them
+    if( pathParameters.length > 0) {
+      pathItem.parameters = pathParameters;
     }
   }
 
   // Process any children of this node recursively
   if( node.children) {
     node.children.forEach(child => {
-      convertNodeToPathItem(child, pathsObject);
+      convertNodeToPathItem(child, paths);
     })
   }
 
-  //return pathItem;
+
 }
 
 OA3Exporter.prototype.exportTree = function(tree, title, description) {
 
   winston.log('debug', '[OA3Exporter] exportTree called.');
-  let swaggerDoc = {json: {}, yaml: ''};
+  let oa3Doc = {json: {}, yaml: ''};
 
   let info = {
     title: (title ? title : ''),
@@ -389,32 +254,23 @@ OA3Exporter.prototype.exportTree = function(tree, title, description) {
     version: 'rapido-sketch'
   };
 
-  // Build path objects based on the tree structure
-  let paths = {
-
-  }
-
-  winston.log('debug', '[OA3Exporter] parsing root nodes');
+  winston.log('debug', '[OA3Exporter] parsing root node');
+  let paths = {};
   if( tree.rootNode) {
-    convertNodeToPathItem(tree.rootNode, paths);
+     convertNodeToPathItem(tree.rootNode, paths);
   }
-
   winston.log('debug', '[OA3Exporter] paths:', paths);
 
-
-  swaggerDoc.json = {
-    swagger: "2.0",
+  oa3Doc.json = {
+    openapi: '3.0.0',
     info: info,
     paths: paths
   }
 
-  winston.log('debug', '[OA3Exporter] jsondoc:', swaggerDoc.json);
+  winston.log('debug', '[OA3Exporter] jsondoc:', oa3Doc.json);
+  oa3Doc.yaml = YAMLUtils.objectToYaml(oa3Doc.json);
 
-  swaggerDoc.yaml = objectToYaml(swaggerDoc.json);
-
-  winston.log('debug', '[OA3Exporter] returning swaggerdoc: ', swaggerDoc);
-
-  return swaggerDoc;
+  return oa3Doc;
 }
 
-module.exports = OA3Exporter;
+module.exports = new OA3Exporter();

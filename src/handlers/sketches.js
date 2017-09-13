@@ -7,9 +7,11 @@ const RapidoError = require('../../src/errors/rapido-error.js');
 const pgp = require('pg-promise');
 const sketches =  require('../model/sketches.js');
 const projects = require('../model/projects.js');
-const oai2Exporter = require('../services/SwaggerExporter.js');
+const OA2Exporter = require('../services/OA2Exporter.js');
+const OA3Exporter = require('../services/OA3Exporter.js');
 const sketchService = require('../services/sketches.js');
 const sketchModel = require('../model/sketches.js');
+const CRUDService = require('../services/CRUD.js');
 
 
 //TODO: Move this into middleware
@@ -48,6 +50,9 @@ module.exports = {
     let projectId = req.params.projectId;
 		let sketchIndex = req.params.sketchIndex;
 
+		let title = 'Rapido Export';
+		let description = '';
+
 		// Validate that this sketch is owned by the user
 		sketchModel.findBySketchIndex(projectId, sketchIndex, userId)
 		.then( sketchId => {
@@ -72,19 +77,14 @@ module.exports = {
 				}else if(exportFormat === 'oai2') {
 					winston.log('debug', '[sketches.js] performing OAI2 export');
 					// Open API 2.0 export
-					let exporter = new oai2Exporter();
-					let swaggerDoc = exporter.exportTree(tree, 'rapido export');
-
-					// Use the accept header to determine what to send back
-					if( req.accepts('yaml')) {
-						winston.log('debug', '[sketches.js] returning YAML document');
-						res.status(200).send(swaggerDoc.yaml);
-					}else {
-						// Default to JSON
-						winston.log('debug', '[sketches.js] returning JSON document:' + swaggerDoc.json);
-						res.status(200).send(swaggerDoc.json);
-					}
-
+					// TODO: get the project title and description for the export
+					let swaggerDoc = OA2Exporter.exportTree(tree, title, description);
+					res.status(200).send(swaggerDoc);
+				}else if( exportFormat === 'oai3') {
+					winston.log('debug', '[sketches.js] performing OAI3 export');
+					// TODO: get the project title and description for the export
+					let doc = OA3Exporter.exportTree(tree, title, description);
+					res.status(200).send(doc);
 				}else {
 					// reject unknown formats
 					//TODO: send the correct error
@@ -168,13 +168,15 @@ module.exports = {
     // Get the project ID from the URL parameters
     let projectId = req.params.projectId;
 
-    // Make sure that this user is authorized to create sketches for this project ID
+		let sketch = {};
+
+		// Make sure that this user is authorized to create sketches for this project ID
     let userId = req.credentials.id;
 		projects.find({
       userId: userId,
       id: projectId
     }).then( (result) => {
-      if( result.length === 0 ) {
+			if( result.length === 0 ) {
         winston.log('debug', 'User does not own the parent project of a sketch creation request');
 				throw new RapidoError(
 					RapidoErrorCodes.authorizationError,
@@ -189,15 +191,30 @@ module.exports = {
         })
       }
     }).then( (result) => {
+			sketch = {
+				id: result.id,
+				index: result.sketchIndex,
+				createdAt: result.createdAt
+			};
+
+			// Add a default root node to the sketch
+			let rootNode = CRUDService.createRootNode()
+			return sketchService.createRootNode(userId, sketch.id, rootNode);
+		}).then( result => {
+			// Get the new node tree so we can add it to the result
+			return sketchService.getTree(sketch.id);
+		}).then( result => {
+			sketch.rootNode = result.tree.rootNode;
+
 			res.status(201).send(representer.responseMessage({
-        index: result.sketchIndex,
-        createdAt: result.createdAt
+				sketch: sketch
       }));
     }).catch( (e) => {
 			//console.log('in catch');
 			if(e.name === 'RapidoError') {
 				next(e);
 			}else {
+				winston.log('error', '[Sketches Handler] error:', e);
 				next(new RapidoError(
 					RapidoErrorCodes.genericError,
 					'An error occurred while trying to create the Sketch object',

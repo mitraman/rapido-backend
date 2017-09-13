@@ -8,6 +8,8 @@ const HandlerSupport = require('./support.js');
 const sketchService = require('../../src/services/sketches.js');
 const RapidoErrorCodes = require('../../src/errors/codes.js');
 const RapidoError = require('../../src/errors/rapido-error.js');
+const OA2Exporter = require('../../src/services/OA2Exporter.js');
+const OA3Exporter = require('../../src/services/OA3Exporter.js');
 const fs = require('fs');
 
 describe('handlers/exporter.js ', function() {
@@ -85,86 +87,45 @@ describe('handlers/exporter.js ', function() {
         headers: this.headers
       },function(err, res, body)  {
         let jsonBody = JSON.parse(body);
-        console.log(jsonBody);
         expect(res.statusCode).toBe(400);
         expect(jsonBody.code).toBe(RapidoErrorCodes.fieldValidationError);
         done();
       });
   })
 
-  describe('OpenAPI Specification 2.0', function() {
+  it('should export a sketch using the OAS2 Exporter when the fomat is oai2', function(done) {
+    spyOn(OA2Exporter, 'exportTree').and.callThrough();
 
-    beforeAll(function() {
-
-      this.openAPIUrl = this.exporterUrl + "?format=oai2"
-
-
-        // Setup validator for tests
-      const Ajv = require('ajv');
-      // Load the open API Spec schema
-      let fileContents = fs.readFileSync("spec/services/schema/swagger-schema.json");
-      let swaggerSchema = JSON.parse(fileContents);
-
-      // Use ajv with a v4 schema (as per https://github.com/epoberezkin/ajv/releases/tag/5.0.0)
-      let ajv = new Ajv({
-        meta: false, // optional, to prevent adding draft-06 meta-schema
-        extendRefs: true, // optional, current default is to 'fail', spec behaviour is to 'ignore'
-        unknownFormats: 'ignore',  // optional, current default is true (fail)
-        // ...
+    request.get(
+      {
+        url: this.exporterUrl+'?format=oai2',
+        headers: this.headers
+      },function(err, res, body)  {
+        let jsonBody = JSON.parse(body);
+        expect(res.statusCode).toBe(200);
+        expect(OA2Exporter.exportTree.calls.count()).toBe(1);
+        expect(jsonBody.json).toBeDefined();
+        expect(jsonBody.yaml).toBeDefined();
+        done();
       });
+  })
 
-      var metaSchema = require('ajv/lib/refs/json-schema-draft-04.json');
-      ajv.addMetaSchema(metaSchema);
-      ajv._opts.defaultMeta = metaSchema.id;
+  it('should export a sketch using the OAS3 Exporter when the fomat is oai3', function(done) {
+    console.log(OA3Exporter);
+    spyOn(OA3Exporter, 'exportTree').and.callThrough();
 
-      // optional, using unversioned URI is out of spec, see https://github.com/json-schema-org/json-schema-spec/issues/216
-      ajv._refs['http://json-schema.org/schema'] = 'http://json-schema.org/draft-04/schema';
-
-      // Optionally you can also disable keywords defined in draft-06
-      ajv.removeKeyword('propertyNames');
-      ajv.removeKeyword('contains');
-      ajv.removeKeyword('const');
-
-      this.validate = ajv.compile(swaggerSchema);
-    })
-
-    it('should export an OAI 2 document in JSON based on the media type', function(done) {
-      //console.log(this.openAPIUrl);
-      let thisSpec = this;
-      let testHeaders = this.headers;
-      testHeaders['Accept'] = 'application/json';
-
-      request.get(
-        {
-          url: this.openAPIUrl,
-          headers: testHeaders
-        },function(err, res, body)  {
-          expect(res.statusCode).toBe(200);
-          //console.log(body);
-          let jsonBody = JSON.parse(body);
-          expect(jsonBody).toBeDefined();
-          expect(thisSpec.validate(jsonBody)).toBe(true);
-          done();
-        });
-    });
-
-    it('should export an OAI 2 document in YAML based on the media type', function(done) {
-
-      let thisSpec = this;
-      let testHeaders = this.headers;
-      testHeaders['Accept'] = 'application/yaml';
-
-      request.get(
-        {
-          url: this.openAPIUrl,
-          headers: testHeaders
-        },function(err, res, body)  {
-          //TODO: validate that this is a YAML document
-          //console.log(body);
-          expect(res.statusCode).toBe(200);
-          done();
-        });
-    });
-
+    request.get(
+      {
+        url: this.exporterUrl+'?format=oai3',
+        headers: this.headers
+      },function(err, res, body)  {
+        console.log(body);
+        let jsonBody = JSON.parse(body);
+        expect(res.statusCode).toBe(200);
+        expect(OA3Exporter.exportTree.calls.count()).toBe(1);
+        expect(jsonBody.json).toBeDefined();
+        expect(jsonBody.yaml).toBeDefined();
+        done();
+      });
   })
 });

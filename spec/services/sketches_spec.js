@@ -253,6 +253,41 @@ describe('/services/sketches.js ', function() {
       }).finally(done);
     })
 
+    it('should return two sketches when called in parallel', function(done) {
+      let newRootId;
+      // Create a second sketch
+      sketchService.createRootNode(this.userId, this.sketchId+1, { name: '/'})
+      .then( result => {
+        newRootId = result.tree.rootNode.id;
+        expect(this.rootId).not.toEqual(newRootId);
+
+        // Try just retrieving the first one
+        return sketchService.getTree(this.sketchId);
+      }).then( result => {
+        expect(result.tree.rootNode.id).toEqual(this.rootId);
+
+        // Try just retrieving the seond one
+        return sketchService.getTree(this.sketchId+1);
+      }).then( result => {
+        expect(result.tree.rootNode.id).toEqual(newRootId);
+
+        // Now, try both at the same time
+        let getTreePromises = [];
+
+        // Load up two getTree promises to be fired at the same time
+        getTreePromises.push(sketchService.getTree(this.sketchId));
+        getTreePromises.push(sketchService.getTree(this.sketchId+1));
+
+        // Fire the promises
+  			return Promise.all(getTreePromises);
+      }).then( result => {
+        console.log(result[0].tree.rootNode);
+        console.log(result[1].tree.rootNode);
+        expect(result[0].tree.rootNode.id).not.toEqual(result[1].tree.rootNode.id);
+        done();
+      })
+    })
+
     it('should return a cached copy of a sketch tree', function(done) {
       sketchService.getTree(this.sketchId).then(
       result => {

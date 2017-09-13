@@ -37,7 +37,7 @@ Sketches.getSubscription = function(sketchId, label) {
         Sketches.cache.set(sketchId, subscriber, SUBSCRIPTION_TIMEOUT);
         resolve(subscriber);
       }else {
-        winston.log('debug', '[Sketches.getSubscription] An existing subscriber was retrieved form cache: ', subscriber);
+        winston.log('debug', '[Sketches.getSubscription] An existing subscriber was retrieved from cache for sketchId ' + sketchId + ': ', subscriber);
         winston.log('debug', '[Sketches.getSubscription] lastEventIDProcessed:', subscriber.getLastEventID());
         winston.log('debug', '[Sketches.getSubscription] resetting TTL for cache entry');
         Sketches.cache.ttl(sketchId, SUBSCRIPTION_TIMEOUT);
@@ -49,46 +49,52 @@ Sketches.getSubscription = function(sketchId, label) {
 }
 
 Sketches.prototype.getTree = function(sketchId, label) {
-  winston.log('debug','[Sketches.getTree] invoked');
+  winston.log('debug','[Sketches.getTree] invoked for sketchId:', sketchId);
+  console.log('************ > ', sketchId);
   // Get the most recent version of the tree by checking for the last event
   // recorded for this sketch.
   return new Promise( (resolve, reject) => {
     let subscriber;
     Sketches.getSubscription(sketchId, label)
     .then( result => {
-      winston.log('debug', '[Sketches.getTree] cached tree:', result.tree);
-      this.subscriber = result;
+      winston.log('debug', '[Sketches.getTree] (ID:' + sketchId + ') cached tree:', result.tree);
+      subscriber = result;
       return Sketches.es.getLastEventID(sketchId);
     }).then( lastEventID => {
-      winston.log('debug', '[Sketches.getTree] lastEventID for this sketch:', lastEventID);
+      winston.log('debug', '[Sketches.getTree] (ID:' + sketchId + ') lastEventID:', lastEventID);
       if( lastEventID ) {
-        if( this.subscriber.lastEventIDProcessed >= lastEventID ) {
-          winston.log('debug', '[Sketches.getTree] subscriber is up to date')
-          resolve({tree:this.subscriber.tree})
+        if( subscriber.lastEventIDProcessed >= lastEventID ) {
+          winston.log('debug', '[Sketches.getTree] (ID:' + sketchId + ') subscriber is up to date')
+          winston.log('debug', '[Sketches.getTree] (ID:' + sketchId + ') returning tree:', subscriber.tree);
+          resolve({tree:subscriber.tree})
         }else {
-          winston.log('debug', '[Sketches.getTree] waiting for historical events to be applied.');
+          winston.log('debug', '[Sketches.getTree] (ID:' + sketchId + ')  waiting for historical events to be applied.');
           // Setup an event handler to listen for processed events
           let processedHandler = function(event) {
             // If we catch the event we are pushing, resolve the promise
-            winston.log('debug', '[Sketches.getTree] processed event caught:', event);
+            winston.log('debug', '[Sketches.getTree] (ID:' + sketchId + ')  processed event caught:', event);
             if( event.id >= lastEventID) {
-              this.subscriber.stream().removeListener('event_processed', processedHandler);
+              subscriber.stream().removeListener('event_processed', processedHandler);
+              winston.log('debug', '[Sketches.getTree] (ID:' + sketchId + ') returning tree:', subscriber.tree);
               resolve({
-                tree: this.subscriber.tree
+                tree: subscriber.tree
               });
             }
           }.bind(this);
-          this.subscriber.stream().on('event_processed', processedHandler);
+          subscriber.stream().on('event_processed', processedHandler);
         }
       }else {
-        winston.log('debug', '[Sketches.getTree] no historical events exist for this sketch.');
-        resolve({tree:this.subscriber.tree});
+        winston.log('debug', '[Sketches.getTree] (ID:' + sketchId + ')  no historical events exist for sketch ', sketchId);
+          resolve({tree:subscriber.tree});
       }
     });
   })
 }
 
 Sketches.prototype.createRootNode = function(userId, sketchId, rootNode) {
+
+  winston.log('debug', '[Sketches.createRootNode] called for sketch', sketchId);
+
   return new Promise( (resolve,reject) => {
     // Generate a unique ID for the new node
     const nodeId = uuidV4();
