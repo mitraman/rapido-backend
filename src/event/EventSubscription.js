@@ -68,6 +68,7 @@ class EventSubscription {
         // store the state of the tree
         this.tree = updatedTree;
 
+        winston.log('debug', '[EventSubscription.processEventQueue] setting this.lastEventIDProcessed to:', queuedEvent.id);
         // Update the last event processed for this sketch
         this.lastEventIDProcessed = queuedEvent.id;
         winston.log('debug', '[EventSubscription.processEventQueue] ('+this.name+') event_processed event listeners: ', this.emitter.listenerCount('event_processed') );
@@ -81,7 +82,9 @@ class EventSubscription {
         //console.log('Error caught, queuedEvent:', queuedEvent);
         winston.log('error', '[EventSubscription.processEventQueue] (event:' + queuedEvent + ') unexpected error:', e);
 
-        //TODO: Somehow report an error back to anything that is waiting for this event to be applied
+        // Mark this event as processed even though it wasn't applied
+        winston.log('debug', '[EventSubscription.processEventQueue] setting this.lastEventIDProcessed to:', queuedEvent.id);
+        this.lastEventIDProcessed = queuedEvent.id;
 
       }).finally( () => {
         if( this.eventQueue.length > 0 ) {

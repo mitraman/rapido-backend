@@ -37,7 +37,7 @@ Sketches.getSubscription = function(sketchId, label) {
         Sketches.cache.set(sketchId, subscriber, SUBSCRIPTION_TIMEOUT);
         resolve(subscriber);
       }else {
-        winston.log('debug', '[Sketches.getSubscription] An existing subscriber was retrieved from cache for sketchId ' + sketchId + ': ', subscriber);
+        winston.log('debug', '[Sketches.getSubscription] An existing subscriber was retrieved from cache for sketchId ' + sketchId + '.');
         winston.log('debug', '[Sketches.getSubscription] lastEventIDProcessed:', subscriber.getLastEventID());
         winston.log('debug', '[Sketches.getSubscription] resetting TTL for cache entry');
         Sketches.cache.ttl(sketchId, SUBSCRIPTION_TIMEOUT);
@@ -68,6 +68,7 @@ Sketches.prototype.getTree = function(sketchId, label) {
           winston.log('debug', '[Sketches.getTree] (ID:' + sketchId + ') returning tree:', subscriber.tree);
           resolve({tree:subscriber.tree})
         }else {
+          winston.log('debug', '[Sketches.getTree] subscriber.lastEventIDProcessed:', subscriber.lastEventIDProcessed);
           winston.log('debug', '[Sketches.getTree] (ID:' + sketchId + ')  waiting for historical events to be applied.');
           // Setup an event handler to listen for processed events
           let processedHandler = function(event) {
@@ -80,7 +81,7 @@ Sketches.prototype.getTree = function(sketchId, label) {
                 tree: subscriber.tree
               });
             }
-          }.bind(this);
+          }
           subscriber.stream().on('event_processed', processedHandler);
         }
       }else {

@@ -288,6 +288,10 @@ describe('/services/sketches.js ', function() {
       })
     })
 
+    it('should return a copy fo the tree even if historical events cannot be applied', function(done) {
+      fail('to be implemented');
+    })
+
     it('should return a cached copy of a sketch tree', function(done) {
       sketchService.getTree(this.sketchId).then(
       result => {
