@@ -6,19 +6,19 @@ rapido-backend
 
 The backend API server for the [Rapido app](http://github.com/apiacademy/rapido-web)
 
-##Setup
+## Setup
 
 You'll need a postgresql database.  You can find a dockerized version at https://hub.docker.com/_/postgres/.
 
 Edit `rapido.json` and `rapido-test.json` to configure the database connection and server port parameters.
 
-##Run
+## Run
 
 use `npm start` to bring the server up.
 
 You will need to run 'npm init' the first time in order to initialize the database tables.
 
-##Test
+## Test
 
 use `npm test` to start the Jasmine tests.  Tests require a running postgresql database.  The test scripts create a database called rapido-test.  We use Istanbul to check for code coverage and contributions MUST have a coverage rate of 100%.  If you have code that is impossible to test you can add a statement to [exclude it from testing](https://github.com/gotwarlost/istanbul/blob/master/ignoring-code-for-coverage.md)
 
